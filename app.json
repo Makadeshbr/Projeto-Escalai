@@ -18,7 +18,7 @@
     "android": {
       "package": "com.aether.escalai",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#13151f"
       },
       "navigationBarColor": "#13151f",
@@ -43,9 +43,8 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "56abb260-3ac0-4ff7-8a82-9b30adc80d0f"
+        "projectId": "2df3cb3a-25ab-4246-9596-8c608bff2603"
       }
-    },
-    "owner": "allanfsouza"
+    }
   }
 }
