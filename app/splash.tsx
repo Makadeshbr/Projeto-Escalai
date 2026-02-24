@@ -8,9 +8,8 @@ import Animated, {
     withRepeat,
     withSequence
 } from 'react-native-reanimated';
-import { Fingerprint } from 'lucide-react-native';
-import Svg, { Polygon, Rect, G } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -75,71 +74,37 @@ export default function SplashScreen() {
 
             <Animated.View style={[animatedFloatStyle, { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }]}>
                 {/* Logo Area */}
-                <View className="relative w-48 h-48 items-center justify-center mb-10">
-
+                <View className="relative w-48 h-48 items-center justify-center mb-16 z-20">
                     {/* Efeito de Borrão/Glow Central Esfumaçado - Múltiplas camadas p/ blur profundo */}
                     <Animated.View style={[styles.centerGlowBlur, animatedPulseStyle]} />
                     <View style={styles.centerOuterGlow} />
-
-                    {/* Detalhe Sutil Tracejado (mantido bem apagado apenas p/ profundidade se houver no design) */}
                     <View style={styles.ghostRing} />
-
-                    {/* Abstract ML Driver Logo Icon com SVG Nativo */}
-                    <View className="relative z-10 w-24 h-24 items-center justify-center" style={{ transform: [{ skewX: '-12deg' }] }}>
-                        <Svg width="96" height="96" viewBox="0 0 96 96" style={{ overflow: 'visible' }}>
-                            <G x="8" y="32">
-                                <Polygon points="12.8,0 64,0 51.2,32 0,32" fill="#2d3277" opacity={0.9} />
-                            </G>
-                            <G x="32" y="24">
-                                <Polygon points="48,0 64,24 48,48 0,48 16,24 0,0" fill="#ffe600" />
-                            </G>
-                            <Rect x="-16" y="8" width="32" height="4" rx="2" fill="rgba(255,255,255,0.2)" />
-                            <Rect x="-32" y="80" width="48" height="4" rx="2" fill="rgba(255,255,255,0.1)" />
-                        </Svg>
+                    <View className="relative z-10 w-32 h-32 items-center justify-center bg-transparent rounded-3xl p-1 overflow-visible">
+                        <Image
+                            source={require('~/assets/icon.png')}
+                            style={{ width: 120, height: 120, borderRadius: 28 }}
+                            resizeMode="contain"
+                        />
                     </View>
-
-                    {/* Pontinho amarelo flutuando (Pequeno efeito glow) */}
                     <View className="absolute right-4 top-12 w-2 h-2 bg-[#ffe600] rounded-full" style={styles.smallGlowDot} />
-                </View>
-
-                {/* Typography Logo */}
-                <View className="items-center mb-16 z-20">
-                    <View className="flex-row items-baseline">
-                        <Text style={styles.logoTextBase} className="text-white">ML</Text>
-                        <Text style={styles.logoTextHighlight} className="text-[#ffe600]">Driver</Text>
-                    </View>
-
-                    <View className="flex-row items-center justify-center mt-3 opacity-90">
-                        <View style={{ height: 1, width: 40, flex: 1, maxWidth: 40, backgroundColor: 'rgba(255,230,0,0.4)', marginRight: 12 }} />
-                        <Text style={{ color: '#9ca3af', fontSize: 10, letterSpacing: 4, fontFamily: 'SpaceGrotesk', textTransform: 'uppercase' }}>
-                            LOGISTICS CORE
-                        </Text>
-                        <View style={{ height: 1, width: 40, flex: 1, maxWidth: 40, backgroundColor: 'rgba(255,230,0,0.4)', marginLeft: 12 }} />
-                    </View>
                 </View>
             </Animated.View>
 
             {/* Bottom Loader Area */}
             <View className="w-full max-w-[260px] px-6 absolute bottom-16">
-                <View className="flex-row justify-between mb-2">
-                    <Text className="text-[10px] font-mono font-bold text-[#ffe600]">SYSTEM CHECK</Text>
-                    <Text className="text-[10px] font-mono font-bold text-[#ffe600]">OK</Text>
-                </View>
-
                 {/* Progress Bar */}
-                <View className="h-1.5 w-full bg-[#1e2332] rounded-full overflow-hidden flex-row">
+                <View className="h-1.5 w-full bg-[#1e2332] rounded-full overflow-hidden flex-row mb-6 mt-4">
                     <Animated.View style={[animatedProgressStyle, { height: '100%', backgroundColor: '#ffe600', shadowColor: '#ffe600', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10, elevation: 5 }]} />
                 </View>
 
-                <View className="flex-row justify-between mt-2 mb-10">
-                    <Text className="text-[9px] font-mono text-[#64748b]">ID: 8492-X</Text>
-                    <Text className="text-[9px] font-mono text-[#64748b]">SYNCING...</Text>
-                </View>
-
-                {/* Security Badge */}
+                {/* Aether Branding */}
                 <View className="items-center gap-1 opacity-80 mt-2">
-                    <Fingerprint size={24} color="#475569" />
-                    <Text className="text-[10px] text-[#475569] font-mono mt-1">SECURE CONNECTION ESTABLISHED</Text>
+                    <Text className="text-[12px] text-[#cbd5e1] font-spaceGrotesk tracking-widest uppercase">
+                        Feito pela plataforma
+                    </Text>
+                    <Text className="text-[16px] text-[#ffe600] font-spaceGroteskBold tracking-wide">
+                        Aether
+                    </Text>
                 </View>
             </View>
 

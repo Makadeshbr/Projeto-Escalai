@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Handshake, User, Lock, Eye, EyeOff, LogIn, Fingerprint } from 'lucide-react-native';
+import { User, Lock, Eye, EyeOff, LogIn, Fingerprint } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore, AuthUser } from '~/src/store/auth';
@@ -117,8 +117,12 @@ export default function LoginScreen() {
                     <View className="items-center mb-10 pt-10">
                         {/* Logo Container with thick border and glow */}
                         <View style={styles.logoOuterGlow}>
-                            <View style={styles.logoBorder}>
-                                <Handshake color="#ffe600" size={48} strokeWidth={2} />
+                            <View style={[styles.logoBorder, { padding: 4, backgroundColor: 'transparent' }]}>
+                                <Image
+                                    source={require('~/assets/icon.png')}
+                                    style={{ width: 80, height: 80, borderRadius: 20 }}
+                                    resizeMode="contain"
+                                />
                             </View>
                         </View>
 

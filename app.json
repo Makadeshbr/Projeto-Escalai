@@ -8,7 +8,7 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#13151f"
     },
@@ -29,12 +29,15 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      ["expo-notifications", {
-        "icon": "./assets/icon.png",
-        "color": "#f9e006",
-        "defaultChannel": "default",
-        "sounds": []
-      }]
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#f9e006",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ]
     ]
   }
 }
