@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { aether } from '~/src/lib/aether';
 import { COLLECTIONS } from '~/src/lib/collections';
 import AlertModal from '~/src/components/AlertModal';
+import { Input } from '~/src/components/ui/Input';
+import { Button } from '~/src/components/ui/Button';
 
 export default function RegisterScreen() {
     const [name, setName] = useState('');
@@ -174,75 +176,37 @@ export default function RegisterScreen() {
                     {/* Form Fields */}
                     <View className="w-full relative z-10 gap-5">
                         {/* Name Input */}
-                        <View>
-                            <Text className="text-sm font-spaceGroteskBold text-slate-300 ml-1 mb-2">
-                                Nome Completo
-                            </Text>
-                            <View className="relative justify-center">
-                                <View className="absolute left-4 z-10 opacity-70">
-                                    <User color="#94a3b8" size={22} />
-                                </View>
-                                <TextInput
-                                    value={name}
-                                    onChangeText={setName}
-                                    placeholder="João da Silva"
-                                    placeholderTextColor={THEME.colors.textMuted}
-                                    className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 flex-row items-center border border-transparent focus:border-[#ffe600] pl-12 pr-4 text-white font-spaceGrotesk text-base transition-colors"
-                                    autoCapitalize="words"
-                                />
-                            </View>
-                        </View>
+                        <Input
+                            label="Nome Completo"
+                            value={name}
+                            onChangeText={setName}
+                            placeholder="João da Silva"
+                            autoCapitalize="words"
+                            leftIcon={<User color="#94a3b8" size={22} />}
+                        />
 
                         {/* E-mail Input */}
-                        <View>
-                            <Text className="text-sm font-spaceGroteskBold text-slate-300 ml-1 mb-2">
-                                E-mail
-                            </Text>
-                            <View className="relative justify-center">
-                                <View className="absolute left-4 z-10 opacity-70">
-                                    <Mail color="#94a3b8" size={22} />
-                                </View>
-                                <TextInput
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    placeholder="seu@email.com"
-                                    placeholderTextColor={THEME.colors.textMuted}
-                                    className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 flex-row items-center border border-transparent focus:border-[#ffe600] pl-12 pr-4 text-white font-spaceGrotesk text-base transition-colors"
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
-                                />
-                            </View>
-                        </View>
+                        <Input
+                            label="E-mail"
+                            value={email}
+                            onChangeText={setEmail}
+                            placeholder="seu@email.com"
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            leftIcon={<Mail color="#94a3b8" size={22} />}
+                        />
 
                         {/* Password Input */}
-                        <View>
-                            <Text className="text-sm font-spaceGroteskBold text-slate-300 ml-1 mb-2">
-                                Senha
-                            </Text>
-                            <View className="relative justify-center">
-                                <View className="absolute left-4 z-10 opacity-70">
-                                    <Lock color="#94a3b8" size={22} />
-                                </View>
-                                <TextInput
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    placeholder="••••••••"
-                                    placeholderTextColor={THEME.colors.textMuted}
-                                    secureTextEntry={!showPassword}
-                                    className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 border border-transparent focus:border-[#ffe600] pl-12 pr-12 text-white font-spaceGrotesk text-base transition-colors"
-                                />
-                                <TouchableOpacity
-                                    className="absolute right-4 opacity-70"
-                                    onPress={() => setShowPassword(!showPassword)}
-                                >
-                                    {showPassword ? (
-                                        <EyeOff color="#94a3b8" size={22} />
-                                    ) : (
-                                        <Eye color="#94a3b8" size={22} />
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                        <Input
+                            label="Senha"
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder="••••••••"
+                            secureTextEntry={!showPassword}
+                            leftIcon={<Lock color="#94a3b8" size={22} />}
+                            rightIcon={showPassword ? <EyeOff color="#94a3b8" size={22} /> : <Eye color="#94a3b8" size={22} />}
+                            onRightIconPress={() => setShowPassword(!showPassword)}
+                        />
 
                         {/* Plate Input */}
                         <View>
@@ -279,46 +243,26 @@ export default function RegisterScreen() {
                         </View>
 
                         {/* Phone Input */}
-                        <View>
-                            <Text className="text-sm font-spaceGroteskBold text-slate-300 ml-1 mb-2">
-                                Celular (WhatsApp)
-                            </Text>
-                            <View className="relative justify-center">
-                                <View className="absolute left-4 z-10 opacity-70">
-                                    <Phone color="#94a3b8" size={22} />
-                                </View>
-                                <TextInput
-                                    value={phone}
-                                    onChangeText={(text) => setPhone(formatPhone(text))}
-                                    placeholder="(11) 99999-9999"
-                                    placeholderTextColor={THEME.colors.textMuted}
-                                    className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 flex-row items-center border border-transparent focus:border-[#ffe600] pl-12 pr-4 text-white font-spaceGrotesk text-base transition-colors"
-                                    keyboardType="phone-pad"
-                                    maxLength={15}
-                                />
-                            </View>
-                        </View>
+                        <Input
+                            label="Celular (WhatsApp)"
+                            value={phone}
+                            onChangeText={(text) => setPhone(formatPhone(text))}
+                            placeholder="(11) 99999-9999"
+                            keyboardType="phone-pad"
+                            maxLength={15}
+                            leftIcon={<Phone color="#94a3b8" size={22} />}
+                        />
                     </View>
 
                     {/* Submit Button */}
                     <View className="mt-8 w-full relative z-10">
-                        <TouchableOpacity
+                        <Button
+                            label={isLoading ? 'CADASTRANDO...' : 'Cadastrar'}
                             onPress={handleRegister}
-                            disabled={isLoading}
-                            className={`group w-full bg-[#ffe600] py-4 rounded-xl flex-row items-center justify-center gap-2 ${isLoading ? 'opacity-50' : ''}`}
-                            style={{
-                                shadowColor: '#d9c400',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 1,
-                                shadowRadius: 0,
-                                elevation: 4 // simulation of the solid bottom border feeling
-                            }}
-                        >
-                            <Text className="font-spaceGroteskBold text-[#2d2a1d] text-lg">
-                                {isLoading ? 'CADASTRANDO...' : 'Cadastrar'}
-                            </Text>
-                            {!isLoading && <ArrowRight color="#2d2a1d" size={20} />}
-                        </TouchableOpacity>
+                            loading={isLoading}
+                            className="bg-primary"
+                            leftIcon={!isLoading ? undefined : undefined}
+                        />
 
                         <View className="flex-row items-center justify-center gap-2 mt-6 pb-4">
                             <Text className="text-sm text-slate-400 font-spaceGrotesk">

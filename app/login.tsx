@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore, AuthUser } from '~/src/store/auth';
 import AlertModal from '~/src/components/AlertModal';
 import { aether } from '~/src/lib/aether';
+import { Input } from '~/src/components/ui/Input';
+import { Button } from '~/src/components/ui/Button';
 
 export default function LoginScreen() {
     const [driverId, setDriverId] = useState('');
@@ -137,53 +139,28 @@ export default function LoginScreen() {
                     {/* Inputs */}
                     <View className="w-full mb-6 relative z-10">
                         {/* User / Email Input */}
-                        <View className="mb-4">
-                            <Text className="text-[13px] font-spaceGroteskBold text-text-light mb-2 ml-1">
-                                E-mail de Acesso
-                            </Text>
-                            <View className="relative justify-center">
-                                <View className="absolute left-4 z-10 border-0 opacity-50">
-                                    <User color="#94a3b8" size={20} />
-                                </View>
-                                <TextInput
-                                    value={driverId}
-                                    onChangeText={setDriverId}
-                                    placeholder="seu@email.com"
-                                    placeholderTextColor="#475569"
-                                    className="w-full bg-surface rounded-xl py-4 pl-12 pr-4 text-white font-spaceGrotesk text-[15px] border border-border focus:border-[#ffe600] transition-colors"
-                                    autoCapitalize="none"
-                                />
-                            </View>
-                        </View>
+                        <Input
+                            label="E-mail de Acesso"
+                            value={driverId}
+                            onChangeText={setDriverId}
+                            placeholder="seu@email.com"
+                            autoCapitalize="none"
+                            leftIcon={<User color="#94a3b8" size={20} />}
+                        />
 
                         {/* Password Input */}
                         <View className="mb-2">
-                            <Text className="text-[13px] font-spaceGroteskBold text-text-light mb-2 ml-1">
-                                Senha
-                            </Text>
-                            <View className="relative justify-center">
-                                <View className="absolute left-4 z-10 border-0 opacity-50">
-                                    <Lock color="#94a3b8" size={20} />
-                                </View>
-                                <TextInput
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    placeholder="••••••••"
-                                    placeholderTextColor="#475569"
-                                    secureTextEntry={!showPassword}
-                                    className="w-full bg-surface rounded-xl py-4 pl-12 pr-12 text-white font-spaceGrotesk text-[15px] border border-border focus:border-[#ffe600] transition-colors"
-                                />
-                                <TouchableOpacity
-                                    className="absolute right-4 opacity-50"
-                                    onPress={() => setShowPassword(!showPassword)}
-                                >
-                                    {showPassword ? (
-                                        <EyeOff color="#94a3b8" size={22} />
-                                    ) : (
-                                        <Eye color="#94a3b8" size={22} />
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                            <Input
+                                label="Senha"
+                                value={password}
+                                onChangeText={setPassword}
+                                placeholder="••••••••"
+                                secureTextEntry={!showPassword}
+                                leftIcon={<Lock color="#94a3b8" size={20} />}
+                                rightIcon={showPassword ? <EyeOff color="#94a3b8" size={22} /> : <Eye color="#94a3b8" size={22} />}
+                                onRightIconPress={() => setShowPassword(!showPassword)}
+                                containerClassName="mb-1"
+                            />
 
                             {/* Recuperação de senha — funcionalidade pendente de implementação */}
                             <View className="flex-row justify-end mt-3">
@@ -206,34 +183,26 @@ export default function LoginScreen() {
 
                     {/* Action Buttons */}
                     <View className="gap-4 w-full relative z-10">
-                        <TouchableOpacity
+                        <Button
+                            label={isLoading ? 'ENTRANDO...' : 'ENTRAR'}
                             onPress={handleLogin}
-                            disabled={isLoading}
-                            className={`w-full h-14 rounded-xl flex-row items-center justify-center gap-2 ${isLoading ? 'opacity-50' : ''}`}
+                            loading={isLoading}
+                            className="bg-secondary"
+                            leftIcon={!isLoading ? <LogIn color="#ffffff" size={18} /> : undefined}
                             style={{
-                                backgroundColor: '#31366c',
                                 shadowColor: '#1e1e32',
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: 0.5,
                                 shadowRadius: 8,
                                 elevation: 5
                             }}
-                        >
-                            <Text className="font-spaceGroteskBold text-white text-[15px] uppercase tracking-wider">
-                                {isLoading ? 'ENTRANDO...' : 'ENTRAR'}
-                            </Text>
-                            {!isLoading && <LogIn color="#ffffff" size={18} />}
-                        </TouchableOpacity>
+                        />
 
-                        <TouchableOpacity
+                        <Button
+                            label="Criar conta"
                             onPress={() => router.push('/register')}
-                            className="w-full h-14 rounded-xl items-center justify-center border border-border"
-                            style={{ backgroundColor: '#13151f' }}
-                        >
-                            <Text className="font-spaceGroteskBold text-text-light text-[15px]">
-                                Criar conta
-                            </Text>
-                        </TouchableOpacity>
+                            variant="outline"
+                        />
                     </View>
 
                     {/* Support Footer */}
