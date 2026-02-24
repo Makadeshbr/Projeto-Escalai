@@ -339,8 +339,8 @@ export default function AdminSettingsScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={StyleSheet.absoluteFillObject} />
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-6 py-4 z-20">
@@ -348,7 +348,7 @@ export default function AdminSettingsScreen() {
                     <Text className="text-2xl font-spaceGroteskBold tracking-tight text-white mb-1">Ajustes</Text>
                     <Text className="text-xs font-spaceGrotesk text-[#94a3b8] uppercase tracking-[0.1em]">SISTEMA ADMIN</Text>
                 </View>
-                <View className="w-10 h-10 rounded-full bg-[#1e2332] border border-[#2d3345] items-center justify-center">
+                <View className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center">
                     <Settings2 color={THEME.colors.primary} size={20} />
                 </View>
             </View>
@@ -357,26 +357,26 @@ export default function AdminSettingsScreen() {
 
                 {/* Section: Janela de Disponibilidade */}
                 <View className="mb-6">
-                    <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] uppercase tracking-wider mb-3 ml-1">Fluxo de Escala</Text>
-                    <View className="bg-[#1e2332] border border-[#2d3345] rounded-2xl p-5">
+                    <Text className="text-[13px] font-spaceGroteskBold text-text-light uppercase tracking-wider mb-3 ml-1">Fluxo de Escala</Text>
+                    <View className="bg-surface border border-border rounded-2xl p-5">
                         <View className="flex-row items-center gap-3 mb-4">
-                            <View className="w-10 h-10 rounded-full bg-[#13151f] items-center justify-center border border-[#2d3345]">
+                            <View className="w-10 h-10 rounded-full bg-background items-center justify-center border border-border">
                                 <Clock color={THEME.colors.primary} size={18} />
                             </View>
                             <View className="flex-1">
                                 <Text className="text-white font-spaceGroteskBold text-[15px]">Janelas Ativas</Text>
-                                <Text className="text-[#64748b] font-spaceGrotesk text-[11px] mt-1">Gerencie aberturas de turnos.</Text>
+                                <Text className="text-text-muted font-spaceGrotesk text-[11px] mt-1">Gerencie aberturas de turnos.</Text>
                             </View>
                         </View>
 
                         {/* List rendering */}
                         {activeWindows.length === 0 ? (
-                            <Text className="text-[#64748b] font-spaceGrotesk text-[12px] mb-4 text-center">Nenhuma janela aberta no momento.</Text>
+                            <Text className="text-text-muted font-spaceGrotesk text-[12px] mb-4 text-center">Nenhuma janela aberta no momento.</Text>
                         ) : (
                             <View className="mb-4 gap-2">
                                 {activeWindows.map((win, idx) => (
-                                    <View key={idx} className="flex-row items-center justify-between bg-[#13151f] border border-[#2d3345] p-3 rounded-xl">
-                                        <Text className="text-[#e2e8f0] font-spaceGroteskBold text-[13px]">{win.label}</Text>
+                                    <View key={idx} className="flex-row items-center justify-between bg-background border border-border p-3 rounded-xl">
+                                        <Text className="text-text-light font-spaceGroteskBold text-[13px]">{win.label}</Text>
                                         <TouchableOpacity
                                             onPress={() => handleDeleteWindow(win.id, win.label)}
                                             className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 items-center justify-center"
@@ -392,10 +392,10 @@ export default function AdminSettingsScreen() {
                             <TouchableOpacity
                                 onPress={() => setShowDatePicker(true)}
                                 disabled={generatingWindow}
-                                className={`w-full bg-[#13151f] border border-[#2d3345] py-4 rounded-xl items-center flex-row justify-center gap-3 shadow-lg ${generatingWindow ? 'opacity-50' : ''}`}
+                                className={`w-full bg-background border border-border py-4 rounded-xl items-center flex-row justify-center gap-3 shadow-lg ${generatingWindow ? 'opacity-50' : ''}`}
                             >
                                 <CalendarClock color="#e2e8f0" size={18} />
-                                <Text className="text-[#e2e8f0] font-spaceGrotesk tracking-wider uppercase text-[13px]">Nova Janela de Escala</Text>
+                                <Text className="text-text-light font-spaceGrotesk tracking-wider uppercase text-[13px]">Nova Janela de Escala</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -403,39 +403,39 @@ export default function AdminSettingsScreen() {
 
                 {/* Section: Bloqueio de Motoristas */}
                 <View className="mb-6">
-                    <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] uppercase tracking-wider mb-3 ml-1">Controle de Frota</Text>
-                    <View className="bg-[#1e2332] border border-[#2d3345] rounded-2xl p-5">
+                    <Text className="text-[13px] font-spaceGroteskBold text-text-light uppercase tracking-wider mb-3 ml-1">Controle de Frota</Text>
+                    <View className="bg-surface border border-border rounded-2xl p-5">
                         <View className="flex-row items-center gap-3 mb-4">
-                            <View className="w-10 h-10 rounded-full bg-[#13151f] items-center justify-center border border-[#2d3345]">
+                            <View className="w-10 h-10 rounded-full bg-background items-center justify-center border border-border">
                                 <ShieldAlert color="#e2e8f0" size={18} />
                             </View>
                             <View className="flex-1">
                                 <Text className="text-white font-spaceGroteskBold text-[15px]">Bloqueio de Contas</Text>
-                                <Text className="text-[#64748b] font-spaceGrotesk text-[11px] mt-1">Gerencie acessos ao app de condutores.</Text>
+                                <Text className="text-text-muted font-spaceGrotesk text-[11px] mt-1">Gerencie acessos ao app de condutores.</Text>
                             </View>
                         </View>
 
                         <TouchableOpacity
                             onPress={() => { fetchDriversForManagement(); setShowDriversModal(true); }}
-                            className="bg-[#13151f] border border-[#2d3345] py-3.5 rounded-xl flex-row items-center justify-center gap-2"
+                            className="bg-background border border-border py-3.5 rounded-xl flex-row items-center justify-center gap-2"
                         >
                             <Target color={THEME.colors.primary} size={16} />
-                            <Text className="text-[#e2e8f0] font-spaceGroteskBold text-[13px] tracking-wide uppercase">Localizar Motorista</Text>
+                            <Text className="text-text-light font-spaceGroteskBold text-[13px] tracking-wide uppercase">Localizar Motorista</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Section: Comunicação Push */}
                 <View className="mb-16">
-                    <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] uppercase tracking-wider mb-3 ml-1">Comunicação em Massa</Text>
-                    <View className="bg-[#1e2332] border border-[#2d3345] rounded-2xl p-5">
+                    <Text className="text-[13px] font-spaceGroteskBold text-text-light uppercase tracking-wider mb-3 ml-1">Comunicação em Massa</Text>
+                    <View className="bg-surface border border-border rounded-2xl p-5">
                         <View className="flex-row items-center gap-3 mb-4">
                             <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
                                 <Send color={THEME.colors.primary} size={18} />
                             </View>
                             <View className="flex-1">
                                 <Text className="text-white font-spaceGroteskBold text-[15px]">Push Notificações</Text>
-                                <Text className="text-[#64748b] font-spaceGrotesk text-[11px] mt-1">Envie alertas diretamente para os celulares da frota.</Text>
+                                <Text className="text-text-muted font-spaceGrotesk text-[11px] mt-1">Envie alertas diretamente para os celulares da frota.</Text>
                             </View>
                         </View>
 
@@ -443,26 +443,26 @@ export default function AdminSettingsScreen() {
                             value={notificationTitle}
                             onChangeText={setNotificationTitle}
                             placeholder="Título da Mensagem"
-                            placeholderTextColor="#64748b"
+                            placeholderTextColor={THEME.colors.textMuted}
                             maxLength={100}
-                            className="bg-[#13151f] border border-[#2d3345] rounded-xl py-3 px-4 text-white font-spaceGrotesk text-[13px] mb-3"
+                            className="bg-background border border-border rounded-xl py-3 px-4 text-white font-spaceGrotesk text-[13px] mb-3"
                         />
                         <TextInput
                             value={notificationBody}
                             onChangeText={setNotificationBody}
                             placeholder="Conteúdo da Mensagem..."
-                            placeholderTextColor="#64748b"
+                            placeholderTextColor={THEME.colors.textMuted}
                             multiline
                             numberOfLines={3}
                             maxLength={500}
-                            className="bg-[#13151f] border border-[#2d3345] rounded-xl py-3 px-4 text-white font-spaceGrotesk text-[13px] mb-4 h-24 text-top"
+                            className="bg-background border border-border rounded-xl py-3 px-4 text-white font-spaceGrotesk text-[13px] mb-4 h-24 text-top"
                         />
 
                         <TouchableOpacity
                             onPress={handleSendNotification}
                             disabled={sendingNotif}
                             className={`bg-primary py-3.5 rounded-xl items-center ${sendingNotif ? 'opacity-50' : ''}`}
-                            style={{ shadowColor: '#ffe600', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2 }}
+                            style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2 }}
                         >
                             {sendingNotif ? (
                                 <ActivityIndicator color="#000" size="small" />
@@ -474,16 +474,16 @@ export default function AdminSettingsScreen() {
                 </View>
                 {/* Section: Gestão de Praças (Cidades) */}
                 <View className="mb-6">
-                    <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] uppercase tracking-wider mb-3 ml-1">Logística Direcionada</Text>
-                    <View className="bg-[#1e2332] border border-[#2d3345] rounded-2xl p-5">
+                    <Text className="text-[13px] font-spaceGroteskBold text-text-light uppercase tracking-wider mb-3 ml-1">Logística Direcionada</Text>
+                    <View className="bg-surface border border-border rounded-2xl p-5">
                         <View className="flex-row items-center justify-between mb-4">
                             <View className="flex-row items-center gap-3 flex-1">
-                                <View className="w-10 h-10 rounded-full bg-[#13151f] items-center justify-center border border-[#2d3345]">
+                                <View className="w-10 h-10 rounded-full bg-background items-center justify-center border border-border">
                                     <MapPin color={THEME.colors.primary} size={18} />
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-white font-spaceGroteskBold text-[15px]">Praças (Cidades)</Text>
-                                    <Text className="text-[#64748b] font-spaceGrotesk text-[11px] mt-1">Regiões listadas na IA.</Text>
+                                    <Text className="text-text-muted font-spaceGrotesk text-[11px] mt-1">Regiões listadas na IA.</Text>
                                 </View>
                             </View>
                             <TouchableOpacity
@@ -498,26 +498,26 @@ export default function AdminSettingsScreen() {
                         {citiesLoading ? (
                             <ActivityIndicator color={THEME.colors.primary} size="small" className="my-4" />
                         ) : cities.length === 0 ? (
-                            <Text className="text-[#64748b] font-spaceGrotesk text-[12px] text-center my-4">Nenhuma praça encontrada.</Text>
+                            <Text className="text-text-muted font-spaceGrotesk text-[12px] text-center my-4">Nenhuma praça encontrada.</Text>
                         ) : (
-                            <View className="max-h-60 rounded-xl overflow-hidden border border-[#2d3345] bg-[#13151f]">
+                            <View className="max-h-60 rounded-xl overflow-hidden border border-border bg-background">
                                 <ScrollView nestedScrollEnabled scrollEnabled={true} showsVerticalScrollIndicator={true} className="p-2">
                                     {cities.map((city, idx) => {
                                         const name = city.name || city._payload?.name || '';
                                         const state = city.state || city._payload?.state || '';
                                         return (
-                                            <View key={city.id} className={`flex-row items-center justify-between p-3 ${idx !== cities.length - 1 ? 'border-b border-[#2d3345]/50' : ''}`}>
+                                            <View key={city.id} className={`flex-row items-center justify-between p-3 ${idx !== cities.length - 1 ? 'border-b border-border/50' : ''}`}>
                                                 <View className="flex-1 flex-row items-center gap-2">
-                                                    <View className="bg-[#1e2332] px-2 py-0.5 rounded border border-[#2d3345]">
+                                                    <View className="bg-surface px-2 py-0.5 rounded border border-border">
                                                         <Text className="text-[#94a3b8] font-spaceGroteskBold text-[10px] uppercase">{state}</Text>
                                                     </View>
-                                                    <Text className="text-[#e2e8f0] font-spaceGroteskBold text-[13px]">{name}</Text>
+                                                    <Text className="text-text-light font-spaceGroteskBold text-[13px]">{name}</Text>
                                                 </View>
 
                                                 <View className="flex-row gap-2">
                                                     <TouchableOpacity
                                                         onPress={() => openCityModal(city)}
-                                                        className="w-8 h-8 rounded-full bg-[#1e2332] items-center justify-center border border-[#2d3345]"
+                                                        className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border"
                                                     >
                                                         <Edit2 color="#94a3b8" size={14} />
                                                     </TouchableOpacity>
@@ -539,7 +539,7 @@ export default function AdminSettingsScreen() {
 
                 {/* Section: Logout */}
                 <View className="mt-4 pb-32">
-                    <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] uppercase tracking-wider mb-3 ml-1">Conta & Segurança</Text>
+                    <Text className="text-[13px] font-spaceGroteskBold text-text-light uppercase tracking-wider mb-3 ml-1">Conta & Segurança</Text>
 
                     <TouchableOpacity
                         activeOpacity={0.7}
@@ -553,7 +553,7 @@ export default function AdminSettingsScreen() {
                                 console.error('Error logging out:', error);
                             }
                         })}
-                        className="bg-[#1e2332] border border-[#2d3345] rounded-2xl p-5 flex-row items-center justify-between shadow-sm"
+                        className="bg-surface border border-border rounded-2xl p-5 flex-row items-center justify-between shadow-sm"
                     >
                         <View className="flex-row items-center gap-4">
                             <View className="w-12 h-12 rounded-full bg-red-500/10 items-center justify-center border border-red-500/20">
@@ -561,7 +561,7 @@ export default function AdminSettingsScreen() {
                             </View>
                             <View>
                                 <Text className="text-red-400 font-spaceGroteskBold text-[15px]">Desconectar Sistema</Text>
-                                <Text className="text-[#64748b] font-spaceGrotesk text-[11px] mt-1">Sair de forma segura do painel.</Text>
+                                <Text className="text-text-muted font-spaceGrotesk text-[11px] mt-1">Sair de forma segura do painel.</Text>
                             </View>
                         </View>
                         <ChevronRight color="#475569" size={20} />
@@ -574,10 +574,10 @@ export default function AdminSettingsScreen() {
             {/* Modal - Gerenciar Motoristas */}
             <Modal visible={showDriversModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/80 justify-end">
-                    <View className="bg-[#1e2332] rounded-t-3xl max-h-[85%] border-t border-[#2d3345]">
-                        <View className="flex-row items-center justify-between p-6 border-b border-[#2d3345] bg-[#1a1d2e] rounded-t-3xl">
+                    <View className="bg-surface rounded-t-3xl max-h-[85%] border-t border-border">
+                        <View className="flex-row items-center justify-between p-6 border-b border-border bg-[#1a1d2e] rounded-t-3xl">
                             <Text className="text-white font-spaceGroteskBold text-lg">Controle de Motoristas</Text>
-                            <TouchableOpacity onPress={() => setShowDriversModal(false)} className="w-8 h-8 bg-[#13151f] items-center justify-center rounded-full">
+                            <TouchableOpacity onPress={() => setShowDriversModal(false)} className="w-8 h-8 bg-background items-center justify-center rounded-full">
                                 <X color="#94a3b8" size={18} />
                             </TouchableOpacity>
                         </View>
@@ -588,8 +588,8 @@ export default function AdminSettingsScreen() {
                                     value={searchDriver}
                                     onChangeText={setSearchDriver}
                                     placeholder="Buscar por placa, nome ou email..."
-                                    placeholderTextColor="#64748b"
-                                    className="w-full bg-[#13151f] border border-[#2d3345] rounded-xl py-3 pl-11 pr-4 text-white font-spaceGrotesk text-[13px]"
+                                    placeholderTextColor={THEME.colors.textMuted}
+                                    className="w-full bg-background border border-border rounded-xl py-3 pl-11 pr-4 text-white font-spaceGrotesk text-[13px]"
                                 />
                                 <View className="absolute left-4 opacity-50">
                                     <Search color="#94a3b8" size={18} />
@@ -612,9 +612,9 @@ export default function AdminSettingsScreen() {
                                 keyExtractor={(item) => item.id}
                                 contentContainerStyle={{ paddingBottom: 40 }}
                                 renderItem={({ item }) => (
-                                    <View className="flex-row items-center justify-between px-6 py-4 border-b border-[#2d3345]/50 hover:bg-white/5">
+                                    <View className="flex-row items-center justify-between px-6 py-4 border-b border-border/50 hover:bg-white/5">
                                         <View className="flex-row items-center flex-1">
-                                            <View className={`w-10 h-10 rounded-full items-center justify-center border ${item.status === 'blocked' ? 'bg-red-500/10 border-red-500/20' : 'bg-[#13151f] border-[#2d3345]'}`}>
+                                            <View className={`w-10 h-10 rounded-full items-center justify-center border ${item.status === 'blocked' ? 'bg-red-500/10 border-red-500/20' : 'bg-background border-border'}`}>
                                                 {item.status === 'blocked' ? <UserX color="#f87171" size={18} /> : <UserCheck color="#e2e8f0" size={18} />}
                                             </View>
                                             <View className="ml-4 flex-1">
@@ -643,7 +643,7 @@ export default function AdminSettingsScreen() {
             {/* Modal de Ações Genéricas (Sucesso, Erro, Confirm) */}
             <Modal visible={actionModal.visible} animationType="fade" transparent>
                 <View className="flex-1 bg-black/80 justify-center items-center px-6">
-                    <View className="bg-[#1e2332] border border-[#2d3345] w-full rounded-3xl p-6 items-center">
+                    <View className="bg-surface border border-border w-full rounded-3xl p-6 items-center">
                         <View className={`w-16 h-16 rounded-full items-center justify-center mb-5 ${actionModal.type === 'error' ? 'bg-red-500/10' : actionModal.type === 'success' ? 'bg-primary/10' : 'bg-blue-500/10'}`}>
                             {actionModal.type === 'error' && <AlertTriangle color="#f87171" size={28} />}
                             {actionModal.type === 'warning' && <AlertTriangle color="#fbbf24" size={28} />}
@@ -660,7 +660,7 @@ export default function AdminSettingsScreen() {
                         <View className="w-full flex-row gap-3">
                             {actionModal.type === 'confirm' && (
                                 <TouchableOpacity
-                                    className="flex-1 bg-[#13151f] border border-[#2d3345] rounded-xl py-3.5 items-center"
+                                    className="flex-1 bg-background border border-border rounded-xl py-3.5 items-center"
                                     onPress={() => setActionModal(p => ({ ...p, visible: false }))}
                                 >
                                     <Text className="text-[#94a3b8] font-spaceGroteskBold uppercase text-[13px]">Cancelar</Text>
@@ -710,10 +710,10 @@ export default function AdminSettingsScreen() {
                             value={cityFormData.state}
                             onChangeText={(text) => setCityFormData({ ...cityFormData, state: text.toUpperCase() })}
                             placeholder="Ex: SP"
-                            placeholderTextColor="#64748b"
+                            placeholderTextColor={THEME.colors.textMuted}
                             autoCapitalize="characters"
                             maxLength={2}
-                            className="bg-[#13151f] border border-[#2d3345] rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
+                            className="bg-background border border-border rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
                         />
                     </View>
                     <View>
@@ -722,8 +722,8 @@ export default function AdminSettingsScreen() {
                             value={cityFormData.name}
                             onChangeText={(text) => setCityFormData({ ...cityFormData, name: text })}
                             placeholder="Ex: São Paulo"
-                            placeholderTextColor="#64748b"
-                            className="bg-[#13151f] border border-[#2d3345] rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
+                            placeholderTextColor={THEME.colors.textMuted}
+                            className="bg-background border border-border rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
                         />
                     </View>
                 </View>

@@ -213,7 +213,7 @@ export default function RouteStatusScreen() {
     if (!assignment) {
         return (
             <SafeAreaView className="flex-1 bg-[#222010]">
-                <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={StyleSheet.absoluteFillObject} />
                 <View className="flex-1 items-center justify-center p-6">
                     <Truck size={64} color={THEME.colors.textMuted} />
                     <Text className="text-white text-xl font-bold mt-4 text-center">Nenhuma Rota Ativa</Text>
@@ -226,7 +226,7 @@ export default function RouteStatusScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-[#222010]">
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={StyleSheet.absoluteFillObject} />
 
             {/* Header */}
             <View className="px-4 py-3 border-b border-white/10 z-50">
@@ -287,7 +287,7 @@ export default function RouteStatusScreen() {
 
                     {/* ESTADO 1: Motorista já saiu da doca → "Boa Viagem" */}
                     {isDeparted && (
-                        <View className="bg-[#1e2332] rounded-2xl p-8 items-center justify-center shadow-lg border border-[#2d3345] w-full">
+                        <View className="bg-surface rounded-2xl p-8 items-center justify-center shadow-lg border border-border w-full">
                             <View className="w-20 h-20 rounded-full bg-green-500/10 border border-green-500/20 items-center justify-center mb-4">
                                 <PartyPopper size={40} color="#4ade80" />
                             </View>
@@ -315,7 +315,7 @@ export default function RouteStatusScreen() {
                             {/* Reflexo premium light */}
                             <View className="absolute top-0 left-0 right-0 h-1/2 bg-white/10" />
 
-                            <CheckCircle2 size={50} color="#13151f" />
+                            <CheckCircle2 size={50} color={THEME.colors.background} />
                             <Text className="text-lg font-bold uppercase tracking-wider text-[#13151f] mt-3">
                                 Doca Liberada
                             </Text>
@@ -328,7 +328,7 @@ export default function RouteStatusScreen() {
 
                             <TouchableOpacity
                                 onPress={handleDriverReleaseDock}
-                                className="w-full bg-[#13151f] py-4 rounded-xl flex-row items-center justify-center shadow-md active:opacity-80"
+                                className="w-full bg-background py-4 rounded-xl flex-row items-center justify-center shadow-md active:opacity-80"
                             >
                                 <Truck size={18} color={THEME.colors.primary} />
                                 <Text className="text-primary font-bold uppercase tracking-widest text-sm ml-2">
@@ -398,7 +398,7 @@ export default function RouteStatusScreen() {
             </View>
 
             {/* Status Bar Floating Bottom */}
-            <View className="absolute bottom-20 left-0 right-0 p-4 border-t border-white/5 bg-[#13151f]/95 z-40">
+            <View className="absolute bottom-20 left-0 right-0 p-4 border-t border-white/5 bg-background/95 z-40">
                 <View className="flex-row justify-between items-center text-xs">
                     <Text className="text-slate-500 font-mono text-xs">ID: {assignment.id.substring(0, 8).toUpperCase()}</Text>
                     <View className="flex-row items-center gap-2">

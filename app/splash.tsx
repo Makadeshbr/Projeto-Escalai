@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { THEME } from '~/src/constants/theme';
 import { useRouter } from 'expo-router';
 import Animated, {
     useSharedValue,
@@ -93,13 +94,13 @@ export default function SplashScreen() {
             {/* Bottom Loader Area */}
             <View className="w-full max-w-[260px] px-6 absolute bottom-16">
                 {/* Progress Bar */}
-                <View className="h-1.5 w-full bg-[#1e2332] rounded-full overflow-hidden flex-row mb-6 mt-4">
-                    <Animated.View style={[animatedProgressStyle, { height: '100%', backgroundColor: '#ffe600', shadowColor: '#ffe600', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10, elevation: 5 }]} />
+                <View className="h-1.5 w-full bg-surface rounded-full overflow-hidden flex-row mb-6 mt-4">
+                    <Animated.View style={[animatedProgressStyle, { height: '100%', backgroundColor: THEME.colors.primary, shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10, elevation: 5 }]} />
                 </View>
 
                 {/* Aether Branding */}
                 <View className="items-center gap-1 opacity-80 mt-2">
-                    <Text className="text-[12px] text-[#cbd5e1] font-spaceGrotesk tracking-widest uppercase">
+                    <Text className="text-[12px] text-text-light font-spaceGrotesk tracking-widest uppercase">
                         Feito pela plataforma
                     </Text>
                     <Text className="text-[16px] text-[#ffe600] font-spaceGroteskBold tracking-wide">
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 230, 0, 0.1)',
         borderRadius: 150,
         margin: 10,
-        shadowColor: '#ffe600',
+        shadowColor: THEME.colors.primary,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 50,
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
         margin: -5,
     },
     smallGlowDot: {
-        shadowColor: '#ffe600',
+        shadowColor: THEME.colors.primary,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 1,
         shadowRadius: 10,
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
         height: 300,
         borderRadius: 150,
         backgroundColor: 'rgba(255, 230, 0, 0.03)',
-        shadowColor: '#ffe600',
+        shadowColor: THEME.colors.primary,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
         shadowRadius: 100,

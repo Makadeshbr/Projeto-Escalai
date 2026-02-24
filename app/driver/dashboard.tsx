@@ -190,8 +190,8 @@ export default function DashboardScreen() {
     const punctuality = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 100;
 
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
             <ScrollView
                 className="flex-1 z-10"
                 showsVerticalScrollIndicator={false}
@@ -201,7 +201,7 @@ export default function DashboardScreen() {
                 <View className="flex-row items-center justify-between px-6 pt-4 pb-4">
                     <View className="flex-row items-center gap-3">
                         <View className="relative">
-                            <View className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary bg-[#1e2332] items-center justify-center">
+                            <View className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary bg-surface items-center justify-center">
                                 {user?.metadata?.avatarUrl ? (
                                     <Image source={{ uri: user.metadata.avatarUrl }} className="w-full h-full" resizeMode="cover" />
                                 ) : (
@@ -215,7 +215,7 @@ export default function DashboardScreen() {
                             <Text className="text-lg font-spaceGroteskBold leading-none text-white">{driverName}</Text>
                         </View>
                     </View>
-                    <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-[#1e2332] border border-[#2d3345]">
+                    <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-surface border border-border">
                         <Bell color={THEME.colors.primary} size={20} />
                     </TouchableOpacity>
                 </View>
@@ -229,15 +229,15 @@ export default function DashboardScreen() {
 
                     {/* Today's Route Card dynamically rendered */}
                     {isLoading && !activeAssignment ? (
-                        <View key="loading-state" className="w-full p-8 bg-[#1e2332] rounded-2xl border border-[#2d3345] items-center justify-center mb-6">
+                        <View key="loading-state" className="w-full p-8 bg-surface rounded-2xl border border-border items-center justify-center mb-6">
                             <ActivityIndicator size="large" color={THEME.colors.primary} />
                             <Text className="text-[#94a3b8] mt-4 font-spaceGrotesk">Buscando atribuições...</Text>
                         </View>
                     ) : activeAssignment ? (
-                        <View key={activeAssignment.id} className="relative w-full bg-[#1e2332] rounded-2xl border border-[#2d3345] overflow-hidden shadow-lg mb-6">
+                        <View key={activeAssignment.id} className="relative w-full bg-surface rounded-2xl border border-border overflow-hidden shadow-lg mb-6">
                             <View className={`absolute top-0 left-0 w-1.5 h-full ${activeAssignment.status === 'confirmed' ? 'bg-green-500' : 'bg-primary'}`} />
 
-                            <View className="p-5 flex-row justify-between items-start border-b border-[#2d3345]">
+                            <View className="p-5 flex-row justify-between items-start border-b border-border">
                                 <View className="flex-col">
                                     <Text className="text-[#94a3b8] text-xs uppercase tracking-wider font-spaceGroteskBold mb-1">
                                         Sua Atribuição
@@ -248,7 +248,7 @@ export default function DashboardScreen() {
                                     </View>
                                 </View>
                                 <View className="flex-col items-end gap-2">
-                                    <View className="px-3 py-1 bg-[#13151f] rounded-full border border-[#2d3345]">
+                                    <View className="px-3 py-1 bg-background rounded-full border border-border">
                                         <Text className="text-xs font-spaceGroteskBold text-primary tracking-wider">
                                             {activeAssignment.waveNumber
                                                 ? activeAssignment.waveNumber.toUpperCase()
@@ -256,7 +256,7 @@ export default function DashboardScreen() {
                                         </Text>
                                     </View>
                                     {activeAssignment.waveNumber && activeAssignment.waveLabel && (
-                                        <View className="px-2 py-0.5 bg-[#13151f]/60 rounded-full border border-[#2d3345]/50">
+                                        <View className="px-2 py-0.5 bg-background/60 rounded-full border border-border/50">
                                             <Text className="text-[10px] font-spaceGrotesk text-[#94a3b8] tracking-wider">
                                                 {activeAssignment.waveLabel.toUpperCase()}
                                             </Text>
@@ -286,7 +286,7 @@ export default function DashboardScreen() {
                                     ) : null}
                                 </View>
                                 <View className="flex-col justify-center items-end gap-3">
-                                    <View className="items-end bg-[#13151f] px-3 py-2 rounded-xl border border-[#2d3345] min-w-[100px]">
+                                    <View className="items-end bg-background px-3 py-2 rounded-xl border border-border min-w-[100px]">
                                         <Text className="text-[#94a3b8] text-[10px] uppercase tracking-widest font-spaceGrotesk">Horário</Text>
                                         <Text className="text-lg font-spaceGroteskBold text-white">
                                             {activeAssignment.waveTime || '--:--'}
@@ -302,12 +302,12 @@ export default function DashboardScreen() {
                             </View>
 
                             {activeAssignment.status === 'pending' && (
-                                <View className="p-5 pt-2 bg-[#1a1d2e] border-t border-[#2d3345]">
+                                <View className="p-5 pt-2 bg-[#1a1d2e] border-t border-border">
                                     <TouchableOpacity
                                         onPress={() => handleConfirmRead(activeAssignment.id)}
                                         disabled={isConfirming}
                                         className={`w-full h-14 bg-primary rounded-xl flex-row items-center justify-center gap-2 shadow-lg ${isConfirming ? 'opacity-50' : ''}`}
-                                        style={{ shadowColor: '#ffe600', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
+                                        style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
                                     >
                                         {isConfirming ? (
                                             <ActivityIndicator size="small" color="#000" />
@@ -322,8 +322,8 @@ export default function DashboardScreen() {
                             )}
                         </View>
                     ) : (
-                        <View key="empty-state" className="w-full p-8 bg-[#1e2332] rounded-2xl border border-[#2d3345] border-dashed items-center justify-center mb-6">
-                            <View className="mb-4 bg-[#13151f] w-16 h-16 rounded-full items-center justify-center border border-[#2d3345]">
+                        <View key="empty-state" className="w-full p-8 bg-surface rounded-2xl border border-border border-dashed items-center justify-center mb-6">
+                            <View className="mb-4 bg-background w-16 h-16 rounded-full items-center justify-center border border-border">
                                 <Navigation color="#94a3b8" size={28} />
                             </View>
                             <Text className="text-white text-lg font-spaceGroteskBold text-center mb-2">Sem rotas ativas</Text>
@@ -335,7 +335,7 @@ export default function DashboardScreen() {
 
                     {/* Shortcuts */}
                     <View className="flex-row justify-between gap-4 mb-6">
-                        <TouchableOpacity className="flex-1 p-5 bg-[#1e2332] rounded-2xl flex-col items-start gap-4 border border-[#2d3345]">
+                        <TouchableOpacity className="flex-1 p-5 bg-surface rounded-2xl flex-col items-start gap-4 border border-border">
                             <View className="w-10 h-10 rounded-full bg-[#2d3345] items-center justify-center">
                                 <History color="#e2e8f0" size={18} />
                             </View>
@@ -345,7 +345,7 @@ export default function DashboardScreen() {
                             </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity className="flex-1 p-5 bg-[#1e2332] rounded-2xl flex-col items-start gap-4 border border-[#2d3345]">
+                        <TouchableOpacity className="flex-1 p-5 bg-surface rounded-2xl flex-col items-start gap-4 border border-border">
                             <View className="w-10 h-10 rounded-full bg-[#2d3345] items-center justify-center">
                                 <AlertTriangle color="#f87171" size={18} />
                             </View>
@@ -357,12 +357,12 @@ export default function DashboardScreen() {
                     </View>
 
                     {/* Performance Card */}
-                    <View className="bg-[#1e2332] border border-[#2d3345] rounded-2xl p-5 flex-row items-center justify-between mb-8">
+                    <View className="bg-surface border border-border rounded-2xl p-5 flex-row items-center justify-between mb-8">
                         <View>
                             <Text className="text-white font-spaceGrotesk text-[15px]">Taxa de Conclusão</Text>
                             <Text className="text-[11px] text-[#94a3b8] font-spaceGrotesk mt-0.5">Baseado em Histórico</Text>
                         </View>
-                        <View className="flex-row items-center gap-3 bg-[#13151f] border border-[#2d3345] px-4 py-2 rounded-xl">
+                        <View className="flex-row items-center gap-3 bg-background border border-border px-4 py-2 rounded-xl">
                             <View className="items-end">
                                 <Text className="text-lg font-spaceGrotesk text-[#4ade80]">{punctuality}%</Text>
                                 <View className="flex-row items-center">

@@ -16,6 +16,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.aether.escalai",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#13151f"
@@ -38,6 +39,13 @@
           "sounds": []
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "56abb260-3ac0-4ff7-8a82-9b30adc80d0f"
+      }
+    },
+    "owner": "allanfsouza"
   }
 }

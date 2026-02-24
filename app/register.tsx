@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { THEME } from '~/src/constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Lock, Eye, EyeOff, Truck, ArrowRight, Globe, User, Phone } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -185,7 +186,7 @@ export default function RegisterScreen() {
                                     value={name}
                                     onChangeText={setName}
                                     placeholder="João da Silva"
-                                    placeholderTextColor="#64748b"
+                                    placeholderTextColor={THEME.colors.textMuted}
                                     className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 flex-row items-center border border-transparent focus:border-[#ffe600] pl-12 pr-4 text-white font-spaceGrotesk text-base transition-colors"
                                     autoCapitalize="words"
                                 />
@@ -205,7 +206,7 @@ export default function RegisterScreen() {
                                     value={email}
                                     onChangeText={setEmail}
                                     placeholder="seu@email.com"
-                                    placeholderTextColor="#64748b"
+                                    placeholderTextColor={THEME.colors.textMuted}
                                     className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 flex-row items-center border border-transparent focus:border-[#ffe600] pl-12 pr-4 text-white font-spaceGrotesk text-base transition-colors"
                                     autoCapitalize="none"
                                     keyboardType="email-address"
@@ -226,7 +227,7 @@ export default function RegisterScreen() {
                                     value={password}
                                     onChangeText={setPassword}
                                     placeholder="••••••••"
-                                    placeholderTextColor="#64748b"
+                                    placeholderTextColor={THEME.colors.textMuted}
                                     secureTextEntry={!showPassword}
                                     className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 border border-transparent focus:border-[#ffe600] pl-12 pr-12 text-white font-spaceGrotesk text-base transition-colors"
                                 />
@@ -290,7 +291,7 @@ export default function RegisterScreen() {
                                     value={phone}
                                     onChangeText={(text) => setPhone(formatPhone(text))}
                                     placeholder="(11) 99999-9999"
-                                    placeholderTextColor="#64748b"
+                                    placeholderTextColor={THEME.colors.textMuted}
                                     className="w-full bg-[#2a2a2a]/80 rounded-xl py-4 flex-row items-center border border-transparent focus:border-[#ffe600] pl-12 pr-4 text-white font-spaceGrotesk text-base transition-colors"
                                     keyboardType="phone-pad"
                                     maxLength={15}

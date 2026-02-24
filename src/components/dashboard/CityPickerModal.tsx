@@ -43,11 +43,11 @@ export function CityPickerModal({
     return (
         <Modal visible={visible} animationType="fade" transparent>
             <View className="flex-1 bg-black/80 justify-center px-4">
-                <View className="bg-[#1e2332] rounded-3xl max-h-[70%] border border-[#2d3345] overflow-hidden">
+                <View className="bg-surface rounded-3xl max-h-[70%] border border-border overflow-hidden">
                     {/* Header */}
-                    <View className="flex-row items-center justify-between p-5 border-b border-[#2d3345] bg-[#1a1d2e]">
+                    <View className="flex-row items-center justify-between p-5 border-b border-border bg-[#1a1d2e]">
                         <Text className="text-white font-spaceGroteskBold text-lg">Selecionar Cidade</Text>
-                        <TouchableOpacity onPress={handleClose} className="w-8 h-8 bg-[#13151f] items-center justify-center rounded-full">
+                        <TouchableOpacity onPress={handleClose} className="w-8 h-8 bg-background items-center justify-center rounded-full">
                             <X color="#94a3b8" size={18} />
                         </TouchableOpacity>
                     </View>
@@ -59,11 +59,11 @@ export function CityPickerModal({
                         renderItem={({ item }) => (
                             <TouchableOpacity
                                 onPress={() => { onSelect(item); handleClose(); }}
-                                className={`flex-row items-center justify-between p-5 border-b border-[#2d3345]/50 ${selectedCity?.id === item.id ? 'bg-primary/5' : ''}`}
+                                className={`flex-row items-center justify-between p-5 border-b border-border/50 ${selectedCity?.id === item.id ? 'bg-primary/5' : ''}`}
                             >
                                 <View>
                                     <Text className={`font-spaceGroteskBold text-base ${selectedCity?.id === item.id ? 'text-primary' : 'text-white'}`}>{item.name}</Text>
-                                    {item.code && <Text className="text-[#64748b] text-[11px] font-spaceGrotesk mt-0.5 tracking-wider uppercase">{item.code}</Text>}
+                                    {item.code && <Text className="text-text-muted text-[11px] font-spaceGrotesk mt-0.5 tracking-wider uppercase">{item.code}</Text>}
                                 </View>
                                 {selectedCity?.id === item.id && (
                                     <View className="w-6 h-6 bg-primary rounded-full items-center justify-center">
@@ -75,26 +75,26 @@ export function CityPickerModal({
                         ListFooterComponent={
                             <View className="p-5">
                                 {!showAddCity ? (
-                                    <TouchableOpacity onPress={() => setShowAddCity(true)} className="flex-row items-center justify-center gap-2 py-4 bg-[#13151f] rounded-xl border border-[#2d3345] border-dashed">
+                                    <TouchableOpacity onPress={() => setShowAddCity(true)} className="flex-row items-center justify-center gap-2 py-4 bg-background rounded-xl border border-border border-dashed">
                                         <Plus color={THEME.colors.primary} size={18} />
                                         <Text className="text-primary font-spaceGroteskBold text-[13px]">CADASTRAR NOVA CIDADE</Text>
                                     </TouchableOpacity>
                                 ) : (
-                                    <View className="bg-[#13151f] p-4 rounded-xl border border-[#2d3345] gap-3">
+                                    <View className="bg-background p-4 rounded-xl border border-border gap-3">
                                         <TextInput
                                             value={newCityName}
                                             onChangeText={setNewCityName}
                                             placeholder="Nome da cidade (Ex: São Paulo)"
-                                            placeholderTextColor="#64748b"
-                                            className="bg-[#1e2332] border border-[#2d3345] rounded-xl py-3.5 px-4 text-white font-spaceGrotesk text-sm"
+                                            placeholderTextColor={THEME.colors.textMuted}
+                                            className="bg-surface border border-border rounded-xl py-3.5 px-4 text-white font-spaceGrotesk text-sm"
                                         />
                                         <TextInput
                                             value={newCityCode}
                                             onChangeText={setNewCityCode}
                                             placeholder="Código (Ex: SPO01)"
-                                            placeholderTextColor="#64748b"
+                                            placeholderTextColor={THEME.colors.textMuted}
                                             autoCapitalize="characters"
-                                            className="bg-[#1e2332] border border-[#2d3345] rounded-xl py-3.5 px-4 text-white font-spaceGrotesk text-sm"
+                                            className="bg-surface border border-border rounded-xl py-3.5 px-4 text-white font-spaceGrotesk text-sm"
                                         />
                                         <TouchableOpacity
                                             onPress={() => onAddCity(newCityName, newCityCode, setAddingCity, () => { setNewCityName(''); setNewCityCode(''); setShowAddCity(false); })}

@@ -113,8 +113,8 @@ export default function AdminRouteManagement() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={StyleSheet.absoluteFillObject} />
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-6 py-4 z-20">
@@ -122,7 +122,7 @@ export default function AdminRouteManagement() {
                     <Text className="text-2xl font-spaceGroteskBold tracking-tight text-white mb-1">Despacho</Text>
                     <Text className="text-xs font-spaceGrotesk text-[#94a3b8] uppercase tracking-[0.1em]">GESTÃO DE ROTAS</Text>
                 </View>
-                <TouchableOpacity className="w-10 h-10 rounded-full bg-[#1e2332] border border-[#2d3345] items-center justify-center relative">
+                <TouchableOpacity className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center relative">
                     <Bell color={THEME.colors.primary} size={20} />
                     <View className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1e2332]" />
                 </TouchableOpacity>
@@ -133,7 +133,7 @@ export default function AdminRouteManagement() {
                 {/* Operations Overview */}
                 <View className="mb-6 relative">
                     <View className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl" />
-                    <View className="rounded-2xl border border-[#2d3345] p-5 shadow-lg bg-[#1e2332]">
+                    <View className="rounded-2xl border border-border p-5 shadow-lg bg-surface">
                         <View className="flex-row justify-between items-start mb-5">
                             <View className="flex-row items-center gap-3">
                                 <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
@@ -149,12 +149,12 @@ export default function AdminRouteManagement() {
                             </View>
                         </View>
                         <View className="flex-row gap-3">
-                            <View className="flex-1 bg-[#13151f] rounded-xl p-3.5 border border-[#2d3345]">
-                                <Text className="text-xs text-[#64748b] font-spaceGrotesk mb-1">Rotas Pendentes</Text>
+                            <View className="flex-1 bg-background rounded-xl p-3.5 border border-border">
+                                <Text className="text-xs text-text-muted font-spaceGrotesk mb-1">Rotas Pendentes</Text>
                                 <Text className="text-2xl font-spaceGroteskBold text-white">{data.pendingCount}</Text>
                             </View>
-                            <View className="flex-1 bg-[#13151f] rounded-xl p-3.5 border border-[#2d3345]">
-                                <Text className="text-xs text-[#64748b] font-spaceGrotesk mb-1">Mot. Disponíveis</Text>
+                            <View className="flex-1 bg-background rounded-xl p-3.5 border border-border">
+                                <Text className="text-xs text-text-muted font-spaceGrotesk mb-1">Mot. Disponíveis</Text>
                                 <Text className="text-2xl font-spaceGroteskBold text-primary">{data.activeDriverCount}</Text>
                             </View>
                         </View>
@@ -165,9 +165,9 @@ export default function AdminRouteManagement() {
                 <View className="space-y-5">
                     {/* City Select */}
                     <View className="mb-5">
-                        <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] ml-1 mb-2">Cidade Base</Text>
+                        <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1 mb-2">Cidade Base</Text>
                         <TouchableOpacity onPress={() => setShowCityModal(true)} className="relative justify-center">
-                            <View className="w-full bg-[#1e2332] border border-[#2d3345] rounded-xl py-4 pl-5 pr-12">
+                            <View className="w-full bg-surface border border-border rounded-xl py-4 pl-5 pr-12">
                                 <Text className="text-white font-spaceGrotesk text-[15px]">{data.selectedCity?.name || 'Toque para selecionar a cidade'}</Text>
                             </View>
                             <View className="absolute right-4 opacity-70"><ChevronDown color="#94a3b8" size={20} /></View>
@@ -176,7 +176,7 @@ export default function AdminRouteManagement() {
 
                     {/* Wave Selector */}
                     <View className="mb-5">
-                        <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] ml-1 mb-2">Turno / Onda de Saída</Text>
+                        <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1 mb-2">Turno / Onda de Saída</Text>
                         <View className="flex-row gap-2">
                             {(['morning', 'afternoon', 'night'] as WaveKey[]).map((wave) => {
                                 const meta = WAVE_META[wave];
@@ -185,10 +185,10 @@ export default function AdminRouteManagement() {
                                     <TouchableOpacity
                                         key={wave}
                                         onPress={() => { setSelectedWave(wave); setSelectedDriverIds(new Set()); }}
-                                        className={`flex-1 h-[68px] flex-col items-center justify-center rounded-xl border ${isSelected ? 'bg-primary border-primary' : 'bg-[#1e2332] border-[#2d3345]'}`}
+                                        className={`flex-1 h-[68px] flex-col items-center justify-center rounded-xl border ${isSelected ? 'bg-primary border-primary' : 'bg-surface border-border'}`}
                                     >
                                         <Text className={`text-[13px] font-spaceGroteskBold mb-0.5 ${isSelected ? 'text-[#13151f]' : 'text-white'}`}>{meta.label}</Text>
-                                        <Text className={`text-[10px] font-spaceGrotesk ${isSelected ? 'text-[#1a1c29]' : 'text-[#64748b]'}`}>{meta.time}</Text>
+                                        <Text className={`text-[10px] font-spaceGrotesk ${isSelected ? 'text-[#1a1c29]' : 'text-text-muted'}`}>{meta.time}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -198,13 +198,13 @@ export default function AdminRouteManagement() {
                     {/* Driver Selector */}
                     <View className="mb-5">
                         <View className="flex-row justify-between items-end mb-2">
-                            <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] ml-1">Motoristas Alocados</Text>
+                            <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1">Motoristas Alocados</Text>
                             <View className="flex-row items-center gap-2">
                                 <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] uppercase">Agendar para Hoje (SD)</Text>
                                 <Switch
                                     value={isSameDay}
                                     onValueChange={(val) => { setIsSameDay(val); setSelectedDriverIds(new Set()); }}
-                                    trackColor={{ false: '#0f1118', true: '#3b82f6' }}
+                                    trackColor={{ false: THEME.colors.headerBackground, true: '#3b82f6' }}
                                     thumbColor={isSameDay ? '#ffffff' : '#94a3b8'}
                                     style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                                 />
@@ -212,7 +212,7 @@ export default function AdminRouteManagement() {
                         </View>
                         <TouchableOpacity
                             onPress={() => { data.fetchAvailableDrivers(); setShowDriverModal(true); }}
-                            className="w-full bg-[#1e2332] border border-[#2d3345] rounded-xl py-4 flex-row items-center justify-between px-5"
+                            className="w-full bg-surface border border-border rounded-xl py-4 flex-row items-center justify-between px-5"
                         >
                             <View className="flex-row items-center gap-3 flex-1">
                                 <User color="#94a3b8" size={20} />
@@ -227,19 +227,19 @@ export default function AdminRouteManagement() {
                     {/* Dock and Wave Number */}
                     <View className="flex-row gap-3 mb-6">
                         <View className="flex-1">
-                            <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] ml-1 mb-2">Sigla/Onda</Text>
+                            <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1 mb-2">Sigla/Onda</Text>
                             <View className="relative justify-center">
                                 <TextInput value={waveNum} onChangeText={setWaveNum}
-                                    className="w-full bg-[#1e2332] border border-[#2d3345] text-white text-lg font-spaceGroteskBold rounded-xl py-3 pl-4 pr-12 h-14"
+                                    className="w-full bg-surface border border-border text-white text-lg font-spaceGroteskBold rounded-xl py-3 pl-4 pr-12 h-14"
                                     placeholder="Ex: 01" placeholderTextColor="#475569" autoCapitalize="characters" maxLength={10} />
                                 <View className="absolute right-4 opacity-50"><Clock color="#94a3b8" size={20} /></View>
                             </View>
                         </View>
                         <View className="flex-1">
-                            <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] ml-1 mb-2">Balcão/Doca</Text>
+                            <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1 mb-2">Balcão/Doca</Text>
                             <View className="relative justify-center">
                                 <TextInput value={dock} onChangeText={setDock}
-                                    className="w-full bg-[#1e2332] border border-[#2d3345] text-white text-lg font-spaceGroteskBold rounded-xl py-3 pl-4 pr-12 h-14"
+                                    className="w-full bg-surface border border-border text-white text-lg font-spaceGroteskBold rounded-xl py-3 pl-4 pr-12 h-14"
                                     placeholder="Nº" placeholderTextColor="#475569" autoCapitalize="characters" maxLength={10} />
                                 <View className="absolute right-4 opacity-50"><Package color="#94a3b8" size={20} /></View>
                             </View>
@@ -248,11 +248,11 @@ export default function AdminRouteManagement() {
 
                     {/* SDD Badge */}
                     <View className="mb-6">
-                        <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] ml-1 mb-2">Tag Visual (Envio SDD)</Text>
-                        <View className="flex-row w-full h-[56px] bg-[#1e2332] border border-[#2d3345] justify-between items-center rounded-xl pl-4 pr-3">
+                        <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1 mb-2">Tag Visual (Envio SDD)</Text>
+                        <View className="flex-row w-full h-[56px] bg-surface border border-border justify-between items-center rounded-xl pl-4 pr-3">
                             <Text className="text-[#94a3b8] font-spaceGrotesk text-[13px]">Badge Laranja</Text>
                             <Switch value={isSddEnabled} onValueChange={setIsSddEnabled}
-                                trackColor={{ false: '#0f1118', true: '#fb923c' }} thumbColor={isSddEnabled ? '#ffffff' : '#94a3b8'} />
+                                trackColor={{ false: THEME.colors.headerBackground, true: '#fb923c' }} thumbColor={isSddEnabled ? '#ffffff' : '#94a3b8'} />
                         </View>
                     </View>
                 </View>
@@ -266,23 +266,23 @@ export default function AdminRouteManagement() {
                     )}
                     disabled={isLoading}
                     className={`w-full bg-primary h-14 flex-row justify-center items-center rounded-xl border border-[#d9c400] gap-2 mb-6 ${isLoading ? 'opacity-50' : ''}`}
-                    style={{ shadowColor: '#ffe600', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
+                    style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
                 >
                     {isLoading ? <ActivityIndicator color="#000" size="small" /> : (
                         <>
                             <Text className="text-[#13151f] font-spaceGroteskBold text-base tracking-wide uppercase">Despachar Frota</Text>
-                            <ArrowRight color="#13151f" size={20} />
+                            <ArrowRight color={THEME.colors.background} size={20} />
                         </>
                     )}
                 </TouchableOpacity>
 
                 {/* Reports */}
                 <View className="flex-row gap-3 mb-8">
-                    <TouchableOpacity onPress={actions.handleGeneratePDF} className="flex-1 flex-row items-center justify-center gap-2 bg-[#1e2332] border border-[#2d3345] h-[52px] rounded-xl">
+                    <TouchableOpacity onPress={actions.handleGeneratePDF} className="flex-1 flex-row items-center justify-center gap-2 bg-surface border border-border h-[52px] rounded-xl">
                         <FileText color="#94a3b8" size={18} />
                         <Text className="text-white font-spaceGrotesk text-[13px]">Exportar PDF</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={actions.handleGenerateExcel} className="flex-1 flex-row items-center justify-center gap-2 bg-[#1e2332] border border-[#2d3345] h-[52px] rounded-xl">
+                    <TouchableOpacity onPress={actions.handleGenerateExcel} className="flex-1 flex-row items-center justify-center gap-2 bg-surface border border-border h-[52px] rounded-xl">
                         <FileSpreadsheet color="#94a3b8" size={18} />
                         <Text className="text-white font-spaceGrotesk text-[13px]">Exportar Excel</Text>
                     </TouchableOpacity>

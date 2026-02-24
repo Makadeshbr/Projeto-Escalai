@@ -38,14 +38,14 @@ export function DriverPickerModal({
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <View className="flex-1 bg-black/80 justify-end">
-                <View className="bg-[#1e2332] rounded-t-3xl max-h-[85%] border-t border-[#2d3345] shadow-2xl">
+                <View className="bg-surface rounded-t-3xl max-h-[85%] border-t border-border shadow-2xl">
                     {/* Header */}
-                    <View className="flex-row items-center justify-between p-6 border-b border-[#2d3345] bg-[#1a1d2e] rounded-t-3xl">
+                    <View className="flex-row items-center justify-between p-6 border-b border-border bg-[#1a1d2e] rounded-t-3xl">
                         <View>
                             <Text className="text-white font-spaceGroteskBold text-lg">Selecionar Motoristas</Text>
                             <Text className="text-primary font-spaceGrotesk text-xs mt-1 tracking-wider uppercase">TURNO: {WAVE_META[selectedWave].label}</Text>
                         </View>
-                        <TouchableOpacity onPress={onClose} className="w-8 h-8 bg-[#13151f] items-center justify-center rounded-full">
+                        <TouchableOpacity onPress={onClose} className="w-8 h-8 bg-background items-center justify-center rounded-full">
                             <X color="#94a3b8" size={18} />
                         </TouchableOpacity>
                     </View>
@@ -67,8 +67,8 @@ export function DriverPickerModal({
                         </View>
                     ) : drivers.length === 0 ? (
                         <View className="py-20 items-center px-8 text-center">
-                            <View className="w-16 h-16 rounded-full bg-[#13151f] items-center justify-center mb-4 border border-[#2d3345]">
-                                <User color="#64748b" size={24} />
+                            <View className="w-16 h-16 rounded-full bg-background items-center justify-center mb-4 border border-border">
+                                <User color={THEME.colors.textMuted} size={24} />
                             </View>
                             <Text className="text-white font-spaceGroteskBold text-base mb-1">Nenhum disponível</Text>
                             <Text className="text-[#94a3b8] font-spaceGrotesk text-[13px] text-center">
@@ -86,9 +86,9 @@ export function DriverPickerModal({
                                 return (
                                     <TouchableOpacity
                                         onPress={() => onToggle(driverKey)}
-                                        className={`flex-row items-center px-6 py-4 border-b border-[#2d3345]/50 ${isSelected ? 'bg-primary/5' : ''}`}
+                                        className={`flex-row items-center px-6 py-4 border-b border-border/50 ${isSelected ? 'bg-primary/5' : ''}`}
                                     >
-                                        <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-[#64748b] bg-[#13151f]'}`}>
+                                        <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-[#64748b] bg-background'}`}>
                                             {isSelected && <Check color="#000" size={14} strokeWidth={3} />}
                                         </View>
                                         <View className="flex-1">
@@ -96,7 +96,7 @@ export function DriverPickerModal({
                                                 {item.driverName || 'Motorista'}
                                             </Text>
                                             <View className="flex-row items-center gap-2 mt-1">
-                                                <View className="bg-[#13151f] px-2 py-0.5 rounded border border-[#2d3345]">
+                                                <View className="bg-background px-2 py-0.5 rounded border border-border">
                                                     <Text className="text-[#94a3b8] text-[10px] font-spaceGrotesk uppercase tracking-wider">
                                                         PLACA: {item.driverPlate || 'N/A'}
                                                     </Text>
@@ -111,11 +111,11 @@ export function DriverPickerModal({
 
                     {/* Footer com botão confirmar */}
                     {drivers.length > 0 && (
-                        <View className="p-6 border-t border-[#2d3345] bg-[#1e2332]">
+                        <View className="p-6 border-t border-border bg-surface">
                             <TouchableOpacity
                                 onPress={onConfirm}
                                 className="bg-primary py-4 rounded-xl items-center flex-row justify-center gap-2"
-                                style={{ shadowColor: '#ffe600', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
+                                style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
                             >
                                 <Text className="text-[#13151f] font-spaceGroteskBold text-[15px] tracking-wide">CONFIRMAR SELEÇÃO</Text>
                             </TouchableOpacity>

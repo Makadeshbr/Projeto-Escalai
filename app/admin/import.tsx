@@ -468,7 +468,7 @@ export default function ImportRouteScreen() {
                 <TouchableOpacity
                     onPress={handleUploadPress}
                     disabled={isProcessing || isDispatching}
-                    className={`w-full overflow-hidden bg-[#1e2332] border-2 border-dashed ${isProcessing ? 'border-primary' : 'border-[#2d3345]'} rounded-2xl mb-6 relative`}
+                    className={`w-full overflow-hidden bg-surface border-2 border-dashed ${isProcessing ? 'border-primary' : 'border-border'} rounded-2xl mb-6 relative`}
                 >
                     {isProcessing ? (
                         <View className="items-center justify-center py-10 px-6">
@@ -489,7 +489,7 @@ export default function ImportRouteScreen() {
                             <Text className="text-white font-spaceGroteskBold mt-2 text-[15px]">
                                 {routes.length > 0 ? 'Adicionar Mais Arquivos' : 'Tocar para Escolher Arquivo'}
                             </Text>
-                            <Text className="text-[#64748b] font-spaceGrotesk text-[13px] mt-1">
+                            <Text className="text-text-muted font-spaceGrotesk text-[13px] mt-1">
                                 {filesCount > 0
                                     ? `${filesCount} arquivo(s) processado(s) • ${routes.length} rotas na tabela`
                                     : 'PDF, JPEG ou PNG'}
@@ -507,7 +507,7 @@ export default function ImportRouteScreen() {
 
                 {/* Matchmaker Info Badge */}
                 <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-[14px] font-spaceGroteskBold text-[#e2e8f0]">Engine de Reconciliação</Text>
+                    <Text className="text-[14px] font-spaceGroteskBold text-text-light">Engine de Reconciliação</Text>
                     <View className={`px-3 py-1 rounded-full border ${isSameDay ? 'bg-primary/10 border-primary/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
                         <Text className={`text-[11px] font-spaceGroteskBold uppercase tracking-wider ${isSameDay ? 'text-primary' : 'text-blue-400'}`}>
                             {isSameDay ? 'Hoje (SD)' : 'Amanhã (D+1)'}
@@ -519,7 +519,7 @@ export default function ImportRouteScreen() {
                 {!isProcessing && routes.length > 0 && (
                     <View className="flex-1 mb-8">
                         <View className="flex-row justify-between items-end mb-2">
-                            <Text className="text-[13px] font-spaceGrotesk text-[#64748b] mb-1">
+                            <Text className="text-[13px] font-spaceGrotesk text-text-muted mb-1">
                                 Placas com <CheckCircle2 color="#22c55e" size={12} className="mx-1" /> estão vinculadas e prontas.
                             </Text>
                         </View>
@@ -536,7 +536,7 @@ export default function ImportRouteScreen() {
                             <TouchableOpacity
                                 onPress={() => { setRoutes([]); setFilesCount(0); setValidationMap({}); }}
                                 disabled={isDispatching}
-                                className="bg-[#1e2332] border border-[#2d3345] rounded-xl h-14 px-4 items-center justify-center"
+                                className="bg-surface border border-border rounded-xl h-14 px-4 items-center justify-center"
                             >
                                 <X color="#f87171" size={20} />
                             </TouchableOpacity>
@@ -566,8 +566,8 @@ export default function ImportRouteScreen() {
             {/* Confirmation Modal */}
             <Modal visible={modalVisible} transparent animationType="fade">
                 <View className="flex-1 bg-black/60 items-center justify-center p-4">
-                    <View className="bg-surface w-full max-w-sm rounded-[24px] p-6 border border-[#2d3345] shadow-2xl">
-                        <View className="w-12 h-12 rounded-full bg-[#1e2332] items-center justify-center mb-4 self-center">
+                    <View className="bg-surface w-full max-w-sm rounded-[24px] p-6 border border-border shadow-2xl">
+                        <View className="w-12 h-12 rounded-full bg-surface items-center justify-center mb-4 self-center">
                             <CheckCircle2 color={THEME.colors.primary} size={28} />
                         </View>
                         <Text className="text-xl font-spaceGroteskBold text-white text-center mb-2">Aprovar Routing Board</Text>
@@ -578,7 +578,7 @@ export default function ImportRouteScreen() {
                             }
                         </Text>
                         <View className="flex-row gap-3">
-                            <TouchableOpacity onPress={() => setModalVisible(false)} className="flex-1 bg-[#1e2332] h-12 rounded-xl items-center justify-center">
+                            <TouchableOpacity onPress={() => setModalVisible(false)} className="flex-1 bg-surface h-12 rounded-xl items-center justify-center">
                                 <Text className="text-white font-spaceGroteskBold">Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={runMassDispatch} className="flex-1 bg-primary h-12 rounded-xl items-center justify-center shadow-lg">
@@ -592,7 +592,7 @@ export default function ImportRouteScreen() {
             {/* Auto City Registration Modal */}
             <Modal visible={unlistedCitiesModalVisible} transparent animationType="slide" style={{ zIndex: 9999 }}>
                 <View className="flex-1 bg-black/80 justify-end">
-                    <View className="bg-[#1e2332] rounded-t-[32px] w-full max-h-[80%] border-t border-[#2d3345] shadow-2xl p-6 pb-12">
+                    <View className="bg-surface rounded-t-[32px] w-full max-h-[80%] border-t border-border shadow-2xl p-6 pb-12">
                         <View className="w-16 h-1 bg-[#2d3345] rounded-full self-center mb-6" />
 
                         <View className="w-14 h-14 rounded-full bg-blue-500/10 items-center justify-center mb-4 border border-blue-500/20">
@@ -607,11 +607,11 @@ export default function ImportRouteScreen() {
                             A Inteligência Artificial mapeou as seguintes rotas no PDF, mas elas <Text className="text-white font-spaceGroteskBold">ainda não existem no seu Banco de Dados (BaaS).</Text> Para manter seus relatórios operacionais precisos depois, quer que o sistema cadastre todas elas agora magicamente pra você?
                         </Text>
 
-                        <View className="bg-[#13151f] rounded-xl border border-[#2d3345] p-4 mb-8 max-h-[200px]">
+                        <View className="bg-background rounded-xl border border-border p-4 mb-8 max-h-[200px]">
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 <View className="flex-row flex-wrap gap-2">
                                     {pendingCitiesToRegister.map((city, idx) => (
-                                        <View key={idx} className="bg-[#1e2332] border border-[#2d3345] px-3 py-1.5 rounded-lg flex-row items-center">
+                                        <View key={idx} className="bg-surface border border-border px-3 py-1.5 rounded-lg flex-row items-center">
                                             <Text className="text-white font-spaceGroteskBold text-sm">{city}</Text>
                                         </View>
                                     ))}
@@ -640,7 +640,7 @@ export default function ImportRouteScreen() {
                             <TouchableOpacity
                                 onPress={() => setUnlistedCitiesModalVisible(false)}
                                 disabled={isRegisteringCities}
-                                className="w-full bg-[#13151f] border border-[#2d3345] h-14 rounded-xl items-center justify-center flex-row gap-2"
+                                className="w-full bg-background border border-border h-14 rounded-xl items-center justify-center flex-row gap-2"
                             >
                                 <X color="#94a3b8" size={20} />
                                 <Text className="text-[#94a3b8] font-spaceGroteskBold text-[15px] uppercase tracking-wide">
@@ -655,7 +655,7 @@ export default function ImportRouteScreen() {
             {/* Modal — Seleção de Data (Hoje vs Amanhã) */}
             <Modal visible={showDateChoiceModal} transparent animationType="fade">
                 <View className="flex-1 bg-black/80 items-center justify-center px-6">
-                    <View className="bg-[#1e2332] border border-[#2d3345] w-full rounded-3xl p-6 items-center shadow-2xl">
+                    <View className="bg-surface border border-border w-full rounded-3xl p-6 items-center shadow-2xl">
                         <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-5 border border-primary/20">
                             <CalendarClock color={THEME.colors.primary} size={28} />
                         </View>
@@ -672,7 +672,7 @@ export default function ImportRouteScreen() {
                             <TouchableOpacity
                                 onPress={() => handleDateChoice(true)}
                                 className="w-full bg-primary/10 border-2 border-primary/30 h-16 rounded-xl items-center justify-center flex-row gap-3"
-                                style={{ shadowColor: '#ffe600', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3 }}
+                                style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3 }}
                             >
                                 <Zap color={THEME.colors.primary} size={22} />
                                 <View>
@@ -696,7 +696,7 @@ export default function ImportRouteScreen() {
                             {/* Cancelar */}
                             <TouchableOpacity
                                 onPress={() => setShowDateChoiceModal(false)}
-                                className="w-full bg-[#13151f] border border-[#2d3345] h-12 rounded-xl items-center justify-center mt-1"
+                                className="w-full bg-background border border-border h-12 rounded-xl items-center justify-center mt-1"
                             >
                                 <Text className="text-[#94a3b8] font-spaceGrotesk text-[13px] uppercase tracking-wider">Cancelar</Text>
                             </TouchableOpacity>
@@ -708,7 +708,7 @@ export default function ImportRouteScreen() {
             {/* Generic Result Modal */}
             <Modal visible={resultModalVisible} transparent animationType="fade">
                 <View className="flex-1 bg-black/60 items-center justify-center p-4">
-                    <View className="bg-surface w-full max-w-sm rounded-[24px] p-6 border border-[#2d3345] shadow-2xl items-center">
+                    <View className="bg-surface w-full max-w-sm rounded-[24px] p-6 border border-border shadow-2xl items-center">
                         <View className={`w-16 h-16 rounded-full items-center justify-center mb-5 ${resultData.type === 'error' ? 'bg-red-500/10' : resultData.type === 'success' ? 'bg-primary/10' : 'bg-blue-500/10'}`}>
                             {resultData.type === 'error' && <AlertTriangle color="#f87171" size={28} />}
                             {resultData.type === 'partial' && <AlertTriangle color="#3b82f6" size={28} />}

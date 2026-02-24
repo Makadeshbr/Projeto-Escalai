@@ -1,5 +1,6 @@
 import { Stack, router } from 'expo-router';
 import { useFonts } from 'expo-font';
+import { THEME } from '~/src/constants/theme';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 import { View, StatusBar } from 'react-native';
@@ -27,10 +28,10 @@ const AppDarkTheme = {
     ...DarkTheme,
     colors: {
         ...DarkTheme.colors,
-        background: '#13151f',
-        card: '#1e2332',
-        border: '#2d3345',
-        primary: '#ffe600',
+        background: THEME.colors.background,
+        card: THEME.colors.surface,
+        border: THEME.colors.border,
+        primary: THEME.colors.primary,
         text: '#e2e8f0',
     },
 };
@@ -79,13 +80,13 @@ export default function RootLayout() {
     if (!loaded) return null;
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#13151f' }}>
-            <StatusBar barStyle="light-content" backgroundColor="#13151f" translucent={false} />
+        <View style={{ flex: 1, backgroundColor: THEME.colors.background }}>
+            <StatusBar barStyle="light-content" backgroundColor={THEME.colors.background} translucent={false} />
             <AetherProvider config={aetherConfig} storage={AsyncStorage as any}>
                 <ThemeProvider value={AppDarkTheme}>
                     <Stack screenOptions={{
                         headerShown: false,
-                        contentStyle: { backgroundColor: '#13151f' },
+                        contentStyle: { backgroundColor: THEME.colors.background },
                         animation: 'fade',
                     }}>
                         <Stack.Screen name="index" />

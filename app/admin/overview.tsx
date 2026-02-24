@@ -100,8 +100,8 @@ export default function AdminOverviewScreen() {
     }, [role]);
 
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={StyleSheet.absoluteFillObject} />
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-6 py-4 z-20">
@@ -109,7 +109,7 @@ export default function AdminOverviewScreen() {
                     <Text className="text-2xl font-spaceGroteskBold tracking-tight text-white mb-1">Visão Geral</Text>
                     <Text className="text-xs font-spaceGrotesk text-[#94a3b8] uppercase tracking-[0.1em]">INDICADORES DE OPERAÇÃO</Text>
                 </View>
-                <View className="w-10 h-10 rounded-full bg-[#1e2332] border border-[#2d3345] items-center justify-center">
+                <View className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center">
                     <TrendingUp color={THEME.colors.primary} size={20} />
                 </View>
             </View>
@@ -121,34 +121,34 @@ export default function AdminOverviewScreen() {
             >
                 {/* Main KPIs */}
                 <View className="flex-row flex-wrap gap-3 mb-6 px-1 mt-2">
-                    <View className="w-[47%] bg-[#1e2332] border border-[#2d3345] p-5 rounded-2xl">
-                        <View className="w-8 h-8 rounded-full bg-[#13151f] items-center justify-center mb-3 border border-[#2d3345]">
+                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
+                        <View className="w-8 h-8 rounded-full bg-background items-center justify-center mb-3 border border-border">
                             <Users color="#e2e8f0" size={16} />
                         </View>
-                        <Text className="text-[#64748b] text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Tot. Motoristas</Text>
+                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Tot. Motoristas</Text>
                         <Text className="text-2xl font-spaceGroteskBold text-white">{stats.totalDrivers}</Text>
                     </View>
 
-                    <View className="w-[47%] bg-[#1e2332] border border-[#2d3345] p-5 rounded-2xl relative overflow-hidden">
+                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl relative overflow-hidden">
                         <View className="absolute -right-4 -top-4 w-16 h-16 bg-primary/10 rounded-full" />
                         <View className="w-8 h-8 rounded-full bg-primary/10 items-center justify-center mb-3 border border-primary/20">
                             <Activity color={THEME.colors.primary} size={16} />
                         </View>
-                        <Text className="text-[#64748b] text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Ativos Hoje</Text>
+                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Ativos Hoje</Text>
                         <Text className="text-2xl font-spaceGroteskBold text-primary">{stats.activeToday}</Text>
                     </View>
 
-                    <View className="w-[47%] bg-[#1e2332] border border-[#2d3345] p-5 rounded-2xl">
-                        <View className="w-8 h-8 rounded-full bg-[#13151f] items-center justify-center mb-3 border border-[#2d3345]">
+                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
+                        <View className="w-8 h-8 rounded-full bg-background items-center justify-center mb-3 border border-border">
                             <Truck color="#e2e8f0" size={16} />
                         </View>
-                        <Text className="text-[#64748b] text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Rotas Concluídas</Text>
+                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Rotas Concluídas</Text>
                         <Text className="text-2xl font-spaceGroteskBold text-white">{stats.completedRuns}</Text>
                     </View>
 
-                    <View className="w-[47%] bg-[#1e2332] border border-[#2d3345] p-5 rounded-2xl items-center justify-center border-dashed opacity-50">
-                        <HelpCircle color="#64748b" size={24} className="mb-2" />
-                        <Text className="text-[#64748b] text-[11px] font-spaceGrotesk uppercase tracking-wider text-center">Métrica em breve</Text>
+                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl items-center justify-center border-dashed opacity-50">
+                        <HelpCircle color={THEME.colors.textMuted} size={24} className="mb-2" />
+                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider text-center">Métrica em breve</Text>
                     </View>
                 </View>
 
@@ -156,14 +156,14 @@ export default function AdminOverviewScreen() {
                 <View className="mb-28 px-1">
                     <Text className="text-white text-[15px] font-spaceGroteskBold mb-4">Últimas Movimentações</Text>
                     {recentActivies.length === 0 && !isLoading ? (
-                        <View className="bg-[#1e2332]/50 border border-[#2d3345] border-dashed rounded-xl p-6 items-center flex-row justify-center gap-3">
-                            <Activity color="#64748b" size={16} />
-                            <Text className="text-[#64748b] font-spaceGrotesk text-sm">Nenhuma atividade recente.</Text>
+                        <View className="bg-surface/50 border border-border border-dashed rounded-xl p-6 items-center flex-row justify-center gap-3">
+                            <Activity color={THEME.colors.textMuted} size={16} />
+                            <Text className="text-text-muted font-spaceGrotesk text-sm">Nenhuma atividade recente.</Text>
                         </View>
                     ) : (
                         recentActivies.map((activity, idx) => (
-                            <View key={activity.id || idx} className="flex-row items-center p-4 bg-[#1e2332] border border-[#2d3345] rounded-xl mb-3">
-                                <View className="w-10 h-10 rounded-full bg-[#13151f] items-center justify-center border border-[#2d3345]">
+                            <View key={activity.id || idx} className="flex-row items-center p-4 bg-surface border border-border rounded-xl mb-3">
+                                <View className="w-10 h-10 rounded-full bg-background items-center justify-center border border-border">
                                     <Truck color={THEME.colors.primary} size={16} />
                                 </View>
                                 <View className="ml-4 flex-1">
@@ -172,7 +172,7 @@ export default function AdminOverviewScreen() {
                                         {activity.cityName} - {activity.waveLabel} (Doca {activity.dock})
                                     </Text>
                                 </View>
-                                <Text className="text-[#64748b] text-[11px] font-mono">
+                                <Text className="text-text-muted text-[11px] font-mono">
                                     {activity.createdAt ? new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                 </Text>
                             </View>

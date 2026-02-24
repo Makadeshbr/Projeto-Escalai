@@ -216,19 +216,19 @@ export default function AdminDriversScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={StyleSheet.absoluteFillObject} />
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-6 py-4 z-20">
-                <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/admin/dashboard')} className="w-10 h-10 rounded-full bg-[#1e2332] border border-[#2d3345] items-center justify-center">
+                <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/admin/dashboard')} className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center">
                     <ArrowLeft color="#94a3b8" size={20} />
                 </TouchableOpacity>
                 <View className="flex-1 items-center">
                     <Text className="text-xl font-spaceGroteskBold text-white uppercase tracking-tight">Condutores</Text>
                     <Text className="text-[#94a3b8] text-[10px] font-spaceGrotesk uppercase tracking-wider">Gestão de Escala</Text>
                 </View>
-                <TouchableOpacity className="w-10 h-10 rounded-full bg-[#1e2332] border border-[#2d3345] items-center justify-center relative">
+                <TouchableOpacity className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center relative">
                     <Search color="#94a3b8" size={20} />
                 </TouchableOpacity>
             </View>
@@ -237,18 +237,18 @@ export default function AdminDriversScreen() {
             <View className="px-6 mb-4 flex-row gap-3 z-10">
                 <TouchableOpacity
                     onPress={() => setSelectedTab('sd')}
-                    className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl border ${selectedTab === 'sd' ? 'bg-primary/10 border-primary/20' : 'bg-[#1e2332] border-[#2d3345]'}`}
+                    className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl border ${selectedTab === 'sd' ? 'bg-primary/10 border-primary/20' : 'bg-surface border-border'}`}
                 >
-                    <Zap color={selectedTab === 'sd' ? THEME.colors.primary : "#64748b"} size={16} />
+                    <Zap color={selectedTab === 'sd' ? THEME.colors.primary : THEME.colors.textMuted} size={16} />
                     <Text className={`font-spaceGroteskBold text-[12px] uppercase ${selectedTab === 'sd' ? 'text-primary' : 'text-[#94a3b8]'}`}>SD (Hoje)</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     onPress={() => setSelectedTab('d1')}
-                    className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl border ${selectedTab === 'd1' ? 'bg-[#13151f] border-[#475569]' : 'bg-[#1e2332] border-[#2d3345]'}`}
+                    className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl border ${selectedTab === 'd1' ? 'bg-background border-text-dark' : 'bg-surface border-border'}`}
                 >
-                    <CalendarClock color={selectedTab === 'd1' ? "#e2e8f0" : "#64748b"} size={16} />
-                    <Text className={`font-spaceGroteskBold text-[12px] uppercase ${selectedTab === 'd1' ? 'text-[#e2e8f0]' : 'text-[#94a3b8]'}`}>D+1 (Amanhã)</Text>
+                    <CalendarClock color={selectedTab === 'd1' ? "#e2e8f0" : THEME.colors.textMuted} size={16} />
+                    <Text className={`font-spaceGroteskBold text-[12px] uppercase ${selectedTab === 'd1' ? 'text-text-light' : 'text-[#94a3b8]'}`}>D+1 (Amanhã)</Text>
                 </TouchableOpacity>
             </View>
 
@@ -259,20 +259,20 @@ export default function AdminDriversScreen() {
             >
                 {/* Status Summary Cards */}
                 <View className="flex-row gap-2 mb-6 mt-1">
-                    <View className="flex-1 bg-[#1e2332] border border-[#2d3345] p-3 rounded-2xl items-center">
-                        <Text className="text-[#64748b] text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Confirmados</Text>
+                    <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
+                        <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Confirmados</Text>
                         <Text className="text-xl font-spaceGrotesk text-[#4ade80]">
                             {crossList.filter(a => a.status === 'confirmed').length}
                         </Text>
                     </View>
-                    <View className="flex-1 bg-[#1e2332] border border-[#2d3345] p-3 rounded-2xl items-center">
-                        <Text className="text-[#64748b] text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Pendentes</Text>
+                    <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
+                        <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Pendentes</Text>
                         <Text className="text-xl font-spaceGrotesk text-[#eab308]">
                             {crossList.filter(a => a.status === 'pending').length}
                         </Text>
                     </View>
-                    <View className="flex-1 bg-[#1e2332] border border-[#2d3345] p-3 rounded-2xl items-center">
-                        <Text className="text-[#64748b] text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Ausentes</Text>
+                    <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
+                        <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Ausentes</Text>
                         <Text className="text-xl font-spaceGrotesk text-[#f87171]">
                             {crossList.filter(a => a.status === 'denied').length}
                         </Text>
@@ -286,12 +286,12 @@ export default function AdminDriversScreen() {
 
                 <View className="pb-28">
                     {!isLoading && crossList.length === 0 ? (
-                        <View className="p-8 items-center justify-center border border-[#2d3345] rounded-2xl bg-[#1e2332]/50 border-dashed mt-4">
-                            <View className="w-16 h-16 rounded-full bg-[#13151f] items-center justify-center mb-4 border border-[#2d3345]">
-                                <User color="#64748b" size={24} />
+                        <View className="p-8 items-center justify-center border border-border rounded-2xl bg-surface/50 border-dashed mt-4">
+                            <View className="w-16 h-16 rounded-full bg-background items-center justify-center mb-4 border border-border">
+                                <User color={THEME.colors.textMuted} size={24} />
                             </View>
                             <Text className="text-white font-spaceGroteskBold text-base mb-1">Nenhum motorista</Text>
-                            <Text className="text-[#64748b] text-[13px] font-spaceGrotesk text-center leading-relaxed">
+                            <Text className="text-text-muted text-[13px] font-spaceGrotesk text-center leading-relaxed">
                                 Nenhum perfil de motorista localizado. Eles precisam acessar o aplicativo para criar o perfil (Status).
                             </Text>
                         </View>
@@ -301,7 +301,7 @@ export default function AdminDriversScreen() {
                                 key={item.id}
                                 activeOpacity={0.7}
                                 onPress={() => openEditModal(item)}
-                                className="mb-3 bg-[#1e2332] border border-[#2d3345] rounded-xl p-4 flex-row items-center"
+                                className="mb-3 bg-surface border border-border rounded-xl p-4 flex-row items-center"
                             >
                                 {/* Current Status Icon */}
                                 <View className={`w-12 h-12 rounded-full items-center justify-center border ${item.status === 'confirmed' ? 'bg-green-500/10 border-green-500/30' :
@@ -328,10 +328,10 @@ export default function AdminDriversScreen() {
 
                                 {/* Shifts */}
                                 {item.status === 'confirmed' && item.shifts && (
-                                    <View className="flex-row gap-1 border-l border-[#2d3345] pl-3 ml-2">
-                                        {item.shifts.morning && <View className="bg-[#13151f] border border-[#2d3345] w-6 h-6 items-center justify-center rounded"><Text className="text-[#e2e8f0] text-[10px] font-spaceGroteskBold">M</Text></View>}
-                                        {item.shifts.afternoon && <View className="bg-[#13151f] border border-[#2d3345] w-6 h-6 items-center justify-center rounded"><Text className="text-[#e2e8f0] text-[10px] font-spaceGroteskBold">T</Text></View>}
-                                        {item.shifts.night && <View className="bg-[#13151f] border border-[#2d3345] w-6 h-6 items-center justify-center rounded"><Text className="text-[#e2e8f0] text-[10px] font-spaceGroteskBold">N</Text></View>}
+                                    <View className="flex-row gap-1 border-l border-border pl-3 ml-2">
+                                        {item.shifts.morning && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">M</Text></View>}
+                                        {item.shifts.afternoon && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">T</Text></View>}
+                                        {item.shifts.night && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">N</Text></View>}
                                     </View>
                                 )}
                                 {item.status === 'pending' && (
@@ -366,8 +366,8 @@ export default function AdminDriversScreen() {
                             value={formData.name}
                             onChangeText={(text) => setFormData({ ...formData, name: text })}
                             placeholder="Ex: Carlos Silva"
-                            placeholderTextColor="#64748b"
-                            className="bg-[#13151f] border border-[#2d3345] rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
+                            placeholderTextColor={THEME.colors.textMuted}
+                            className="bg-background border border-border rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
                         />
                     </View>
                     <View>
@@ -376,10 +376,10 @@ export default function AdminDriversScreen() {
                             value={formData.plate}
                             onChangeText={(text) => setFormData({ ...formData, plate: text.toUpperCase() })}
                             placeholder="Ex: ABC1234"
-                            placeholderTextColor="#64748b"
+                            placeholderTextColor={THEME.colors.textMuted}
                             autoCapitalize="characters"
                             maxLength={7}
-                            className="bg-[#13151f] border border-[#2d3345] rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
+                            className="bg-background border border-border rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
                         />
                     </View>
 

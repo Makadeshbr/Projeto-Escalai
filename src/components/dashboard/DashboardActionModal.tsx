@@ -64,7 +64,7 @@ export function DashboardActionModal({ modal, onDismiss }: DashboardActionModalP
     return (
         <Modal visible={modal.visible} animationType="fade" transparent>
             <View className="flex-1 bg-black/80 justify-center items-center px-6">
-                <View className="bg-[#1e2332] border border-[#2d3345] w-full rounded-3xl p-6 items-center">
+                <View className="bg-surface border border-border w-full rounded-3xl p-6 items-center">
                     {/* Ícone */}
                     <View className={`w-16 h-16 rounded-full items-center justify-center mb-5 ${getIconBg()}`}>
                         {renderIcon()}
@@ -80,7 +80,7 @@ export function DashboardActionModal({ modal, onDismiss }: DashboardActionModalP
                     <View className="w-full flex-row gap-3">
                         {modal.type === 'confirm' && (
                             <TouchableOpacity
-                                className="flex-1 bg-[#13151f] border border-[#2d3345] rounded-xl py-3.5 items-center"
+                                className="flex-1 bg-background border border-border rounded-xl py-3.5 items-center"
                                 onPress={onDismiss}
                             >
                                 <Text className="text-[#94a3b8] font-spaceGroteskBold uppercase text-[13px]">Cancelar</Text>

@@ -5,34 +5,32 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Design System Stitch Escalai
-        primary: "#ffe600", // Mercado Livre Yellow
+        // Core EscalaiApp Colors (Baseadas no theme.ts e uso real)
+        primary: "#ffe600",
         "primary-dark": "#d9c400",
-        "primary-content": "#1a1a1a",
+        secondary: "#31366c", // Cor usada em botões de destaque
 
-        // Backgrounds
-        background: "#1a1a1a", // Deep dark grey
-        "background-light": "#f8f8f5",
+        // Backgrounds & Surfaces
+        background: "#13151f",
+        surface: "#1e2332",
+        "header-bg": "#0f1118",
 
-        // Surfaces
-        surface: "#2a2a2a",
-        "surface-dark": "#27272a",
-        "surface-lighter": "#2d2d2d",
-        "surface-active": "#3f3f46",
-
-        // Accent Colors
-        "mercado-blue": "#2d3277", // Mercado Livre Blue
-        "accent-blue": "#3483fa", // Mercado Livre Blue accent
+        // Borders
+        border: "#2d3345",
 
         // Text Colors
         text: "#ffffff",
-        textSecondary: "#8e8e93",
-        "text-muted": "#9ca3af",
+        "text-secondary": "#94a3b8",
+        "text-muted": "#64748b",
+        "text-light": "#cbd5e1",
+        "text-dark": "#475569",
 
-        // Utility
+        // Semantic/Utility
+        success: "#4ade80",
+        danger: "#f87171",
+        warning: "#eab308",
+        info: "#3b82f6",
         orange: "#ff9500",
-        green: "#4ade80",
-        red: "#ef4444",
       },
       fontFamily: {
         spaceGrotesk: ["SpaceGrotesk-Regular", "sans-serif"],

@@ -43,7 +43,7 @@ export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
     return (
         <>
             {/* Barra fixa inferior */}
-            <View className="absolute bottom-0 w-full bg-[#0f1118]/95 border-t border-[#2d3345] px-4 pb-6 pt-3 flex-row justify-between items-end z-30">
+            <View className="absolute bottom-0 w-full bg-header-bg/95 border-t border-border px-4 pb-6 pt-3 flex-row justify-between items-end z-30">
                 {PRIMARY_TABS.map(({ key, label, href, Icon }) => {
                     const isActive = activeTab === key;
                     return (
@@ -79,7 +79,7 @@ export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
             {/* Bottom Sheet do "Mais" */}
             <Modal visible={showMore} transparent animationType="slide" onRequestClose={() => setShowMore(false)}>
                 <Pressable onPress={() => setShowMore(false)} className="flex-1 bg-black/60 justify-end">
-                    <Pressable onPress={() => {/* Impede fechar ao clicar no conteúdo */ }} className="bg-[#1a1d2e] rounded-t-3xl border-t border-[#2d3345] px-6 pt-4 pb-10">
+                    <Pressable onPress={() => {/* Impede fechar ao clicar no conteúdo */ }} className="bg-[#1a1d2e] rounded-t-3xl border-t border-border px-6 pt-4 pb-10">
                         {/* Handle decorativo */}
                         <View className="w-10 h-1 bg-[#2d3345] rounded-full self-center mb-5" />
 
@@ -104,7 +104,7 @@ export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
                                         }}
                                         className={`flex-row items-center gap-4 p-4 rounded-xl border ${isActive
                                             ? 'bg-primary/10 border-primary/20'
-                                            : 'bg-[#13151f] border-[#2d3345]'
+                                            : 'bg-background border-border'
                                             }`}
                                     >
                                         <View className={`w-11 h-11 rounded-full items-center justify-center ${isActive ? 'bg-primary/20' : 'bg-white/5'}`}>
@@ -114,7 +114,7 @@ export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
                                             <Text className={`text-[15px] ${isActive ? 'font-spaceGroteskBold text-primary' : 'font-spaceGroteskBold text-white'}`}>
                                                 {label}
                                             </Text>
-                                            <Text className="text-[#64748b] text-xs font-spaceGrotesk mt-0.5">{description}</Text>
+                                            <Text className="text-text-muted text-xs font-spaceGrotesk mt-0.5">{description}</Text>
                                         </View>
                                     </TouchableOpacity>
                                 );

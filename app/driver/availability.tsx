@@ -274,7 +274,7 @@ export default function AvailabilityScreen() {
     // ---- LOADING STATE ----
     if (screenState === 'loading') {
         return (
-            <SafeAreaView className="flex-1 bg-[#13151f] items-center justify-center">
+            <SafeAreaView className="flex-1 bg-background items-center justify-center">
                 <ActivityIndicator color={THEME.colors.primary} size="large" />
                 <Text className="text-[#94a3b8] font-spaceGrotesk mt-4 tracking-wider">Verificando disponibilidade...</Text>
                 <DriverBottomNav activeTab="availability" />
@@ -285,9 +285,9 @@ export default function AvailabilityScreen() {
     // ---- BLOCKED STATE ----
     if (screenState === 'blocked') {
         return (
-            <SafeAreaView className="flex-1 bg-[#13151f]">
-                <View className="flex-row items-center justify-between p-4 border-b border-[#2d3345]">
-                    <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-[#1e2332] border border-[#2d3345]">
+            <SafeAreaView className="flex-1 bg-background">
+                <View className="flex-row items-center justify-between p-4 border-b border-border">
+                    <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-surface border border-border">
                         <ChevronLeft color="#fff" size={24} />
                     </TouchableOpacity>
                     <Text className="text-lg font-spaceGroteskBold tracking-widest uppercase text-white">Disponibilidade</Text>
@@ -308,9 +308,9 @@ export default function AvailabilityScreen() {
     // ---- NO WINDOW STATE ----
     if (screenState === 'no_window') {
         return (
-            <SafeAreaView className="flex-1 bg-[#13151f]">
-                <View className="flex-row items-center justify-between p-4 border-b border-[#2d3345]">
-                    <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-[#1e2332] border border-[#2d3345]">
+            <SafeAreaView className="flex-1 bg-background">
+                <View className="flex-row items-center justify-between p-4 border-b border-border">
+                    <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-surface border border-border">
                         <ChevronLeft color="#fff" size={24} />
                     </TouchableOpacity>
                     <Text className="text-lg font-spaceGroteskBold tracking-widest uppercase text-white">Disponibilidade</Text>
@@ -331,11 +331,11 @@ export default function AvailabilityScreen() {
     // ---- ALREADY FILLED STATE ----
     if (screenState === 'already_filled') {
         return (
-            <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-                <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+            <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+                <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
 
-                <View className="flex-row items-center justify-between p-4 z-10 border-b border-[#2d3345]">
-                    <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-[#1e2332] border border-[#2d3345]">
+                <View className="flex-row items-center justify-between p-4 z-10 border-b border-border">
+                    <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-surface border border-border">
                         <ChevronLeft color="#fff" size={24} />
                     </TouchableOpacity>
                     <Text className="text-lg font-spaceGroteskBold tracking-widest uppercase text-white">Disponibilidade</Text>
@@ -343,7 +343,7 @@ export default function AvailabilityScreen() {
                 </View>
                 <View className="flex-1 px-6 pt-10 z-10 w-full mb-20">
                     <View className="items-center mb-8">
-                        <View className="w-16 h-16 bg-[#1e2332] rounded-full items-center justify-center border border-[#2d3345] mb-4">
+                        <View className="w-16 h-16 bg-surface rounded-full items-center justify-center border border-border mb-4">
                             <CalendarCheck color={THEME.colors.primary} size={28} />
                         </View>
                         <Text className="text-[11px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-[0.2em] mb-2">
@@ -360,12 +360,12 @@ export default function AvailabilityScreen() {
                             const formattedDate = `${day}/${month}/${year}`;
 
                             return (
-                                <View key={response.id || index} className="bg-[#1e2332] border border-[#2d3345] rounded-3xl overflow-hidden shadow-lg w-full mb-6 relative">
+                                <View key={response.id || index} className="bg-surface border border-border rounded-3xl overflow-hidden shadow-lg w-full mb-6 relative">
                                     {!response.isAvailable && (
                                         <View className="absolute inset-0 bg-red-900/5 z-0" />
                                     )}
 
-                                    <View className="p-5 border-b border-[#2d3345] bg-[#1a1d2e]/50 flex-row justify-between items-center relative z-10">
+                                    <View className="p-5 border-b border-border bg-[#1a1d2e]/50 flex-row justify-between items-center relative z-10">
                                         <View>
                                             <Text className="text-[#94a3b8] text-[10px] font-spaceGrotesk uppercase tracking-widest mb-1">Data da Rota</Text>
                                             <Text className="text-white text-lg font-spaceGroteskBold uppercase">{formattedDate}</Text>
@@ -383,19 +383,19 @@ export default function AvailabilityScreen() {
                                                 <Text className="text-[#94a3b8] text-[10px] font-spaceGrotesk uppercase tracking-widest mb-3">Turnos Selecionados</Text>
                                                 <View className="flex-row gap-2">
                                                     {response.shifts.morning && (
-                                                        <View className="flex-1 items-center gap-1.5 bg-[#13151f] border border-[#2d3345] py-2.5 rounded-xl">
+                                                        <View className="flex-1 items-center gap-1.5 bg-background border border-border py-2.5 rounded-xl">
                                                             <Sun color={THEME.colors.primary} size={16} />
                                                             <Text className="text-white font-spaceGroteskBold text-[11px] uppercase">Manhã</Text>
                                                         </View>
                                                     )}
                                                     {response.shifts.afternoon && (
-                                                        <View className="flex-1 items-center gap-1.5 bg-[#13151f] border border-[#2d3345] py-2.5 rounded-xl">
+                                                        <View className="flex-1 items-center gap-1.5 bg-background border border-border py-2.5 rounded-xl">
                                                             <Sunset color={THEME.colors.primary} size={16} />
                                                             <Text className="text-white font-spaceGroteskBold text-[11px] uppercase">Tarde</Text>
                                                         </View>
                                                     )}
                                                     {response.shifts.night && (
-                                                        <View className="flex-1 items-center gap-1.5 bg-[#13151f] border border-[#2d3345] py-2.5 rounded-xl">
+                                                        <View className="flex-1 items-center gap-1.5 bg-background border border-border py-2.5 rounded-xl">
                                                             <Moon color={THEME.colors.primary} size={16} />
                                                             <Text className="text-white font-spaceGroteskBold text-[11px] uppercase">Noite</Text>
                                                         </View>
@@ -416,7 +416,7 @@ export default function AvailabilityScreen() {
                         })}
 
                         <View className="items-center px-4 mt-2 opacity-60">
-                            <Text className="text-[#64748b] text-[11px] font-spaceGrotesk text-center leading-relaxed">
+                            <Text className="text-text-muted text-[11px] font-spaceGrotesk text-center leading-relaxed">
                                 Apenas um administrador ou despachante pode alterar as escalas após confirmadas.
                             </Text>
                         </View>
@@ -439,12 +439,12 @@ export default function AvailabilityScreen() {
 
     // ---- FORM STATE (main form) ----
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
 
             {/* Header */}
-            <View className="flex-row items-center justify-between px-4 py-4 z-10 border-b border-[#2d3345]">
-                <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-[#1e2332] border border-[#2d3345]">
+            <View className="flex-row items-center justify-between px-4 py-4 z-10 border-b border-border">
+                <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-surface border border-border">
                     <ChevronLeft color="#fff" size={24} />
                 </TouchableOpacity>
                 <Text className="text-lg font-spaceGroteskBold tracking-widest uppercase text-white">
@@ -462,15 +462,15 @@ export default function AvailabilityScreen() {
                     <Text className="text-4xl font-spaceGroteskBold leading-tight mb-4 text-white">
                         Vai dirigir?
                     </Text>
-                    <View className="flex-row items-center gap-2 bg-[#1e2332] px-5 py-2.5 rounded-full border border-[#2d3345]">
+                    <View className="flex-row items-center gap-2 bg-surface px-5 py-2.5 rounded-full border border-border">
                         <Calendar color={THEME.colors.primary} size={18} />
                         <Text className="text-base font-spaceGroteskBold text-white uppercase tracking-wider">{targetDateLabel || '...'}</Text>
                     </View>
                 </View>
 
                 {/* Hero Card Status */}
-                <View className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden bg-[#1e2332] mb-8 border border-[#2d3345] shadow-lg">
-                    <View className="absolute inset-0 bg-[#0f1118]/50" />
+                <View className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden bg-surface mb-8 border border-border shadow-lg">
+                    <View className="absolute inset-0 bg-header-bg/50" />
 
                     <View className="absolute inset-0 flex-col justify-end p-6">
                         <View className="flex-row items-end justify-between">
@@ -486,7 +486,7 @@ export default function AvailabilityScreen() {
                                 </Text>
                             </View>
                             <Switch
-                                trackColor={{ false: '#13151f', true: '#f9e006' }}
+                                trackColor={{ false: THEME.colors.background, true: '#f9e006' }}
                                 thumbColor={isAvailable ? '#ffffff' : '#94a3b8'}
                                 onValueChange={setIsAvailable}
                                 value={isAvailable}
@@ -501,7 +501,7 @@ export default function AvailabilityScreen() {
                     <View className="mb-8">
                         <View className="flex-row items-center justify-between mb-4">
                             <Text className="text-lg font-spaceGroteskBold text-white">Selecione Turnos</Text>
-                            <Text className="text-[10px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-[0.2em] bg-[#1e2332] px-2 py-1 rounded-full border border-[#2d3345]">Múltiplos</Text>
+                            <Text className="text-[10px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-[0.2em] bg-surface px-2 py-1 rounded-full border border-border">Múltiplos</Text>
                         </View>
 
                         <View className="gap-3">
@@ -509,19 +509,19 @@ export default function AvailabilityScreen() {
                             <TouchableOpacity
                                 activeOpacity={0.7}
                                 onPress={() => toggleShift('morning')}
-                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.morning ? 'border-primary bg-[#1e2332]' : 'border-[#2d3345] bg-[#13151f]'}`}
+                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.morning ? 'border-primary bg-surface' : 'border-border bg-background'}`}
                             >
-                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.morning ? 'bg-primary' : 'bg-[#1e2332]'}`}>
-                                    <View className={`w-5 h-5 rounded-full ${selectedShifts.morning ? 'bg-[#13151f]' : 'bg-[#94a3b8]'}`} />
+                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.morning ? 'bg-primary' : 'bg-surface'}`}>
+                                    <View className={`w-5 h-5 rounded-full ${selectedShifts.morning ? 'bg-background' : 'bg-[#94a3b8]'}`} />
                                 </View>
                                 <View className="flex-1">
                                     <View className="flex-row justify-between items-center mb-1">
                                         <Text className="text-base font-spaceGroteskBold text-white">Manhã</Text>
-                                        <View className="bg-[#13151f] px-2 py-1 rounded-md border border-[#2d3345]">
+                                        <View className="bg-background px-2 py-1 rounded-md border border-border">
                                             <Text className="text-[11px] text-[#94a3b8] font-mono">06:00 - 12:00</Text>
                                         </View>
                                     </View>
-                                    <Text className="text-xs text-[#64748b] font-spaceGrotesk">Alta demanda para entregas</Text>
+                                    <Text className="text-xs text-text-muted font-spaceGrotesk">Alta demanda para entregas</Text>
                                 </View>
                                 {selectedShifts.morning && (
                                     <CheckCircle2 color={THEME.colors.primary} size={20} className="ml-3" />
@@ -532,19 +532,19 @@ export default function AvailabilityScreen() {
                             <TouchableOpacity
                                 activeOpacity={0.7}
                                 onPress={() => toggleShift('afternoon')}
-                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.afternoon ? 'border-primary bg-[#1e2332]' : 'border-[#2d3345] bg-[#13151f]'}`}
+                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.afternoon ? 'border-primary bg-surface' : 'border-border bg-background'}`}
                             >
-                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.afternoon ? 'bg-primary' : 'bg-[#1e2332]'}`}>
-                                    <Truck color={selectedShifts.afternoon ? '#13151f' : '#94a3b8'} size={20} />
+                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.afternoon ? 'bg-primary' : 'bg-surface'}`}>
+                                    <Truck color={selectedShifts.afternoon ? THEME.colors.background : '#94a3b8'} size={20} />
                                 </View>
                                 <View className="flex-1">
                                     <View className="flex-row justify-between items-center mb-1">
                                         <Text className="text-base font-spaceGroteskBold text-white">Tarde</Text>
-                                        <View className="bg-[#13151f] px-2 py-1 rounded-md border border-[#2d3345]">
+                                        <View className="bg-background px-2 py-1 rounded-md border border-border">
                                             <Text className="text-[11px] text-[#94a3b8] font-mono">12:00 - 18:00</Text>
                                         </View>
                                     </View>
-                                    <Text className="text-xs text-[#64748b] font-spaceGrotesk">Tráfego de rota padrão</Text>
+                                    <Text className="text-xs text-text-muted font-spaceGrotesk">Tráfego de rota padrão</Text>
                                 </View>
                                 {selectedShifts.afternoon && (
                                     <CheckCircle2 color={THEME.colors.primary} size={20} className="ml-3" />
@@ -555,15 +555,15 @@ export default function AvailabilityScreen() {
                             <TouchableOpacity
                                 activeOpacity={0.7}
                                 onPress={() => toggleShift('night')}
-                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.night ? 'border-primary bg-[#1e2332]' : 'border-[#2d3345] bg-[#13151f]'}`}
+                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.night ? 'border-primary bg-surface' : 'border-border bg-background'}`}
                             >
-                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.night ? 'bg-primary' : 'bg-[#1e2332]'}`}>
-                                    <Moon color={selectedShifts.night ? '#13151f' : '#94a3b8'} size={20} />
+                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.night ? 'bg-primary' : 'bg-surface'}`}>
+                                    <Moon color={selectedShifts.night ? THEME.colors.background : '#94a3b8'} size={20} />
                                 </View>
                                 <View className="flex-1">
                                     <View className="flex-row justify-between items-center mb-1">
                                         <Text className="text-base font-spaceGroteskBold text-white">Noite</Text>
-                                        <View className="bg-[#13151f] px-2 py-1 rounded-md border border-[#2d3345]">
+                                        <View className="bg-background px-2 py-1 rounded-md border border-border">
                                             <Text className="text-[11px] text-[#94a3b8] font-mono">18:00 - 00:00</Text>
                                         </View>
                                     </View>
@@ -579,12 +579,12 @@ export default function AvailabilityScreen() {
             </ScrollView>
 
             {/* Button floating bottom */}
-            <View className="absolute bottom-24 left-0 w-full p-6 bg-[#13151f]/95 border-t border-[#2d3345] z-20">
+            <View className="absolute bottom-24 left-0 w-full p-6 bg-background/95 border-t border-border z-20">
                 <TouchableOpacity
                     onPress={handleConfirm}
                     disabled={isLoading}
                     className={`w-full bg-primary h-14 rounded-xl flex-row items-center justify-center gap-2 shadow-lg ${isLoading ? 'opacity-50' : ''}`}
-                    style={{ shadowColor: '#ffe600', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 }}
+                    style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 }}
                 >
                     {isLoading ? (
                         <ActivityIndicator color="#000" size="small" />

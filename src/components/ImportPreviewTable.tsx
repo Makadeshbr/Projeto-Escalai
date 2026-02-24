@@ -14,7 +14,7 @@ interface ImportPreviewTableProps {
 // Memoized Row for extreme performance on large lists 
 const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
     return (
-        <View className="flex-row items-center border-b border-[#2d3345]/50 px-4 py-3">
+        <View className="flex-row items-center border-b border-border/50 px-4 py-3">
             {/* Validation Status Indicator */}
             <View className="w-12 items-center justify-center">
                 {isMatched ? (
@@ -52,7 +52,7 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
 
             {/* Dock */}
             <TextInput
-                className="w-20 px-2 py-1 text-[14px] font-spaceGrotesk text-center bg-[#13151f] rounded-lg border border-[#2d3345]"
+                className="w-20 px-2 py-1 text-[14px] font-spaceGrotesk text-center bg-background rounded-lg border border-border"
                 style={{ color: '#ffffff' }}
                 value={route.dock}
                 onChangeText={(val) => onChangeRoute(idx, 'dock', val)}
@@ -70,7 +70,7 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
 
             {/* Onda / Wave Number */}
             <TextInput
-                className="w-20 px-2 py-1 text-[14px] font-spaceGroteskBold text-center bg-[#13151f] rounded-lg border border-primary/30"
+                className="w-20 px-2 py-1 text-[14px] font-spaceGroteskBold text-center bg-background rounded-lg border border-primary/30"
                 style={{ color: THEME.colors.primary }}
                 value={route.waveNumber || ''}
                 placeholder="Nº"
@@ -104,7 +104,7 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
                 <Switch
                     value={!!route.isSdd}
                     onValueChange={(val) => onChangeRoute(idx, 'isSdd', val)}
-                    trackColor={{ false: '#0f1118', true: '#fb923c' }}
+                    trackColor={{ false: THEME.colors.headerBackground, true: '#fb923c' }}
                     thumbColor={route.isSdd ? '#ffffff' : '#94a3b8'}
                     style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                 />
@@ -116,7 +116,7 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
 export default function ImportPreviewTable({ routes, onChangeRoute, validationMap }: ImportPreviewTableProps) {
     if (routes.length === 0) {
         return (
-            <View className="py-10 items-center justify-center bg-[#13151f] rounded-2xl border border-dashed border-[#2d3345]">
+            <View className="py-10 items-center justify-center bg-background rounded-2xl border border-dashed border-border">
                 <Text className="text-[#94a3b8] font-spaceGrotesk text-center px-4">
                     Nenhuma rota extraída ainda.{'\n'}Faça upload do PDF/Imagem acima.
                 </Text>
@@ -125,7 +125,7 @@ export default function ImportPreviewTable({ routes, onChangeRoute, validationMa
     }
 
     const renderHeader = () => (
-        <View className="flex-row items-center bg-[#2d3345]/30 px-4 py-3 border-b border-[#2d3345]">
+        <View className="flex-row items-center bg-[#2d3345]/30 px-4 py-3 border-b border-border">
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-12 text-center uppercase">Status</Text>
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-24 pl-2 uppercase">Placa</Text>
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-52 pl-2 uppercase">Motorista</Text>
@@ -141,7 +141,7 @@ export default function ImportPreviewTable({ routes, onChangeRoute, validationMa
     );
 
     return (
-        <ScrollView horizontal className="bg-[#1e2332] rounded-xl border border-[#2d3345] pb-2 mt-4" contentContainerStyle={{ flexDirection: 'column' }}>
+        <ScrollView horizontal className="bg-surface rounded-xl border border-border pb-2 mt-4" contentContainerStyle={{ flexDirection: 'column' }}>
             {renderHeader()}
 
             <FlatList

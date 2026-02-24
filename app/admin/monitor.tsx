@@ -92,7 +92,7 @@ function DriverCard({
                 <View style={[styles.cardStripe, { backgroundColor: '#22c55e' }]} />
             )}
             {isDeparted && (
-                <View style={[styles.cardStripe, { backgroundColor: '#64748b' }]} />
+                <View style={[styles.cardStripe, { backgroundColor: THEME.colors.textMuted }]} />
             )}
 
             <View className="p-4 flex flex-col gap-4">
@@ -242,7 +242,7 @@ export default function AdminMonitorScreen() {
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             <LinearGradient
-                colors={['#1a1d2e', '#13151f', '#0f1118']}
+                colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]}
                 style={StyleSheet.absoluteFillObject}
             />
 

@@ -17,7 +17,7 @@ const TABS = [
 
 export default function DriverBottomNav({ activeTab }: DriverBottomNavProps) {
     return (
-        <View className="absolute bottom-0 w-full bg-[#0f1118]/95 border-t border-[#2d3345] px-6 pb-6 pt-4 z-30 flex-row justify-between items-end">
+        <View className="absolute bottom-0 w-full bg-header-bg/95 border-t border-border px-6 pb-6 pt-4 z-30 flex-row justify-between items-end">
             {TABS.map(({ key, label, href, Icon }) => {
                 const isActive = activeTab === key;
                 return (

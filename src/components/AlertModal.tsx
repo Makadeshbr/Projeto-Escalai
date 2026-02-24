@@ -37,13 +37,13 @@ export default function AlertModal({ visible, title, message, type, onClose }: A
             <View className="flex-1 bg-black/80 items-center justify-center px-6">
                 <View
                     style={[styles.container, { borderColor: getBorderColor() }]}
-                    className="w-full bg-[#1e2332] rounded-3xl overflow-hidden relative"
+                    className="w-full bg-surface rounded-3xl overflow-hidden relative"
                 >
                     {/* Header bg strip indicating severity */}
                     <View style={{ height: 6, backgroundColor: type === 'success' ? '#4ade80' : type === 'error' ? '#ef4444' : type === 'warning' ? '#eab308' : '#3b82f6' }} />
 
                     <View className="p-6 items-center">
-                        <View className="bg-[#13151f] rounded-full p-4 mb-4 border border-[#2d3345]">
+                        <View className="bg-background rounded-full p-4 mb-4 border border-border">
                             {getIcon()}
                         </View>
 
@@ -57,7 +57,7 @@ export default function AlertModal({ visible, title, message, type, onClose }: A
 
                         <TouchableOpacity
                             onPress={onClose}
-                            className="w-full bg-[#333b52] border border-[#475569] h-[52px] rounded-xl items-center justify-center flex-row gap-2"
+                            className="w-full bg-[#333b52] border border-text-dark h-[52px] rounded-xl items-center justify-center flex-row gap-2"
                         >
                             <Text className="text-white font-spaceGroteskBold text-base">Entendido</Text>
                         </TouchableOpacity>
@@ -65,7 +65,7 @@ export default function AlertModal({ visible, title, message, type, onClose }: A
 
                     <TouchableOpacity
                         onPress={onClose}
-                        className="absolute top-5 right-5 w-8 h-8 bg-[#13151f] rounded-full items-center justify-center border border-[#2d3345]"
+                        className="absolute top-5 right-5 w-8 h-8 bg-background rounded-full items-center justify-center border border-border"
                     >
                         <X color="#94a3b8" size={16} />
                     </TouchableOpacity>

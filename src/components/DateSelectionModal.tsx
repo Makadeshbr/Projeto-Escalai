@@ -35,11 +35,11 @@ export default function DateSelectionModal({ visible, onClose, onSelectDate }: D
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View className="flex-1 bg-black/80 justify-center items-center px-4">
-                <View className="bg-[#1e2332] w-full max-w-[400px] rounded-3xl border border-[#2d3345] overflow-hidden">
+                <View className="bg-surface w-full max-w-[400px] rounded-3xl border border-border overflow-hidden">
                     {/* Header */}
-                    <View className="p-6 border-b border-[#2d3345] flex-row items-center justify-between">
+                    <View className="p-6 border-b border-border flex-row items-center justify-between">
                         <View className="flex-row items-center gap-3">
-                            <View className="w-10 h-10 rounded-full bg-[#13151f] items-center justify-center border border-[#2d3345]">
+                            <View className="w-10 h-10 rounded-full bg-background items-center justify-center border border-border">
                                 <Calendar color={THEME.colors.primary} size={20} />
                             </View>
                             <View>
@@ -47,7 +47,7 @@ export default function DateSelectionModal({ visible, onClose, onSelectDate }: D
                                 <Text className="text-[#94a3b8] font-spaceGrotesk text-xs mt-0.5">Selecione a data base no calendário</Text>
                             </View>
                         </View>
-                        <TouchableOpacity onPress={onClose} className="w-8 h-8 rounded-full bg-[#13151f] items-center justify-center border border-[#2d3345]">
+                        <TouchableOpacity onPress={onClose} className="w-8 h-8 rounded-full bg-background items-center justify-center border border-border">
                             <X color="#94a3b8" size={16} />
                         </TouchableOpacity>
                     </View>
@@ -62,11 +62,11 @@ export default function DateSelectionModal({ visible, onClose, onSelectDate }: D
                                         <Pressable
                                             key={item.raw}
                                             onPress={() => setSelectedDate(item.raw)}
-                                            className={`w-[76px] h-[92px] rounded-2xl items-center justify-center border transition-colors ${isSelected ? 'bg-primary border-primary' : 'bg-[#13151f] border-[#2d3345]'}`}
+                                            className={`w-[76px] h-[92px] rounded-2xl items-center justify-center border transition-colors ${isSelected ? 'bg-primary border-primary' : 'bg-background border-border'}`}
                                         >
-                                            <Text className={`text-[10px] font-spaceGroteskBold uppercase tracking-wider mb-1 ${isSelected ? 'text-[#1e2332]' : 'text-[#64748b]'}`}>{item.weekday}</Text>
+                                            <Text className={`text-[10px] font-spaceGroteskBold uppercase tracking-wider mb-1 ${isSelected ? 'text-[#1e2332]' : 'text-text-muted'}`}>{item.weekday}</Text>
                                             <Text className={`text-[28px] font-spaceGroteskBold leading-none ${isSelected ? 'text-[#13151f]' : 'text-white'}`}>{item.day}</Text>
-                                            <Text className={`text-[10px] font-spaceGrotesk uppercase tracking-wider mt-1 ${isSelected ? 'text-[#1e2332]/80' : 'text-[#64748b]'}`}>{item.month}</Text>
+                                            <Text className={`text-[10px] font-spaceGrotesk uppercase tracking-wider mt-1 ${isSelected ? 'text-[#1e2332]/80' : 'text-text-muted'}`}>{item.month}</Text>
                                         </Pressable>
                                     );
                                 })}
@@ -81,7 +81,7 @@ export default function DateSelectionModal({ visible, onClose, onSelectDate }: D
                             className="w-full bg-primary rounded-xl h-14 flex-row items-center justify-center gap-2"
                         >
                             <Text className="text-[#13151f] font-spaceGroteskBold text-[15px] uppercase tracking-wider">Continuar para Abertura</Text>
-                            <ChevronRight color="#13151f" size={20} />
+                            <ChevronRight color={THEME.colors.background} size={20} />
                         </TouchableOpacity>
                     </View>
                 </View>

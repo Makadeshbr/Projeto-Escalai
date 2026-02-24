@@ -100,7 +100,7 @@ export default function LoginScreen() {
 
 
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]">
+        <SafeAreaView className="flex-1 bg-background">
             {/* Background Smoky Gradient */}
             <LinearGradient
                 colors={['#1a1d2e', '#13151f', '#0f1118']}
@@ -129,7 +129,7 @@ export default function LoginScreen() {
                         <Text className="text-[28px] font-spaceGroteskBold tracking-tight text-white mb-2">
                             Bem-vindo ao Escalai
                         </Text>
-                        <Text className="text-[11px] font-spaceGrotesk text-[#9ca3af] uppercase tracking-[0.2em]">
+                        <Text className="text-[11px] font-spaceGrotesk text-text-muted uppercase tracking-[0.2em]">
                             ACESSO AO PORTAL
                         </Text>
                     </View>
@@ -138,7 +138,7 @@ export default function LoginScreen() {
                     <View className="w-full mb-6 relative z-10">
                         {/* User / Email Input */}
                         <View className="mb-4">
-                            <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] mb-2 ml-1">
+                            <Text className="text-[13px] font-spaceGroteskBold text-text-light mb-2 ml-1">
                                 E-mail de Acesso
                             </Text>
                             <View className="relative justify-center">
@@ -150,7 +150,7 @@ export default function LoginScreen() {
                                     onChangeText={setDriverId}
                                     placeholder="seu@email.com"
                                     placeholderTextColor="#475569"
-                                    className="w-full bg-[#1e2332] rounded-xl py-4 pl-12 pr-4 text-white font-spaceGrotesk text-[15px] border border-[#2d3345] focus:border-[#ffe600] transition-colors"
+                                    className="w-full bg-surface rounded-xl py-4 pl-12 pr-4 text-white font-spaceGrotesk text-[15px] border border-border focus:border-[#ffe600] transition-colors"
                                     autoCapitalize="none"
                                 />
                             </View>
@@ -158,7 +158,7 @@ export default function LoginScreen() {
 
                         {/* Password Input */}
                         <View className="mb-2">
-                            <Text className="text-[13px] font-spaceGroteskBold text-[#e2e8f0] mb-2 ml-1">
+                            <Text className="text-[13px] font-spaceGroteskBold text-text-light mb-2 ml-1">
                                 Senha
                             </Text>
                             <View className="relative justify-center">
@@ -171,7 +171,7 @@ export default function LoginScreen() {
                                     placeholder="••••••••"
                                     placeholderTextColor="#475569"
                                     secureTextEntry={!showPassword}
-                                    className="w-full bg-[#1e2332] rounded-xl py-4 pl-12 pr-12 text-white font-spaceGrotesk text-[15px] border border-[#2d3345] focus:border-[#ffe600] transition-colors"
+                                    className="w-full bg-surface rounded-xl py-4 pl-12 pr-12 text-white font-spaceGrotesk text-[15px] border border-border focus:border-[#ffe600] transition-colors"
                                 />
                                 <TouchableOpacity
                                     className="absolute right-4 opacity-50"
@@ -199,7 +199,7 @@ export default function LoginScreen() {
                     {/* Biometria — funcionalidade pendente de implementação com expo-local-authentication */}
                     <TouchableOpacity disabled className="flex-row items-center justify-center gap-2 mb-8 py-2 relative z-10" style={{ opacity: 0.35 }}>
                         <Fingerprint color="#475569" size={24} />
-                        <Text className="text-[13px] font-spaceGrotesk text-[#64748b]">
+                        <Text className="text-[13px] font-spaceGrotesk text-text-muted">
                             Biometria (em breve)
                         </Text>
                     </TouchableOpacity>
@@ -227,10 +227,10 @@ export default function LoginScreen() {
 
                         <TouchableOpacity
                             onPress={() => router.push('/register')}
-                            className="w-full h-14 rounded-xl items-center justify-center border border-[#2d3345]"
+                            className="w-full h-14 rounded-xl items-center justify-center border border-border"
                             style={{ backgroundColor: '#13151f' }}
                         >
-                            <Text className="font-spaceGroteskBold text-[#cbd5e1] text-[15px]">
+                            <Text className="font-spaceGroteskBold text-text-light text-[15px]">
                                 Criar conta
                             </Text>
                         </TouchableOpacity>
@@ -238,7 +238,7 @@ export default function LoginScreen() {
 
                     {/* Support Footer */}
                     <View className="items-center mt-10 relative z-10">
-                        <Text className="text-[13px] text-[#475569] font-spaceGrotesk">
+                        <Text className="text-[13px] text-text-dark font-spaceGrotesk">
                             Precisa de ajuda?{' '}
                             <Text className="font-spaceGroteskBold text-[#ffe600] underline" style={{ textDecorationColor: '#ffe600' }}>
                                 Suporte

@@ -54,14 +54,14 @@ export function EnterpriseModal({
             <View className="flex-1 bg-black/80 items-center justify-center p-4">
 
                 {/* Modal Container */}
-                <View className="w-full max-w-sm bg-[#1e2332] rounded-[24px] overflow-hidden border border-[#2d3345] shadow-2xl relative">
+                <View className="w-full max-w-sm bg-surface rounded-[24px] overflow-hidden border border-border shadow-2xl relative">
 
                     {/* Close Button Top Right */}
                     {type !== 'form' && (
                         <TouchableOpacity
                             onPress={onClose}
                             disabled={isLoading}
-                            className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-[#13151f] items-center justify-center"
+                            className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-background items-center justify-center"
                         >
                             <X color="#94a3b8" size={18} />
                         </TouchableOpacity>
@@ -101,7 +101,7 @@ export function EnterpriseModal({
                                 <TouchableOpacity
                                     onPress={onClose}
                                     disabled={isLoading}
-                                    className="flex-1 bg-[#13151f] border border-[#2d3345] h-12 rounded-xl items-center justify-center"
+                                    className="flex-1 bg-background border border-border h-12 rounded-xl items-center justify-center"
                                 >
                                     <Text className="text-[#94a3b8] font-spaceGroteskBold">{cancelText}</Text>
                                 </TouchableOpacity>

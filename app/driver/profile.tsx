@@ -164,18 +164,18 @@ export default function DriverProfileScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-[#13151f]" edges={['top']}>
-            <LinearGradient colors={['#1a1d2e', '#13151f', '#0f1118']} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+            <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
 
             {/* Header */}
             <View className="flex-row items-center justify-between px-4 py-4 z-10">
-                <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 items-center justify-center rounded-full bg-[#1e2332] border border-[#2d3345]">
+                <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 items-center justify-center rounded-full bg-surface border border-border">
                     <ArrowLeft color="#fff" size={20} />
                 </TouchableOpacity>
                 <Text className="text-lg font-spaceGroteskBold text-white uppercase tracking-widest">
                     Meu Perfil
                 </Text>
-                <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-[#1e2332] border border-[#2d3345]">
+                <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-surface border border-border">
                     <Settings color="#fff" size={20} />
                 </TouchableOpacity>
             </View>
@@ -185,7 +185,7 @@ export default function DriverProfileScreen() {
                 <View className="items-center mb-10">
                     <View className="relative">
                         <View style={styles.avatarGlow} />
-                        <View className="w-32 h-32 rounded-full border-[3px] border-primary overflow-hidden bg-[#13151f] z-10">
+                        <View className="w-32 h-32 rounded-full border-[3px] border-primary overflow-hidden bg-background z-10">
                             <Image
                                 source={{ uri: String(avatarUrl) }}
                                 className="w-full h-full"
@@ -196,7 +196,7 @@ export default function DriverProfileScreen() {
                         <TouchableOpacity
                             onPress={handlePickImage}
                             disabled={isUpdatingOption}
-                            className="absolute bottom-0 right-0 w-10 h-10 bg-[#1e2332] rounded-full border-2 border-[#13151f] items-center justify-center z-20 shadow-md"
+                            className="absolute bottom-0 right-0 w-10 h-10 bg-surface rounded-full border-2 border-[#13151f] items-center justify-center z-20 shadow-md"
                         >
                             <Camera color={THEME.colors.primary} size={18} />
                         </TouchableOpacity>
@@ -212,7 +212,7 @@ export default function DriverProfileScreen() {
                                 Parceiro Homologado
                             </Text>
                         </View>
-                        <View className="flex-row items-center gap-1 bg-[#13151f] px-3 py-1.5 rounded-full border border-[#2d3345]">
+                        <View className="flex-row items-center gap-1 bg-background px-3 py-1.5 rounded-full border border-border">
                             <Star color={THEME.colors.primary} size={14} fill={THEME.colors.primary} />
                             <Text className="text-white font-spaceGroteskBold text-[13px]">5.0</Text>
                         </View>
@@ -224,8 +224,8 @@ export default function DriverProfileScreen() {
                     <Text className="text-[11px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-widest mx-1 mb-2">
                         E-mail
                     </Text>
-                    <View className="bg-[#1e2332] rounded-2xl p-4 flex-row items-center h-[68px] border border-[#2d3345]">
-                        <View className="w-10 h-10 rounded-full bg-[#13151f] items-center justify-center mr-3 border border-[#2d3345]">
+                    <View className="bg-surface rounded-2xl p-4 flex-row items-center h-[68px] border border-border">
+                        <View className="w-10 h-10 rounded-full bg-background items-center justify-center mr-3 border border-border">
                             <Mail color={THEME.colors.primary} size={18} />
                         </View>
                         <Text className="text-white font-spaceGrotesk text-[15px]">{user?.email || 'Nenhum e-mail.'}</Text>
@@ -237,9 +237,9 @@ export default function DriverProfileScreen() {
                     <Text className="text-[11px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-widest mx-1 mb-2">
                         Placa do Veículo
                     </Text>
-                    <View className="bg-[#1e2332] rounded-2xl p-4 flex-row items-center justify-between h-[68px] border border-[#2d3345]">
+                    <View className="bg-surface rounded-2xl p-4 flex-row items-center justify-between h-[68px] border border-border">
                         <View className="flex-row items-center">
-                            <View className="w-10 h-10 rounded-full bg-[#13151f] items-center justify-center mr-3 border border-[#2d3345]">
+                            <View className="w-10 h-10 rounded-full bg-background items-center justify-center mr-3 border border-border">
                                 <CarFront color="#4ade80" size={18} />
                             </View>
                             <Text className="text-white font-spaceGroteskBold tracking-[1.5px] text-[16px]">{String(meta.vehiclePlate || 'NÃO APTO.')}</Text>
@@ -254,7 +254,7 @@ export default function DriverProfileScreen() {
                 {/* Configurações Separator */}
                 <View className="flex-row items-center justify-center mb-6 mt-2">
                     <View className="flex-1 h-[1px] bg-[#2d3345]" />
-                    <Text className="text-[11px] font-spaceGroteskBold text-[#64748b] uppercase tracking-[0.2em] mx-6">
+                    <Text className="text-[11px] font-spaceGroteskBold text-text-muted uppercase tracking-[0.2em] mx-6">
                         Configurações
                     </Text>
                     <View className="flex-1 h-[1px] bg-[#2d3345]" />
@@ -262,9 +262,9 @@ export default function DriverProfileScreen() {
 
                 {/* Configurações Section */}
                 <View className="mb-10">
-                    <View className="bg-[#1e2332] rounded-2xl p-4 flex-row items-center justify-between h-[76px] border border-[#2d3345]">
+                    <View className="bg-surface rounded-2xl p-4 flex-row items-center justify-between h-[76px] border border-border">
                         <View className="flex-row items-center flex-1">
-                            <View className="w-12 h-12 bg-[#13151f] rounded-xl items-center justify-center mr-4 border border-[#2d3345]">
+                            <View className="w-12 h-12 bg-background rounded-xl items-center justify-center mr-4 border border-border">
                                 <Bell color={THEME.colors.primary} size={20} fill={THEME.colors.primary} />
                             </View>
                             <View>
@@ -273,7 +273,7 @@ export default function DriverProfileScreen() {
                             </View>
                         </View>
                         <Switch
-                            trackColor={{ false: '#13151f', true: '#4ade80' }}
+                            trackColor={{ false: THEME.colors.background, true: '#4ade80' }}
                             thumbColor={notificationsEnabled ? '#fff' : '#94a3b8'}
                             onValueChange={handleToggleNotifications}
                             value={notificationsEnabled}
@@ -286,7 +286,7 @@ export default function DriverProfileScreen() {
                 {/* Logout Button */}
                 <TouchableOpacity
                     onPress={handleLogout}
-                    className="w-full bg-[#1e2332] border border-red-900/50 rounded-2xl h-[68px] flex-row justify-center items-center gap-3 mb-12"
+                    className="w-full bg-surface border border-red-900/50 rounded-2xl h-[68px] flex-row justify-center items-center gap-3 mb-12"
                 >
                     <LogOut color="#ef4444" size={20} />
                     <Text className="text-[#ef4444] font-spaceGrotesk text-base tracking-wider">
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 230, 0, 0.1)',
         borderWidth: 1,
         borderColor: 'rgba(255, 230, 0, 0.2)',
-        shadowColor: '#ffe600',
+        shadowColor: THEME.colors.primary,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
         shadowRadius: 15,
