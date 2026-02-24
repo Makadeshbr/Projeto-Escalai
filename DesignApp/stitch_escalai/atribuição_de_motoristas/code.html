@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atribuição de Motoristas</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffe500", // Mercado Livre Yellow
+                        "secondary": "#2d3277", // Mercado Livre Blue tone for dark mode
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#18181b", // Zinc 900
+                        "surface-dark": "#27272a", // Zinc 800
+                        "input-bg": "#3f3f46", // Zinc 700
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                    boxShadow: {
+                        "glow": "0 0 15px -3px rgba(255, 229, 0, 0.3)",
+                        "glow-blue": "0 0 15px -3px rgba(45, 50, 119, 0.5)"
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52525b; 
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #ffe500;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #ffe500;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="flex items-center justify-between px-4 py-4 bg-background-dark/50 backdrop-blur-md sticky top-0 z-50 border-b border-gray-800">
+<button class="text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="text-white text-lg font-bold tracking-wide">ATRIBUIÇÃO DE ESCALA</h1>
+<button class="text-primary text-sm font-bold tracking-wide hover:text-primary/80 transition-colors">AJUDA</button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Config Section -->
+<section class="p-4 space-y-6">
+<div class="space-y-1">
+<h2 class="text-primary text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">settings</span>
+                    Configuração da Rota
+                </h2>
+<!-- City Input -->
+<div class="relative group">
+<label class="block text-xs font-medium text-gray-400 mb-1 ml-1 uppercase">Cidade de Origem</label>
+<div class="flex items-center bg-surface-dark rounded-xl border border-gray-700 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all overflow-hidden shadow-lg">
+<input class="w-full bg-transparent border-none text-white placeholder-gray-500 focus:ring-0 py-3 px-4" placeholder="Ex: Cajamar (SP)" type="text" value="Osasco (SP)"/>
+<span class="material-symbols-outlined text-gray-400 px-4 group-focus-within:text-primary transition-colors">location_on</span>
+</div>
+</div>
+<!-- Wave Selection -->
+<div class="pt-2">
+<label class="block text-xs font-medium text-gray-400 mb-2 ml-1 uppercase">Onda de Saída</label>
+<div class="grid grid-cols-3 gap-2 p-1 bg-surface-dark rounded-xl border border-gray-700">
+<label class="cursor-pointer">
+<input class="peer sr-only" name="wave" type="radio" value="1"/>
+<div class="flex flex-col items-center justify-center py-2 rounded-lg text-gray-400 peer-checked:bg-primary peer-checked:text-background-dark peer-checked:font-bold transition-all">
+<span class="text-sm">Onda 1</span>
+<span class="text-[10px] opacity-70">06:00</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" name="wave" type="radio" value="2"/>
+<div class="flex flex-col items-center justify-center py-2 rounded-lg text-gray-400 peer-checked:bg-primary peer-checked:text-background-dark peer-checked:font-bold transition-all shadow-glow">
+<span class="text-sm">Onda 2</span>
+<span class="text-[10px] opacity-70">10:00</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="wave" type="radio" value="3"/>
+<div class="flex flex-col items-center justify-center py-2 rounded-lg text-gray-400 peer-checked:bg-primary peer-checked:text-background-dark peer-checked:font-bold transition-all">
+<span class="text-sm">Onda 3</span>
+<span class="text-[10px] opacity-70">14:00</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Dock & SDD Row -->
+<div class="flex gap-4 pt-2">
+<!-- Dock Input -->
+<div class="flex-1">
+<label class="block text-xs font-medium text-gray-400 mb-1 ml-1 uppercase">Doca</label>
+<div class="flex items-center bg-surface-dark rounded-xl border border-gray-700 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all overflow-hidden shadow-lg h-[52px]">
+<span class="material-symbols-outlined text-gray-400 pl-3 text-lg">warehouse</span>
+<input class="w-full bg-transparent border-none text-white placeholder-gray-500 focus:ring-0 py-3 px-2" placeholder="00" type="number" value="42"/>
+</div>
+</div>
+<!-- SDD Toggle -->
+<div class="flex-1">
+<label class="block text-xs font-medium text-gray-400 mb-1 ml-1 uppercase">Prioridade SDD</label>
+<div class="flex items-center justify-between bg-surface-dark rounded-xl border border-gray-700 px-3 h-[52px] shadow-lg">
+<span class="text-sm text-gray-300 font-medium">Ativado</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+</div>
+</section>
+<div class="h-px w-full bg-gradient-to-r from-transparent via-gray-700 to-transparent my-2"></div>
+<!-- Drivers List Section -->
+<section class="p-4">
+<h2 class="text-primary text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">groups</span>
+                Motoristas Disponíveis
+            </h2>
+<!-- Search Bar -->
+<div class="relative mb-6">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+<span class="material-symbols-outlined text-gray-500">search</span>
+</div>
+<input class="block w-full p-4 pl-10 text-sm text-white border border-gray-700 rounded-xl bg-surface-dark focus:ring-primary focus:border-primary placeholder-gray-500 shadow-lg" placeholder="Buscar por nome ou placa..." type="text"/>
+</div>
+<!-- List -->
+<div class="space-y-3">
+<!-- Driver Card 1 -->
+<div class="bg-surface-dark p-4 rounded-xl border border-gray-700 flex items-center gap-4 hover:border-secondary transition-colors cursor-pointer shadow-md group">
+<div class="relative">
+<img alt="Portrait of a male driver smiling" class="w-12 h-12 rounded-full object-cover ring-2 ring-gray-600 group-hover:ring-secondary" data-alt="Portrait of a male driver smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDz8R8-hWu_j4TW-4knoMeZm5F8IaNuxFCcUq8b5PDvfTtx4U3PGwi-gR9s6Ku7Fy0G17QTs-DwFUOSWhE7lca3Duzo8nKHeLilC0WDtJ09AqzU0W2IpT40L2rUwU4G7n1C3PEID1Ddly-jfVqFbjGMN_jQq-YwCDbukooX0f4-Jdxpp14js1GAb3annOz46MWCA80ypfDcxbDIgMJ9bXzv6LfLwdjwRkGFTeQQruOm6Tpp_xUTKVGqJjWDzzQdFKZHuT2MUD6wK2jA"/>
+<span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-surface-dark"></span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="text-white font-bold truncate">Carlos Mendes</h3>
+<span class="bg-secondary/30 text-blue-300 text-xs font-medium px-2 py-0.5 rounded border border-secondary/50">4.9 ★</span>
+</div>
+<p class="text-gray-400 text-sm truncate">Van - Fiat Ducato</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="bg-gray-700 text-gray-300 text-[10px] px-1.5 py-0.5 rounded font-mono">ABC-1234</span>
+<span class="text-xs text-gray-500">• Chegou às 09:15</span>
+</div>
+</div>
+<div class="flex items-center justify-center">
+<input class="w-5 h-5 text-primary bg-gray-700 border-gray-500 focus:ring-primary focus:ring-2 cursor-pointer" name="driver-select" type="radio"/>
+</div>
+</div>
+<!-- Driver Card 2 -->
+<div class="bg-surface-dark p-4 rounded-xl border border-gray-700 flex items-center gap-4 hover:border-secondary transition-colors cursor-pointer shadow-md group">
+<div class="relative">
+<img alt="Portrait of a female driver smiling" class="w-12 h-12 rounded-full object-cover ring-2 ring-gray-600 group-hover:ring-secondary" data-alt="Portrait of a female driver smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxsW3dnGBGelVecx9EuhmpbBLb6hPvDGFyN6JvkQmPBzHRR3GaZaoXmrNuTq1MoLawtC95VB2JyVhBNXpJRbi1oLujZu-eOxeUKQCzWDt4mB7semnDiK7RSouiOAWuQoicBzvAS4_rykM8Rr82Y7b-GA6EBuWaTz5kJPCPWZN-F42tFieKv07lZ7ILlDj0uGn7tMPEwuHkzZCQkHC8nnmNsTrINvgG6l2fbuOyB2Y8lAtkl-DZyM2zuyC429xkJzgdk3ihe97oixvQ"/>
+<span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-surface-dark"></span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="text-white font-bold truncate">Fernanda Oliveira</h3>
+<span class="bg-secondary/30 text-blue-300 text-xs font-medium px-2 py-0.5 rounded border border-secondary/50">5.0 ★</span>
+</div>
+<p class="text-gray-400 text-sm truncate">VUC - HR Hyundai</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="bg-gray-700 text-gray-300 text-[10px] px-1.5 py-0.5 rounded font-mono">XYZ-9876</span>
+<span class="text-xs text-gray-500">• Chegou às 09:30</span>
+</div>
+</div>
+<div class="flex items-center justify-center">
+<input class="w-5 h-5 text-primary bg-gray-700 border-gray-500 focus:ring-primary focus:ring-2 cursor-pointer" name="driver-select" type="radio"/>
+</div>
+</div>
+<!-- Driver Card 3 -->
+<div class="bg-surface-dark p-4 rounded-xl border border-gray-700 flex items-center gap-4 hover:border-secondary transition-colors cursor-pointer shadow-md group opacity-75">
+<div class="relative">
+<img alt="Portrait of a male driver looking serious" class="w-12 h-12 rounded-full object-cover ring-2 ring-gray-600 group-hover:ring-secondary grayscale" data-alt="Portrait of a male driver looking serious" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVv6mvIiNvWuR_AzRX_7Z-UkSDCzMZ3Jrez0kpTgF44XH1edbpYRNOULM7rshgYSNBp-OXVPItb0IGXOwQukgyyFVBYmvx8XtlPSxWeexEF2PxeQc81CFwRx8LICmxacUwQDoBc9tDfEbc9r-1KZePD0FLlijgTyA4lfQrM8B7Jod4KvN9bt_KAILn1pMuhguo36oZMdesqPXqB6KOIL26bAu-5BpvOMspOz0_We3nHI0n9usGCb8uMQKuLeGgrPmlPba8qKHJeAgH"/>
+<span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-yellow-500 ring-2 ring-surface-dark"></span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="text-white font-bold truncate">Roberto Silva</h3>
+<span class="bg-gray-700 text-gray-400 text-xs font-medium px-2 py-0.5 rounded border border-gray-600">Em Pausa</span>
+</div>
+<p class="text-gray-400 text-sm truncate">Moto - Honda CG</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="bg-gray-700 text-gray-300 text-[10px] px-1.5 py-0.5 rounded font-mono">MOTO-55</span>
+<span class="text-xs text-gray-500">• Retorna em 15min</span>
+</div>
+</div>
+<div class="flex items-center justify-center">
+<input class="w-5 h-5 text-gray-500 bg-gray-700 border-gray-500 cursor-not-allowed" disabled="" name="driver-select" type="radio"/>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-background-dark/95 backdrop-blur-xl border-t border-gray-800 p-4 z-40 pb-8 safe-area-bottom">
+<button class="w-full bg-primary hover:bg-yellow-400 active:scale-[0.98] transition-all text-background-dark font-black text-lg py-4 rounded-xl uppercase tracking-wider flex items-center justify-center gap-2 shadow-glow">
+            Confirmar Escala
+            <span class="material-symbols-outlined text-background-dark font-bold">check_circle</span>
+</button>
+</div>
+</body></html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Central de Notificações</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f9e006", // Mercado Livre yellow-ish
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#1a1a1a", 
+                        "surface-dark": "#262626",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "body": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem", 
+                        "lg": "0.75rem", 
+                        "xl": "1rem", 
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }.no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }.no-scrollbar {
+          -ms-overflow-style: none;scrollbar-width: none;}
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display antialiased overflow-x-hidden selection:bg-primary selection:text-black">
+<header class="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10 px-4 pt-4 pb-2">
+<div class="flex items-center justify-between mb-4">
+<div>
+<p class="text-xs font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-0.5">Central de Comando</p>
+<h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">NOTIFICAÇÕES</h1>
+</div>
+<button class="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-white">filter_list</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+</div>
+<div class="flex p-1 mb-2 bg-slate-200 dark:bg-surface-dark rounded-lg relative">
+<label class="flex-1 text-center cursor-pointer relative z-10">
+<input checked="" class="peer hidden" name="tab" type="radio"/>
+<div class="py-2 text-sm font-bold text-slate-500 peer-checked:text-black transition-colors">
+                Alertas <span class="ml-1 px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full align-middle">3</span>
+</div>
+<div class="absolute inset-0 bg-primary rounded-md shadow-sm transform scale-95 opacity-0 peer-checked:opacity-100 peer-checked:scale-100 transition-all -z-10"></div>
+</label>
+<label class="flex-1 text-center cursor-pointer relative z-10">
+<input class="peer hidden" name="tab" type="radio"/>
+<div class="py-2 text-sm font-bold text-slate-500 dark:text-slate-400 peer-checked:text-black dark:peer-checked:text-black transition-colors">
+                Atualizações
+            </div>
+<div class="absolute inset-0 bg-primary rounded-md shadow-sm transform scale-95 opacity-0 peer-checked:opacity-100 peer-checked:scale-100 transition-all -z-10"></div>
+</label>
+</div>
+</header>
+<main class="flex-1 px-4 py-6 space-y-6">
+<section>
+<h2 class="text-xs font-bold tracking-widest text-red-500 uppercase mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">error</span>
+            Ação Necessária
+        </h2>
+<article class="relative overflow-hidden rounded-xl bg-white dark:bg-surface-dark border-l-4 border-primary shadow-lg group active:scale-[0.99] transition-transform duration-100">
+<div class="absolute top-0 right-0 p-3 opacity-100 dark:opacity-50">
+<div class="w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-xl -mr-6 -mt-6"></div>
+</div>
+<div class="p-4 relative z-10">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary">
+<span class="material-symbols-outlined text-lg">calendar_clock</span>
+</span>
+<span class="text-xs font-medium text-slate-500 dark:text-slate-400">Vence Hoje, 17:00</span>
+</div>
+<span class="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+</div>
+<h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Lembrete de Disponibilidade</h3>
+<p class="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
+                    A agenda da próxima semana está incompleta. Confirme sua disponibilidade para garantir rotas preferenciais.
+                </p>
+<button class="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-slate-900 font-bold rounded-lg text-sm flex items-center justify-center gap-2 transition-colors">
+<span>Preencher Agora</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</article>
+<article class="mt-4 relative overflow-hidden rounded-xl bg-white dark:bg-surface-dark border-l-4 border-red-500 shadow-lg active:scale-[0.99] transition-transform duration-100">
+<div class="p-4 relative z-10">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 text-red-500">
+<span class="material-symbols-outlined text-lg">badge</span>
+</span>
+<span class="text-xs font-medium text-red-500">Urgente</span>
+</div>
+</div>
+<h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">CNH Expirando em Breve</h3>
+<p class="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
+                    Sua CNH expira em 3 dias. Envie o novo documento para evitar suspensão temporária.
+                </p>
+<button class="w-full py-2.5 px-4 bg-transparent border border-slate-300 dark:border-white/20 text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 font-bold rounded-lg text-sm flex items-center justify-center gap-2 transition-colors">
+<span>Enviar Documento</span>
+<span class="material-symbols-outlined text-sm">upload_file</span>
+</button>
+</div>
+</article>
+</section>
+<section>
+<h2 class="text-xs font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">history</span>
+            Atualizações Recentes
+        </h2>
+<article class="group mb-3 relative overflow-hidden rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm active:bg-slate-50 dark:active:bg-white/5 transition-colors">
+<div class="flex">
+<div class="w-24 bg-slate-200 dark:bg-slate-800 relative hidden sm:block">
+<div class="absolute inset-0 opacity-60 bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCabkm2XaLj3VXjOepGKboqa-ULEZQ_Cf3flObo5_MYVjtK58G1-VYewj7zQJaO9RUlH4fTj7V9TauCx6eBFt1O9t6AG5m5XtJ4B3SVZA9N1kjpnTUk6TA04SecdOcnjEHdApA6n-uzAij9H_0_0w9zOH6KI39UKmF45XCfKxAo9Ark7QdzcQJ7VcoS84OQ27LmuK99_5lz7ODGDugDrZ3ktBebm3zx9zEooH1wEJN8e4yk2UqztGi1jLKSmrO_e9_VMZqI2TSkpX6k');"></div>
+<div class="absolute inset-0 bg-primary/10"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white drop-shadow-md">map</span>
+</div>
+</div>
+<div class="flex-1 p-4">
+<div class="flex justify-between items-start mb-1">
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold text-primary">ROTA #882</span>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-medium">Atribuída</span>
+</div>
+<span class="text-[10px] text-slate-400">2h atrás</span>
+</div>
+<h4 class="text-base font-bold text-slate-900 dark:text-white mb-1">Nova Rota Atribuída: CD São Paulo</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                        Coleta na Doca 4 • 08:00 • 45 Pacotes
+                    </p>
+<div class="flex gap-2">
+<button class="flex-1 py-1.5 px-3 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-900 dark:text-white font-medium rounded-md text-xs transition-colors">
+                            Ver Rota
+                        </button>
+<button class="flex-1 py-1.5 px-3 bg-transparent border border-primary/50 text-primary hover:bg-primary/10 font-medium rounded-md text-xs transition-colors">
+                            Confirmar
+                        </button>
+</div>
+</div>
+</div>
+</article>
+<article class="group mb-3 relative overflow-hidden rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm p-4 flex gap-4 items-center active:bg-slate-50 dark:active:bg-white/5 transition-colors">
+<div class="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 shrink-0">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h4 class="text-sm font-bold text-slate-900 dark:text-white truncate">Pagamento Semanal Processado</h4>
+<span class="text-[10px] text-slate-400 shrink-0 ml-2">Ontem</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    R$ 1.240,50 enviados para sua conta final •••• 4291
+                </p>
+</div>
+<span class="material-symbols-outlined text-slate-400 text-sm">chevron_right</span>
+</article>
+<article class="group mb-3 relative overflow-hidden rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm p-4 flex gap-4 items-start active:bg-slate-50 dark:active:bg-white/5 transition-colors opacity-75">
+<div class="h-10 w-10 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 shrink-0">
+<span class="material-symbols-outlined">info</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h4 class="text-sm font-bold text-slate-900 dark:text-white truncate">Manutenção do App</h4>
+<span class="text-[10px] text-slate-400 shrink-0 ml-2">2d atrás</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400">
+                    Manutenção agendada para domingo, das 02:00 às 04:00.
+                </p>
+</div>
+</article>
+</section>
+<div class="h-24"></div> 
+</main>
+<nav class="fixed bottom-0 w-full z-20 bg-background-light dark:bg-[#181811] border-t border-slate-200 dark:border-[#3a3827] px-4 pb-safe pt-2">
+<div class="flex justify-between items-center pb-3">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl group-hover:-translate-y-0.5 transition-transform">home</span>
+<span class="text-[10px] font-medium tracking-wide">Início</span>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl group-hover:-translate-y-0.5 transition-transform">map</span>
+<span class="text-[10px] font-medium tracking-wide">Rotas</span>
+</a>
+<div class="relative -top-5">
+<button class="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-slate-900 shadow-[0_0_15px_rgba(249,224,6,0.4)] hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-3xl">qr_code_scanner</span>
+</button>
+</div>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl fill-current">notifications</span>
+<span class="text-[10px] font-medium tracking-wide">Alertas</span>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-2xl group-hover:-translate-y-0.5 transition-transform">person</span>
+<span class="text-[10px] font-medium tracking-wide">Perfil</span>
+</a>
+</div>
+<div class="h-4 w-full"></div>
+</nav>
+
+</body></html>

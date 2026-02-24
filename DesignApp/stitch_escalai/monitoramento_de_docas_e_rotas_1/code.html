@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitoramento de Docas e Rotas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#f2db0d",
+                        secondary: "#2d3270", // Dark blue accent inspired by ML
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#222010",
+                        "card-dark": "#2a2818",
+                        "accent-blue": "#009ee3", // Bright blue accent
+                    },
+                    fontFamily: {
+                        display: ["Space Grotesk", "sans-serif"],
+                        body: ["Space Grotesk", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display overflow-x-hidden">
+<!-- Header -->
+<header class="sticky top-0 z-50 bg-background-dark/95 backdrop-blur-sm border-b border-white/10 px-4 py-3">
+<div class="flex items-center justify-between mb-4">
+<button class="text-white p-2 hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold text-center flex-1 text-white">Monitoramento de Rotas</h1>
+<button class="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative">
+<span class="material-symbols-outlined text-[24px]">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-primary text-background-dark text-sm font-bold border border-primary shadow-[0_0_10px_rgba(242,219,13,0.3)]">
+                Todas
+            </button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-white/5 text-slate-300 text-sm font-medium border border-white/10 hover:bg-white/10 transition-colors">
+                Onda 1
+            </button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-white/5 text-slate-300 text-sm font-medium border border-white/10 hover:bg-white/10 transition-colors">
+                Onda 2
+            </button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-white/5 text-slate-300 text-sm font-medium border border-white/10 hover:bg-white/10 transition-colors">
+                Em Trânsito
+            </button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 p-4 pb-24 flex flex-col gap-6">
+<!-- Section: Avaré - B5_AM -->
+<div class="space-y-3">
+<div class="flex items-center justify-between px-1">
+<h2 class="text-xl font-bold text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">location_on</span>
+                    Avaré - B5_AM
+                </h2>
+<span class="text-xs font-mono text-primary/80 bg-primary/10 px-2 py-1 rounded">AO VIVO</span>
+</div>
+<!-- Driver Card 1 (Active/Highlight) -->
+<div class="bg-card-dark border border-primary/30 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative group">
+<!-- Status Stripe -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-accent-blue"></div>
+<div class="p-4 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex gap-3">
+<div class="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+<span class="material-symbols-outlined text-slate-300">person</span>
+</div>
+<div>
+<h3 class="text-lg font-bold text-white">Diogo</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded bg-primary/20 text-primary text-xs font-bold border border-primary/20">ONDA 1</span>
+<span class="text-slate-400 text-xs">• EVY-5348</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-xs text-slate-400 uppercase tracking-wider font-bold">Doca</span>
+<span class="text-2xl font-bold text-primary leading-none">33</span>
+</div>
+</div>
+<!-- Route Details Grid -->
+<div class="grid grid-cols-2 gap-2 bg-black/20 p-3 rounded-lg border border-white/5">
+<div>
+<p class="text-[10px] text-slate-500 uppercase">Destino</p>
+<p class="text-sm text-slate-200 font-medium">Avaré, SP</p>
+</div>
+<div>
+<p class="text-[10px] text-slate-500 uppercase">Rota</p>
+<p class="text-sm text-slate-200 font-medium">B5_AM_PRI</p>
+</div>
+<div class="col-span-2 mt-1">
+<div class="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+<div class="bg-gradient-to-r from-primary to-accent-blue h-full w-[75%]"></div>
+</div>
+<div class="flex justify-between mt-1">
+<span class="text-[10px] text-slate-500">Progresso</span>
+<span class="text-[10px] text-primary">75%</span>
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<button class="w-full py-3 bg-gradient-to-r from-secondary to-blue-900 hover:to-blue-800 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] border border-white/10 shadow-lg">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        Liberar Doca para Onda 2
+                    </button>
+</div>
+</div>
+<!-- Driver Card 2 (Waiting) -->
+<div class="bg-card-dark border border-white/5 rounded-xl overflow-hidden opacity-90 relative">
+<div class="p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="flex gap-3">
+<div class="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500">person</span>
+</div>
+<div>
+<h3 class="text-base font-bold text-slate-200">Mariana</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/20">ONDA 2</span>
+<span class="text-slate-500 text-xs">• GHT-9021</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end opacity-50">
+<span class="text-xs text-slate-500 uppercase tracking-wider font-bold">Doca</span>
+<span class="text-xl font-bold text-slate-300 leading-none">--</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-xs text-slate-400 bg-white/5 p-2 rounded">
+<span class="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                        Aguardando liberação da doca 33
+                    </div>
+</div>
+</div>
+</div>
+<!-- Section: Bauru - C2_PM -->
+<div class="space-y-3 pt-2">
+<div class="flex items-center justify-between px-1">
+<h2 class="text-xl font-bold text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-accent-blue">location_on</span>
+                    Bauru - C2_PM
+                </h2>
+<span class="text-xs font-mono text-slate-500 px-2 py-1">2 Motoristas</span>
+</div>
+<!-- Driver Card 3 -->
+<div class="bg-card-dark border border-white/5 rounded-xl overflow-hidden relative">
+<div class="p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="flex gap-3">
+<div class="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">person</span>
+</div>
+<div>
+<h3 class="text-base font-bold text-slate-200">Carlos</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded bg-primary/20 text-primary text-xs font-bold border border-primary/20">ONDA 1</span>
+<span class="text-slate-500 text-xs">• JKL-4421</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-xs text-slate-500 uppercase tracking-wider font-bold">Doca</span>
+<span class="text-xl font-bold text-slate-300 leading-none">12</span>
+</div>
+</div>
+<!-- Map Preview -->
+<div class="w-full h-24 bg-slate-800 rounded-lg overflow-hidden relative border border-white/5 mt-1" data-location="Bauru" style="">
+<div class="absolute inset-0 bg-[url('https://maps.googleapis.com/maps/api/staticmap?center=Bauru,SP&amp;zoom=13&amp;size=600x300&amp;maptype=roadmap&amp;style=feature:all|element:geometry|color:0x242f3e&amp;style=feature:all|element:labels.text.stroke|visibility:off&amp;style=feature:all|element:labels.text.fill|color:0x746855&amp;style=feature:administrative.locality|element:labels.text.fill|color:0xd59563&amp;style=feature:poi|element:labels.text.fill|color:0xd59563&amp;style=feature:poi.park|element:geometry|color:0x263c3f&amp;style=feature:poi.park|element:labels.text.fill|color:0x6b9a76&amp;style=feature:road|element:geometry|color:0x38414e&amp;style=feature:road|element:geometry.stroke|color:0x212a37&amp;style=feature:road|element:labels.text.fill|color:0x9ca5b3&amp;style=feature:road.highway|element:geometry|color:0x746855&amp;style=feature:road.highway|element:geometry.stroke|color:0x1f2835&amp;style=feature:road.highway|element:labels.text.fill|color:0xf3d19c&amp;style=feature:transit|element:geometry|color:0x2f3948&amp;style=feature:transit.station|element:labels.text.fill|color:0xd59563&amp;style=feature:water|element:geometry|color:0x17263c&amp;style=feature:water|element:labels.text.fill|color:0x515c6d&amp;style=feature:water|element:labels.text.stroke|visibility:off&amp;sensor=false')] bg-cover bg-center opacity-60 mix-blend-luminosity" data-alt="Map showing Bauru city streets"></div>
+<div class="absolute bottom-2 right-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white backdrop-blur-sm border border-white/10 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-primary">local_shipping</span>
+                             Em rota
+                         </div>
+</div>
+<div class="flex gap-2 mt-1">
+<button class="flex-1 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded border border-white/10 text-xs font-bold transition-colors">
+                            Detalhes
+                         </button>
+<button class="flex-1 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded border border-primary/20 text-xs font-bold transition-colors">
+                            Mensagem
+                         </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 bg-background-dark/95 backdrop-blur-md border-t border-white/10 pb-6 pt-3 px-6 z-50">
+<ul class="flex justify-between items-end">
+<li class="flex-1">
+<a class="flex flex-col items-center gap-1 group" href="#">
+<div class="p-1.5 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary text-[24px]">dashboard</span>
+</div>
+<span class="text-[10px] font-bold text-white tracking-wide">Monitor</span>
+</a>
+</li>
+<li class="flex-1">
+<a class="flex flex-col items-center gap-1 group" href="#">
+<div class="p-1.5 rounded-full group-hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-slate-200 text-[24px]">groups</span>
+</div>
+<span class="text-[10px] font-medium text-slate-400 group-hover:text-slate-200 tracking-wide">Motoristas</span>
+</a>
+</li>
+<li class="flex-1">
+<a class="flex flex-col items-center gap-1 group" href="#">
+<div class="p-1.5 rounded-full group-hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-slate-200 text-[24px]">settings</span>
+</div>
+<span class="text-[10px] font-medium text-slate-400 group-hover:text-slate-200 tracking-wide">Config</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Floating Action Button (Optional for quick actions) -->
+<button class="fixed bottom-24 right-4 h-14 w-14 bg-primary text-background-dark rounded-full shadow-[0_0_15px_rgba(242,219,13,0.4)] flex items-center justify-center z-40 hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[28px]">qr_code_scanner</span>
+</button>
+</body></html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Disponibilidade de Amanhã</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f9e006",
+                        "primary-content": "#1a1a1a", 
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#18181b", 
+                        "surface-dark": "#27272a",
+                        "surface-active": "#3f3f46"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 2px;
+        }.toggle-checkbox:checked {
+            right: 0;
+            border-color: #f9e006;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #f9e006;
+        }
+    </style>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex justify-center selection:bg-primary selection:text-black">
+<div class="w-full max-w-md bg-background-light dark:bg-background-dark flex flex-col h-screen relative overflow-hidden shadow-2xl">
+<header class="flex items-center justify-between p-4 pt-6 z-10">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-dark transition-colors text-slate-900 dark:text-slate-100">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<h2 class="text-lg font-bold tracking-wide uppercase text-slate-900 dark:text-slate-100">Disponibilidade</h2>
+<div class="w-10"></div> 
+</header>
+<main class="flex-1 overflow-y-auto pb-24 px-6">
+<div class="mt-4 mb-8 text-center">
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Amanhã</p>
+<h1 class="text-4xl font-bold leading-tight mb-2 text-slate-900 dark:text-white">
+                    Vai dirigir?
+                </h1>
+<div class="inline-flex items-center gap-2 bg-surface-dark px-4 py-2 rounded-full border border-slate-700/50">
+<span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
+<span class="text-lg font-bold text-primary">Sexta, 12 Nov</span>
+</div>
+</div>
+<div class="relative group w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-lg border border-slate-700/30 mb-8">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Abstract blurred city lights view from a car dashboard at night" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD5i3bFOrSch_ZvNYuHlJkS2NdU4taiLA1AjQuSYQyrdo8Aof8WyfhkKBdtzzVTp4ain4Q6LtjfzyiyfXnIdEi1VylD-cD1ilhZ0WuojOYE2emNAlbU6JdL6ivckoApDqORgBQWfIx9i0VpFx0P3QBH6wzbf5w-XqczOTvZxw5vH4s9Pk9178ckPzjjfD-x3rUNlek92CYNcDqK0z22tG2pmIsMcW1Kh9ZtGz4fDgA96TsKnVRoQpAYiB7xoIMBqoANY5szSaEBX-VL');">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+<div class="absolute inset-0 flex flex-col justify-end p-6">
+<div class="flex items-end justify-between">
+<div>
+<p class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-1">Status Atual</p>
+<h3 class="text-3xl font-bold text-white mb-1">Disponível</h3>
+<p class="text-primary text-sm font-medium">Pronto para aceitar rotas</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer" for="status-toggle">
+<input checked="" class="sr-only peer" id="status-toggle" type="checkbox"/>
+<div class="w-16 h-9 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/30 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-8 after:w-8 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Selecione Turnos</h3>
+<span class="text-xs font-medium text-slate-500 dark:text-slate-400">MÚLTIPLA ESCOLHA</span>
+</div>
+<div class="grid grid-cols-1 gap-3">
+<label class="cursor-pointer group relative flex items-center p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-dark hover:bg-slate-50 dark:hover:bg-surface-active transition-all has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+<input checked="" class="peer sr-only" name="shift" type="checkbox" value="morning"/>
+<div class="p-2 rounded-lg bg-slate-100 dark:bg-black/40 text-slate-500 dark:text-slate-400 peer-checked:bg-primary peer-checked:text-black mr-4 transition-colors">
+<span class="material-symbols-outlined">wb_sunny</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-slate-900 dark:text-white">Manhã</span>
+<span class="text-xs font-mono bg-slate-100 dark:bg-black/40 px-2 py-1 rounded text-slate-600 dark:text-slate-300">06:00 - 12:00</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400">Alta demanda para entregas</p>
+</div>
+<div class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-500 peer-checked:border-primary peer-checked:bg-primary flex items-center justify-center ml-3">
+<span class="material-symbols-outlined text-[14px] text-black opacity-0 peer-checked:opacity-100 font-bold">check</span>
+</div>
+</label>
+<label class="cursor-pointer group relative flex items-center p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-dark hover:bg-slate-50 dark:hover:bg-surface-active transition-all has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+<input class="peer sr-only" name="shift" type="checkbox" value="afternoon"/>
+<div class="p-2 rounded-lg bg-slate-100 dark:bg-black/40 text-slate-500 dark:text-slate-400 peer-checked:bg-primary peer-checked:text-black mr-4 transition-colors">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-slate-900 dark:text-white">Tarde</span>
+<span class="text-xs font-mono bg-slate-100 dark:bg-black/40 px-2 py-1 rounded text-slate-600 dark:text-slate-300">12:00 - 18:00</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400">Tráfego de rota padrão</p>
+</div>
+<div class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-500 peer-checked:border-primary peer-checked:bg-primary flex items-center justify-center ml-3">
+<span class="material-symbols-outlined text-[14px] text-black opacity-0 peer-checked:opacity-100 font-bold">check</span>
+</div>
+</label>
+<label class="cursor-pointer group relative flex items-center p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-dark hover:bg-slate-50 dark:hover:bg-surface-active transition-all has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+<input class="peer sr-only" name="shift" type="checkbox" value="night"/>
+<div class="p-2 rounded-lg bg-slate-100 dark:bg-black/40 text-slate-500 dark:text-slate-400 peer-checked:bg-primary peer-checked:text-black mr-4 transition-colors">
+<span class="material-symbols-outlined">dark_mode</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-slate-900 dark:text-white">Noite</span>
+<span class="text-xs font-mono bg-slate-100 dark:bg-black/40 px-2 py-1 rounded text-slate-600 dark:text-slate-300">18:00 - 00:00</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400">+15% bônus de ganhos</p>
+</div>
+<div class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-500 peer-checked:border-primary peer-checked:bg-primary flex items-center justify-center ml-3">
+<span class="material-symbols-outlined text-[14px] text-black opacity-0 peer-checked:opacity-100 font-bold">check</span>
+</div>
+</label>
+</div>
+</div>
+<div class="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary text-black rounded-lg">
+<span class="material-symbols-outlined">savings</span>
+</div>
+<div>
+<p class="text-xs text-primary font-bold uppercase tracking-wide">Ganhos Projetados</p>
+<p class="text-xs text-slate-400">Baseado nos turnos</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xl font-bold text-white">R$ 120</span>
+<span class="text-sm text-slate-400"> - R$ 180</span>
+</div>
+</div>
+</main>
+<div class="absolute bottom-0 left-0 w-full p-4 bg-background-light dark:bg-background-dark/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-20">
+<button class="w-full bg-primary hover:bg-yellow-400 text-black font-bold text-lg py-4 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+<span>CONFIRMAR DISPONIBILIDADE</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+
+</body></html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Driver Login</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f9e006",
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#1a202c", // Adjusted slightly to fit the navy/dark vibe better while keeping config structure
+                        "surface-dark": "#2d3748", 
+                        "blue-accent": "#2b3499", // Mercado Livre inspired blue accent
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hide for cleaner mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Subtle glow animation for futuristic feel */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(249, 224, 6, 0.1); }
+            50% { box-shadow: 0 0 25px rgba(249, 224, 6, 0.3); }
+        }
+        .glow-effect {
+            animation: pulse-glow 3s infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased h-screen w-full overflow-hidden flex flex-col items-center justify-center relative">
+<!-- Abstract Background Pattern -->
+<div class="absolute inset-0 z-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#f9e006 1px, transparent 1px); background-size: 32px 32px;">
+</div>
+<!-- Top Gradient Accent -->
+<div class="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-blue-accent/20 to-transparent pointer-events-none z-0"></div>
+<!-- Main Container -->
+<main class="relative z-10 w-full max-w-md h-full flex flex-col p-6 justify-between">
+<!-- Header Section -->
+<div class="flex flex-col items-center pt-12 space-y-6">
+<!-- Logo Circle with Glow -->
+<div class="glow-effect relative flex items-center justify-center w-24 h-24 rounded-full bg-surface-dark dark:bg-slate-800 border-2 border-primary/50 shadow-lg mb-2">
+<span class="material-symbols-outlined text-primary text-5xl">
+                    local_shipping
+                </span>
+<!-- Status Dot -->
+<div class="absolute bottom-1 right-1 w-5 h-5 bg-green-500 rounded-full border-4 border-background-light dark:border-background-dark"></div>
+</div>
+<div class="text-center space-y-2">
+<h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    Fleet Logistics
+                </h1>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-widest">
+                    Driver Portal Access
+                </p>
+</div>
+</div>
+<!-- Form Section -->
+<div class="w-full flex-1 flex flex-col justify-center gap-6 py-8">
+<!-- Driver ID Input -->
+<div class="group">
+<label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 ml-1" for="driver-id">
+                    Driver ID
+                </label>
+<div class="relative flex items-center">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined">badge</span>
+</div>
+<input class="block w-full pl-12 pr-4 py-4 bg-white dark:bg-surface-dark/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm" id="driver-id" placeholder="Ex: DRV-8821" type="text"/>
+</div>
+</div>
+<!-- Password Input -->
+<div class="group">
+<label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 ml-1" for="password">
+                    Password
+                </label>
+<div class="relative flex items-center">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<input class="block w-full pl-12 pr-12 py-4 bg-white dark:bg-surface-dark/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm" id="password" placeholder="••••••••" type="password"/>
+<button class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer" type="button">
+<span class="material-symbols-outlined text-xl">visibility</span>
+</button>
+</div>
+<div class="flex justify-end mt-2">
+<a class="text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors" href="#">
+                        Forgot Password?
+                    </a>
+</div>
+</div>
+<!-- Biometric Login Hint -->
+<button class="w-full flex items-center justify-center gap-2 py-3 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">face</span>
+<span class="text-sm font-medium">Login with Face ID</span>
+</button>
+<!-- Actions -->
+<div class="space-y-4 pt-2">
+<button class="w-full bg-primary hover:bg-yellow-400 text-slate-900 font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl hover:shadow-primary/20 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+<span>START SHIFT</span>
+<span class="material-symbols-outlined text-xl font-bold">arrow_forward</span>
+</button>
+<button class="w-full bg-transparent border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-semibold py-4 px-6 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Register New Driver
+                </button>
+</div>
+</div>
+<!-- Footer -->
+<div class="pb-8 text-center">
+<p class="text-xs text-slate-400 dark:text-slate-500">
+                Need help? <a class="font-bold text-slate-600 dark:text-slate-300 underline decoration-primary decoration-2 underline-offset-2" href="#">Contact Dispatch</a>
+</p>
+</div>
+</main>
+</body></html>
