@@ -104,7 +104,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
     if (finalStatus !== 'granted') {
         console.log('[Push] Permissão de notificação negada pelo usuário.');
-        return null;
+        throw new Error('Permissão de notificação negada pelo seu dispositivo.');
     }
 
     try {
@@ -114,13 +114,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
          */
         const projectId = Constants.expoConfig?.extra?.eas?.projectId
             || process.env.EXPO_PUBLIC_AETHER_PROJECT_ID
-            || 'd937f7a3-5752-45ec-8dd7-15ab4ef8b140';
+            || '2df3cb3a-25ab-4246-9596-8c608bff2603'; // Atualizado para o ID da conta naah22santtos
 
         const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         return tokenData.data;
-    } catch (e) {
+    } catch (e: any) {
         console.error('[Push] Erro ao gerar token:', e);
-        return null;
+        throw new Error(`Falha nos servidores de Notificação (Expo): ${e.message}`);
     }
 }
 

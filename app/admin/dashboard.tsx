@@ -57,13 +57,17 @@ export default function AdminRouteManagement() {
     useEffect(() => {
         if (!user?.id) return;
         (async () => {
-            const token = await registerForPushNotificationsAsync();
-            if (token) {
-                await registerAdminPushToken(
-                    user.id,
-                    user.metadata?.name || user.name || user.email || 'Admin',
-                    token
-                );
+            try {
+                const token = await registerForPushNotificationsAsync();
+                if (token) {
+                    await registerAdminPushToken(
+                        user.id,
+                        user.metadata?.name || user.name || user.email || 'Admin',
+                        token
+                    );
+                }
+            } catch (e) {
+                console.warn('[Admin Dashboard] Background Push Sync falhou:', e);
             }
         })();
     }, [user?.id]);

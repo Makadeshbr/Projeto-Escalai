@@ -100,13 +100,20 @@ export default function DriverProfileScreen() {
             let token = meta.expoPushToken;
 
             if (val) {
-                token = await registerForPushNotificationsAsync();
-                if (!token) {
-                    if (isExpoGo) {
-                        showModal('Modo Desenvolvimento', 'Push notifications estão indisponíveis no Expo Go. Na build de produção (APK/IPA), funcionarão normalmente.', 'info');
-                    } else {
-                        showModal('Permissão Negada', 'Ative as notificações nas configurações do seu celular para receber alertas de rotas.', 'warning');
+                try {
+                    token = await registerForPushNotificationsAsync();
+                    if (!token) {
+                        if (isExpoGo) {
+                            showModal('Modo Desenvolvimento', 'Push notifications estão indisponíveis no Expo Go. Na build de produção (APK/IPA), funcionarão normalmente.', 'info');
+                        } else {
+                            showModal('Permissão Negada', 'Ative as notificações nas configurações do seu celular para receber alertas de rotas.', 'warning');
+                        }
+                        setNotificationsEnabled(false);
+                        setIsUpdatingOption(false);
+                        return;
                     }
+                } catch (e: any) {
+                    showModal('Aviso de Notificação', e.message || 'Verifique as permissões do seu dispositivo.', 'warning');
                     setNotificationsEnabled(false);
                     setIsUpdatingOption(false);
                     return;
