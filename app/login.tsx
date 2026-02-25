@@ -206,12 +206,15 @@ export default function LoginScreen() {
                     </View>
 
                     {/* Support Footer */}
-                    <View className="items-center mt-10 relative z-10">
-                        <Text className="text-[13px] text-text-dark font-spaceGrotesk">
+                    <View className="items-center mt-10 relative z-10 pb-4">
+                        <Text className="text-[13px] text-text-dark font-spaceGrotesk mb-4">
                             Precisa de ajuda?{' '}
                             <Text className="font-spaceGroteskBold text-[#ffe600] underline" style={{ textDecorationColor: '#ffe600' }}>
                                 Suporte
                             </Text>
+                        </Text>
+                        <Text className="text-[10px] text-slate-600 font-spaceGrotesk tracking-[0.15em] uppercase opacity-60">
+                            Feito pela plataforma Aether
                         </Text>
                     </View>
 
