@@ -3,6 +3,7 @@ import { View, Text, ScrollView, RefreshControl, Dimensions, StyleSheet } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
 import { Users, Truck, Activity, TrendingUp, HelpCircle } from 'lucide-react-native';
+import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { useAuthStore } from '~/src/store/auth';
@@ -19,6 +20,7 @@ export default function AdminOverviewScreen() {
         completedRuns: 0,
     });
     const [recentActivies, setRecentActivities] = useState<any[]>([]);
+    const [driverAvatars, setDriverAvatars] = useState<Record<string, string>>({});
 
     const fetchOverviewData = useCallback(async () => {
         setIsLoading(true);
@@ -26,6 +28,13 @@ export default function AdminOverviewScreen() {
             // [SENIOR DEV] Usar aetherFetchAll primeiro para paginação completa
             const allDrivers = await aetherFetchAll(COLLECTIONS.DRIVER_STATUS);
             const drivers = allDrivers.filter((d: any) => d.status === 'active');
+
+            // Build avatar lookup map from driver_status
+            const avatarLookup: Record<string, string> = {};
+            (allDrivers as any[]).forEach((d: any) => {
+                if (d.user_id && d.avatarUrl) avatarLookup[d.user_id] = d.avatarUrl;
+            });
+            setDriverAvatars(avatarLookup);
 
             const todayStr = getTodayDateStr();
 
@@ -163,9 +172,7 @@ export default function AdminOverviewScreen() {
                     ) : (
                         recentActivies.map((activity, idx) => (
                             <View key={activity.id || idx} className="flex-row items-center p-4 bg-surface border border-border rounded-xl mb-3">
-                                <View className="w-10 h-10 rounded-full bg-background items-center justify-center border border-border">
-                                    <Truck color={THEME.colors.primary} size={16} />
-                                </View>
+                                <DriverAvatar avatarUrl={driverAvatars[activity.driverId]} size={40} />
                                 <View className="ml-4 flex-1">
                                     <Text className="text-white font-spaceGroteskBold text-[15px]" numberOfLines={1}>{activity.driverName}</Text>
                                     <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-1" numberOfLines={1}>

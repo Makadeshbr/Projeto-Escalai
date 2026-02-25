@@ -1,17 +1,18 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Home, Calendar, User, Navigation } from 'lucide-react-native';
+import { Home, Calendar, User, Navigation, History } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
 
 interface DriverBottomNavProps {
-    activeTab: 'dashboard' | 'availability' | 'profile' | 'status';
+    activeTab: 'dashboard' | 'availability' | 'profile' | 'status' | 'history';
 }
 
 const TABS = [
     { key: 'dashboard' as const, label: 'Painel', href: '/driver/dashboard', Icon: Home },
-    { key: 'status' as const, label: 'Rota/Doca', href: '/driver/route-status', Icon: Navigation },
+    { key: 'status' as const, label: 'Doca', href: '/driver/route-status', Icon: Navigation },
     { key: 'availability' as const, label: 'Escala', href: '/driver/availability', Icon: Calendar },
+    { key: 'history' as const, label: 'Histórico', href: '/driver/history', Icon: History },
     { key: 'profile' as const, label: 'Perfil', href: '/driver/profile', Icon: User },
 ];
 

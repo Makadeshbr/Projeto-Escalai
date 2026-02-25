@@ -6,6 +6,7 @@ export interface RouteDraft {
     driverName: string;
     driverPlate: string;
     dock: string;
+    sacas?: number;
     waveLabel: string;
     waveNumber: string;     // "Onda 1", "01", etc. (sigla da Onda/Rota no romaneio)
     city: string;
@@ -26,6 +27,7 @@ interface RouteDraft {
   driverName: string;       // Nome completo do motorista (Capitalize). Ex: "João Silva"
   driverPlate: string;      // Placa do veículo, SEMPRE UPPERCASE sem hífens. Ex: "ABC1D23"
   dock: string;             // ⚠️ SOMENTE O NÚMERO DA DOCA/BALCÃO. É sempre NUMÉRICO. Ex: "1", "2", "10", "30", "45". NUNCA coloque código de rota aqui.
+  sacas?: number;           // ⚠️ QUANTIDADE DE SACAS. É sempre NUMÉRICO. Se a coluna se chamar "Sacas", "Saca", "Qtd Sacas", "Volumes". Se não houver, não envie o campo ou envie 0.
   routeLabel: string;       // ⚠️ CÓDIGO ALFANUMÉRICO DA ROTA. Ex: "B5_AM", "SP_01", "RJ-ZONA-SUL", "R12". Este é o identificador comercial/operacional da rota.
   waveLabel: string;        // Turno do dia: "Manhã", "Tarde" ou "Noite". Baseie-se no horário se disponível.
   waveNumber: string;       // Número/Sigla da Onda. Ex: "Onda 1", "01", "W2". Se não houver, use "".

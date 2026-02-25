@@ -12,12 +12,14 @@ import { FloatingActionButton } from '~/src/components/FloatingActionButton';
 import { router } from 'expo-router';
 import { TextInput } from 'react-native';
 import { useAuthStore } from '~/src/store/auth';
+import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
 
 // Tipagem unida que cruza Base (Status) com Answer (Availability)
 interface DriverCrossList {
     id: string; // driver ID
     driverName: string;
     driverPlate: string;
+    avatarUrl?: string;
     status: 'confirmed' | 'denied' | 'pending';
     shifts?: { morning: boolean; afternoon: boolean; night: boolean };
 }
@@ -53,6 +55,7 @@ export default function AdminDriversScreen() {
                     user_id: (d.user_id as string) || '',
                     driverName: (d.driverName as string) || (payload.driverName as string) || 'Motorista',
                     driverPlate: (d.driverPlate as string) || (payload.driverPlate as string) || 'S/Placa',
+                    avatarUrl: (d.avatarUrl as string) || '',
                     status: (d.status as string) || (payload.status as string) || 'active'
                 };
             }).filter(d => d.status === 'active');
@@ -74,6 +77,7 @@ export default function AdminDriversScreen() {
                     id: base.user_id,
                     driverName: base.driverName,
                     driverPlate: base.driverPlate,
+                    avatarUrl: base.avatarUrl || undefined,
                     status: driverStatus,
                     shifts: answer?.shifts || undefined
                 };
@@ -303,14 +307,18 @@ export default function AdminDriversScreen() {
                                 onPress={() => openEditModal(item)}
                                 className="mb-3 bg-surface border border-border rounded-xl p-4 flex-row items-center"
                             >
-                                {/* Current Status Icon */}
-                                <View className={`w-12 h-12 rounded-full items-center justify-center border ${item.status === 'confirmed' ? 'bg-green-500/10 border-green-500/30' :
-                                    item.status === 'denied' ? 'bg-red-500/10 border-red-500/30' :
-                                        'bg-yellow-500/10 border-yellow-500/30'
+                                {/* Driver Avatar + Status Badge */}
+                                <View className="relative">
+                                    <DriverAvatar avatarUrl={item.avatarUrl} size={48} />
+                                    <View className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full items-center justify-center border-2 border-[#1e2332] ${
+                                        item.status === 'confirmed' ? 'bg-green-500' :
+                                        item.status === 'denied' ? 'bg-red-500' :
+                                        'bg-yellow-500'
                                     }`}>
-                                    {item.status === 'confirmed' && <Check color="#4ade80" size={20} />}
-                                    {item.status === 'denied' && <X color="#f87171" size={20} />}
-                                    {item.status === 'pending' && <Clock color="#eab308" size={20} />}
+                                        {item.status === 'confirmed' && <Check color="#fff" size={10} strokeWidth={3} />}
+                                        {item.status === 'denied' && <X color="#fff" size={10} strokeWidth={3} />}
+                                        {item.status === 'pending' && <Clock color="#fff" size={10} strokeWidth={3} />}
+                                    </View>
                                 </View>
 
                                 {/* Texts */}

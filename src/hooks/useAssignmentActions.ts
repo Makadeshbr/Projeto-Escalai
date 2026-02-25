@@ -25,6 +25,8 @@ export interface CreateAssignmentParams {
     waveNum: string;
     /** Número da doca */
     dock: string;
+    /** Quantidade de sacas (Opcional) */
+    sacas?: string;
     /** Se envio SDD está ativado */
     isSddEnabled: boolean;
     /** IDs dos motoristas selecionados */
@@ -61,7 +63,7 @@ export function useAssignmentActions(callbacks: {
         setIsLoading: (v: boolean) => void,
         onSuccess: () => void
     ) => {
-        const { selectedCity, selectedWave, waveNum, dock, isSddEnabled, selectedDriverIds, availableDrivers } = params;
+        const { selectedCity, selectedWave, waveNum, dock, sacas, isSddEnabled, selectedDriverIds, availableDrivers } = params;
 
         if (!selectedCity) {
             showModal('Atenção', 'Selecione a Cidade/Centro de Distribuição.', 'error');
@@ -105,6 +107,7 @@ export function useAssignmentActions(callbacks: {
                         waveTime: waveMeta.time,
                         waveNumber: waveNum.trim(),
                         dock: dock.trim(),
+                        ...(sacas && sacas.trim() ? { sacas: parseInt(sacas.trim(), 10) } : {}),
                         isSdd: isSddEnabled,
                         driverId: driver.driverId || driver.id,
                         driverName: driver.driverName,

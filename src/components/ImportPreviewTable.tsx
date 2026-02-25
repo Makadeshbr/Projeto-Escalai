@@ -60,6 +60,18 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
                 maxLength={4}
             />
 
+            {/* Sacas */}
+            <TextInput
+                className="w-20 ml-2 px-2 py-1 text-[14px] font-spaceGrotesk text-center bg-background rounded-lg border border-orange-500/30"
+                style={{ color: '#f97316' }}
+                value={route.sacas !== undefined ? String(route.sacas) : ''}
+                placeholder="Qtd"
+                placeholderTextColor="#475569"
+                onChangeText={(val) => onChangeRoute(idx, 'sacas', val ? parseInt(val, 10) : 0)}
+                keyboardType="numeric"
+                maxLength={4}
+            />
+
             {/* Wave */}
             <TextInput
                 className="w-24 px-2 py-1 text-[13px] font-spaceGrotesk text-center bg-transparent rounded"
@@ -130,6 +142,7 @@ export default function ImportPreviewTable({ routes, onChangeRoute, validationMa
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-24 pl-2 uppercase">Placa</Text>
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-52 pl-2 uppercase">Motorista</Text>
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-20 text-center uppercase">Doca</Text>
+            <Text className="text-[12px] font-spaceGroteskBold text-[#f97316] w-20 ml-2 text-center uppercase">Sacas</Text>
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-24 text-center uppercase">Turno</Text>
             <Text className="text-[12px] font-spaceGroteskBold text-primary w-20 text-center uppercase">Onda</Text>
             <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] w-32 pl-2 uppercase">Cidade</Text>

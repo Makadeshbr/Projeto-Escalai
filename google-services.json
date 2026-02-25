@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "396664577242",
+    "project_id": "aether-push",
+    "storage_bucket": "aether-push.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396664577242:android:2e523f3e50eccf0f2f99e3",
+        "android_client_info": {
+          "package_name": "com.aether.escalai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuBhlSaSeUlWDIVl2RelIvpvuYyN9UykQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396664577242:android:076b5b3e4f2969a42f99e3",
+        "android_client_info": {
+          "package_name": "com.rotafrete.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuBhlSaSeUlWDIVl2RelIvpvuYyN9UykQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

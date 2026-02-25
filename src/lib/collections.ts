@@ -59,6 +59,7 @@ export interface Assignment {
     waveNumber?: string;        // "Onda 1", "Onda 2"
     dock: string;               // Número da Doca (ex: "1", "10", "30") — NUMÉRICO
     routeLabel?: string;        // Código da Rota (ex: "B5_AM", "SP_01") — ALFANUMÉRICO
+    sacas?: number;             // Quantidade de Sacas Atribuídas à Corrida
     isSdd: boolean;
     driverId: string;
     driverName: string;
@@ -76,6 +77,7 @@ export interface DriverStatus {
     driverId?: string; // Legacy - for backwards compatibility
     driverName: string;
     driverPlate: string;
+    avatarUrl?: string; // URL da foto de perfil (sincronizada do tenant auth metadata)
     expoPushToken?: string;
     status: 'active' | 'blocked' | 'deleted';
     updatedByAdminId?: string;

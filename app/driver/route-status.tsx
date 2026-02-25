@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, Dimensions, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu, Truck, Waves, Hourglass, CheckCircle2, MessageCircle, Bell, Navigation, PartyPopper } from 'lucide-react-native';
+import { Menu, Truck, Waves, Hourglass, CheckCircle2, MessageCircle, Bell, Navigation, PartyPopper, Package } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     useSharedValue,
@@ -219,7 +219,7 @@ export default function RouteStatusScreen() {
                     <Text className="text-white text-xl font-bold mt-4 text-center">Nenhuma Rota Ativa</Text>
                     <Text className="text-slate-400 text-center mt-2">Você não possui nenhuma viagem programada ou doca designada para o dia de hoje.</Text>
                 </View>
-                <DriverBottomNav activeTab="dashboard" />
+                <DriverBottomNav activeTab="status" />
             </SafeAreaView>
         );
     }
@@ -256,12 +256,24 @@ export default function RouteStatusScreen() {
                             <Text className="text-white text-sm font-mono font-bold">{assignment.driverPlate || '--'}</Text>
                         </View>
                     </View>
-                    {assignment.routeLabel ? (
+                    {assignment.routeLabel || assignment.sacas ? (
                         <View className="flex-row justify-between items-center mb-4 pb-4 border-b border-white/5">
-                            <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">ROTA ATUAL</Text>
-                            <Text className="text-white text-sm font-mono font-bold px-2 py-0.5 bg-primary/20 text-primary border border-primary/20 rounded">
-                                {assignment.routeLabel}
-                            </Text>
+                            {assignment.routeLabel && (
+                                <>
+                                    <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">ROTA ATUAL</Text>
+                                    <Text className="text-white text-sm font-mono font-bold px-2 py-0.5 bg-primary/20 text-primary border border-primary/20 rounded">
+                                        {assignment.routeLabel}
+                                    </Text>
+                                </>
+                            )}
+                            {!!assignment.sacas && (
+                                <View className="flex-row items-center gap-1 ml-auto bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/30">
+                                    <Package size={14} color="#f97316" />
+                                    <Text className="text-sm font-bold uppercase tracking-wider" style={{ color: '#f97316' }}>
+                                        {assignment.sacas} SACA{assignment.sacas > 1 ? 'S' : ''}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     ) : null}
                     <View className="flex-row">
@@ -408,7 +420,7 @@ export default function RouteStatusScreen() {
                 </View>
             </View>
 
-            <DriverBottomNav activeTab="dashboard" />
+            <DriverBottomNav activeTab="status" />
         </SafeAreaView>
     );
 }

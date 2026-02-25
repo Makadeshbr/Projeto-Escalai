@@ -32,6 +32,97 @@ export default function AdminSettingsScreen() {
     const [driversLoading, setDriversLoading] = useState(false);
     const [showDriversModal, setShowDriversModal] = useState(false);
 
+    // RH/History Modal State
+    const [selectedDriverHistory, setSelectedDriverHistory] = useState<any>(null);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [driverMetrics, setDriverMetrics] = useState({ routes: 0, sacas: 0, offDays: 0, sdd: 0 });
+    const [driverTimeline, setDriverTimeline] = useState<any[]>([]);
+
+    const fetchDriverHistory = async (driverData: any) => {
+        setHistoryLoading(true);
+        setSelectedDriverHistory(driverData);
+
+        try {
+            // Reutiliza a mesma fetch unificada baseada no ID original (user_id) ou (driverId fallback)
+            const dId = driverData.user_id || driverData.driverId || driverData.id;
+
+            // Posição Senior: Como não existe `.query()` function-based no wrapper customizado do cliente,
+            // utilizamos aetherFetchAll para extrair a mass data da collection num single roundtrip,
+            // e fazemos memory filter ultra-rápido para o motorista selecionado.
+            const [allRawAssignments, allRawAvailability] = await Promise.all([
+                aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as Promise<any[]>,
+                aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY) as Promise<any[]>
+            ]);
+
+            const allAssignments = allRawAssignments.filter(item => {
+                const p = item._payload || item;
+                return p.driverId === dId && (p.status === 'completed' || p.status === 'confirmed');
+            });
+
+            const allAvailability = allRawAvailability.filter(item => {
+                const p = item._payload || item;
+                return p.driverId === dId;
+            });
+
+            const timeline: any[] = [];
+            let routesCount = 0; let offDaysCount = 0; let totalSacas = 0; let sddCount = 0;
+
+            if (allAssignments.length > 0) {
+                allAssignments.forEach((doc: any) => {
+                    const assignment = (doc._payload || doc);
+                    if (assignment.createdAt) {
+                        routesCount++;
+                        if (assignment.sacas) totalSacas += assignment.sacas;
+                        if (assignment.isSdd) sddCount++;
+
+                        const dateNum = new Date(assignment.createdAt);
+                        timeline.push({
+                            type: 'route',
+                            dateObj: dateNum,
+                            dateLabel: dateNum.toLocaleDateString('pt-BR'),
+                            data: assignment
+                        });
+                    }
+                });
+            }
+
+            const routeDates = new Set(timeline.map(t => t.dateLabel));
+
+            if (allAvailability.length > 0) {
+                allAvailability.forEach((doc: any) => {
+                    const availability = (doc._payload || doc);
+                    const rawDateParts = availability.targetDate.split('-');
+                    const parsedDate = new Date(parseInt(rawDateParts[0], 10), parseInt(rawDateParts[1], 10) - 1, parseInt(rawDateParts[2], 10));
+                    const dateFormatted = parsedDate.toLocaleDateString('pt-BR');
+                    const hadRouteThatDay = routeDates.has(dateFormatted);
+                    const isInFuture = parsedDate > new Date();
+
+                    if (!hadRouteThatDay && !isInFuture) {
+                        offDaysCount++;
+                        timeline.push({
+                            type: 'off',
+                            dateObj: parsedDate,
+                            dateLabel: dateFormatted,
+                            data: availability
+                        });
+                    }
+                });
+            }
+
+            timeline.sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
+
+            setDriverMetrics({ routes: routesCount, sacas: totalSacas, offDays: offDaysCount, sdd: sddCount });
+            setDriverTimeline(timeline.slice(0, 30)); // Mostra os últimos 30 registros
+
+        } catch (error: any) {
+            console.error('[AdminRH] Falha ao extrair relatorio de motorista:', error);
+            showModal('Erro', 'Não foi possível compilar o histórico do motorista.', 'error');
+            setSelectedDriverHistory(null);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
     // Custom Modal State
     const [actionModal, setActionModal] = useState({
         visible: false,
@@ -625,14 +716,23 @@ export default function AdminSettingsScreen() {
                                             </View>
                                         </View>
 
-                                        <TouchableOpacity
-                                            onPress={() => toggleDriverBlock(item.id, item.status)}
-                                            className={`px-4 py-2 flex-row flex-shrink-0 border rounded-lg ${item.status === 'blocked' ? 'border-primary/50 bg-primary/10' : 'border-red-500/50 bg-red-500/10'}`}
-                                        >
-                                            <Text className={`font-spaceGroteskBold text-[11px] uppercase tracking-wide ${item.status === 'blocked' ? 'text-primary' : 'text-red-400'}`}>
-                                                {item.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
-                                            </Text>
-                                        </TouchableOpacity>
+                                        <View className="flex-row gap-2 flex-shrink-0">
+                                            <TouchableOpacity
+                                                onPress={() => fetchDriverHistory(item)}
+                                                className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center border border-blue-500/20"
+                                            >
+                                                <Target color="#3b82f6" size={16} />
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                onPress={() => toggleDriverBlock(item.id, item.status)}
+                                                className={`px-4 flex-row items-center justify-center border rounded-lg ${item.status === 'blocked' ? 'border-primary/50 bg-primary/10' : 'border-red-500/50 bg-red-500/10'}`}
+                                            >
+                                                <Text className={`font-spaceGroteskBold text-[11px] uppercase tracking-wide ${item.status === 'blocked' ? 'text-primary' : 'text-red-400'}`}>
+                                                    {item.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 )}
                             />

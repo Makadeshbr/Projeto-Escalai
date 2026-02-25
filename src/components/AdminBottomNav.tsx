@@ -8,7 +8,7 @@ import { THEME } from '~/src/constants/theme';
  * Tipo das tabs disponíveis no painel administrativo.
  * Inclui tabs primárias (visíveis) e secundárias (dentro do menu "Mais").
  */
-type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings';
+type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings' | 'reports';
 
 interface AdminBottomNavProps {
     activeTab: AdminTab;
@@ -24,6 +24,7 @@ const PRIMARY_TABS = [
 
 /** Tabs exibidas no menu "Mais" (bottom sheet) */
 const SECONDARY_TABS = [
+    { key: 'reports' as const, label: 'Histórico RH', href: '/admin/reports', Icon: Users, description: 'Estatísticas de motoristas e produção' },
     { key: 'import' as const, label: 'Scanner IA (PDF)', href: '/admin/import', Icon: ScanLine, description: 'Importar rotas via OCR Gemini' },
     { key: 'settings' as const, label: 'Ajustes', href: '/admin/settings', Icon: Settings, description: 'Configurações do sistema' },
 ];

@@ -5,9 +5,11 @@ import { ArrowLeft, RefreshCw, User, CheckCircle2, Truck, MapPin, Navigation, Al
 import { LinearGradient } from 'expo-linear-gradient';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { useMonitorData, RouteGroup } from '~/src/hooks/useMonitorData';
-import { Assignment } from '~/src/lib/collections';
+import { Assignment, COLLECTIONS } from '~/src/lib/collections';
 import { THEME } from '~/src/constants/theme';
 import { DashboardActionModal } from '~/src/components/dashboard/DashboardActionModal';
+import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
+import { aetherFetchAll } from '~/src/lib/aether';
 
 type FilterType = 'all' | 'wave_1' | 'wave_2' | 'transit';
 
@@ -20,10 +22,12 @@ function DriverCard({
     assignment,
     shouldPulse,
     onReleaseDock,
+    avatarUrl,
 }: {
     assignment: Assignment;
     shouldPulse: boolean;
     onReleaseDock: (a: Assignment) => void;
+    avatarUrl?: string;
 }) {
     const isDeparted = assignment.dockStatus === 'departed';
     const isLiberated = assignment.dockStatus === 'liberated';
@@ -108,9 +112,7 @@ function DriverCard({
 
                 <View className="flex-row justify-between items-start">
                     <View className="flex-row gap-3 items-center">
-                        <View className="h-12 w-12 rounded-full bg-white/10 items-center justify-center border border-white/20">
-                            <User size={24} color={THEME.colors.textSecondary} />
-                        </View>
+                        <DriverAvatar avatarUrl={avatarUrl} size={48} />
                         <View>
                             <Text className="text-lg font-bold text-white">{assignment.driverName}</Text>
                             <View className="flex-row items-center gap-2 mt-0.5">
@@ -192,6 +194,23 @@ export default function AdminMonitorScreen() {
     const router = useRouter();
     const { assignments, groups, isLoading, releaseDock, refreshMonitor, actionModal, dismissModal } = useMonitorData();
     const [filter, setFilter] = useState<FilterType>('all');
+    const [driverAvatars, setDriverAvatars] = useState<Record<string, string>>({});
+
+    // Fetch avatar map from driver_status on mount + when assignments refresh
+    useEffect(() => {
+        (async () => {
+            try {
+                const allDrivers = await aetherFetchAll(COLLECTIONS.DRIVER_STATUS);
+                const map: Record<string, string> = {};
+                (allDrivers as any[]).forEach((d: any) => {
+                    if (d.user_id && d.avatarUrl) map[d.user_id] = d.avatarUrl;
+                });
+                setDriverAvatars(map);
+            } catch (e) {
+                console.warn('[Monitor] Erro ao buscar avatars:', e);
+            }
+        })();
+    }, [assignments]);
 
     /**
      * Calcula as docas que foram liberadas pelo motorista (departed).
@@ -300,6 +319,7 @@ export default function AdminMonitorScreen() {
                                         freedDocks.has(assignment.dock)
                                     }
                                     onReleaseDock={releaseDock}
+                                    avatarUrl={driverAvatars[assignment.driverId]}
                                 />
                             ))}
                         </View>

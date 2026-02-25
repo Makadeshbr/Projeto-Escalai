@@ -77,7 +77,23 @@ export default function DriverProfileScreen() {
                         metadata: { ...meta, avatarUrl: novaAvatarUrl }
                     });
 
-                    // 5. Atualizar estado local
+                    // 5. Sincronizar avatarUrl no driver_status para visibilidade do admin
+                    if (user?.id) {
+                        try {
+                            const statusRecords = await aether.db.collection(COLLECTIONS.DRIVER_STATUS)
+                                .query().eq('user_id', user.id).get();
+                            if (statusRecords && (statusRecords as any[]).length > 0) {
+                                await aether.db.collection(COLLECTIONS.DRIVER_STATUS).update(
+                                    (statusRecords[0] as any).id,
+                                    { avatarUrl: novaAvatarUrl }
+                                );
+                            }
+                        } catch (syncErr) {
+                            console.warn('[Profile] Erro ao sincronizar avatar com driver_status:', syncErr);
+                        }
+                    }
+
+                    // 6. Atualizar estado local
                     if (updatedUser) login(updatedUser as any, meta.role as 'driver' | 'admin');
                     showModal('Sucesso', 'Sua foto de perfil foi atualizada com sucesso!', 'success');
                 } else {

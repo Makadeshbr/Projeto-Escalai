@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
-import { Bell, Zap, CheckCircle, Navigation, History, AlertTriangle, TrendingUp, User, MapPin, CheckCircle2 } from 'lucide-react-native';
+import { Bell, Zap, CheckCircle, Navigation, History, AlertTriangle, TrendingUp, User, MapPin, CheckCircle2, Package } from 'lucide-react-native';
 import { useAuthStore } from '~/src/store/auth';
 import { aether } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment } from '~/src/lib/collections';
@@ -52,6 +52,7 @@ export default function DashboardScreen() {
                             user_id: user.id,
                             driverName: user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
                             driverPlate: user.metadata?.vehiclePlate || 'S/Placa',
+                            avatarUrl: user.metadata?.avatarUrl || '',
                             expoPushToken: user.metadata?.expoPushToken || '',
                             status: 'active',
                             updatedByAdminId: 'system_self_healing',
@@ -266,6 +267,14 @@ export default function DashboardScreen() {
                                         <View className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 flex-row items-center gap-1">
                                             <Zap color={THEME.colors.primary} size={14} />
                                             <Text className="text-[11px] font-spaceGroteskBold text-primary tracking-widest">SDD</Text>
+                                        </View>
+                                    )}
+                                    {!!activeAssignment.sacas && (
+                                        <View className="px-3 py-1 bg-orange-500/10 rounded-full border border-orange-500/30 flex-row items-center gap-1">
+                                            <Package color="#f97316" size={14} />
+                                            <Text className="text-[11px] font-spaceGroteskBold tracking-widest" style={{ color: '#f97316' }}>
+                                                {activeAssignment.sacas} SACA{activeAssignment.sacas > 1 ? 'S' : ''}
+                                            </Text>
                                         </View>
                                     )}
                                 </View>

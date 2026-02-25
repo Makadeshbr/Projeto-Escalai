@@ -36,6 +36,7 @@ export default function AdminRouteManagement() {
     const [selectedWave, setSelectedWave] = useState<WaveKey>('morning');
     const [waveNum, setWaveNum] = useState('');
     const [dock, setDock] = useState('');
+    const [sacas, setSacas] = useState('');
     const [isSddEnabled, setIsSddEnabled] = useState(false);
     const [isSameDay, setIsSameDay] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -239,13 +240,21 @@ export default function AdminRouteManagement() {
                                 <View className="absolute right-4 opacity-50"><Clock color="#94a3b8" size={20} /></View>
                             </View>
                         </View>
-                        <View className="flex-1">
+                        <View className="flex-[1.5]">
                             <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1 mb-2">Balcão/Doca</Text>
-                            <View className="relative justify-center">
-                                <TextInput value={dock} onChangeText={setDock}
-                                    className="w-full bg-surface border border-border text-white text-lg font-spaceGroteskBold rounded-xl py-3 pl-4 pr-12 h-14"
-                                    placeholder="Nº" placeholderTextColor="#475569" autoCapitalize="characters" maxLength={10} />
-                                <View className="absolute right-4 opacity-50"><Package color="#94a3b8" size={20} /></View>
+                            <View className="flex-row gap-2">
+                                <View className="flex-1 relative justify-center">
+                                    <TextInput value={dock} onChangeText={setDock}
+                                        className="w-full bg-surface border border-border text-white text-lg font-spaceGroteskBold rounded-xl py-3 pl-4 pr-10 h-14"
+                                        placeholder="Nº" placeholderTextColor="#475569" autoCapitalize="characters" maxLength={10} />
+                                    <View className="absolute right-3 opacity-50"><Package color="#94a3b8" size={18} /></View>
+                                </View>
+                                <View className="flex-1 relative justify-center">
+                                    <TextInput value={sacas} onChangeText={setSacas}
+                                        className="w-full bg-surface border border-border text-white text-lg font-spaceGroteskBold rounded-xl py-3 pl-4 pr-10 h-14"
+                                        placeholder="Sacas" placeholderTextColor="#475569" keyboardType="numeric" maxLength={5} />
+                                    <View className="absolute right-3 opacity-50"><FileText color="#94a3b8" size={18} /></View>
+                                </View>
                             </View>
                         </View>
                     </View>
@@ -264,9 +273,9 @@ export default function AdminRouteManagement() {
                 {/* Submit Action */}
                 <TouchableOpacity
                     onPress={() => actions.handleCreateAssignments(
-                        { selectedCity: data.selectedCity, selectedWave, waveNum, dock, isSddEnabled, selectedDriverIds, availableDrivers: data.availableDrivers },
+                        { selectedCity: data.selectedCity, selectedWave, waveNum, dock, sacas, isSddEnabled, selectedDriverIds, availableDrivers: data.availableDrivers },
                         setIsLoading,
-                        () => { setDock(''); setWaveNum(''); setSelectedDriverIds(new Set()); }
+                        () => { setDock(''); setSacas(''); setWaveNum(''); setSelectedDriverIds(new Set()); }
                     )}
                     disabled={isLoading}
                     className={`w-full bg-primary h-14 flex-row justify-center items-center rounded-xl border border-[#d9c400] gap-2 mb-6 ${isLoading ? 'opacity-50' : ''}`}

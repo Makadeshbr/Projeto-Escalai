@@ -373,6 +373,7 @@ export default function ImportRouteScreen() {
                     waveTime: 'Conforme Rota',
                     waveNumber: route.waveNumber || '',
                     dock: route.dock,
+                    ...(typeof route.sacas === 'number' && route.sacas > 0 ? { sacas: route.sacas } : {}),
                     routeLabel: route.routeLabel || '',
                     isSdd: route.isSdd,
                     driverId: driverData.driverId || driverData.id,
