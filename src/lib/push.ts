@@ -156,6 +156,8 @@ export async function sendPushNotification(
             title,
             body,
             data,
+            priority: 'high', // Força despertar no Android Killed State (Estilo WhatsApp)
+            channelId: 'default',
         }));
 
         try {
@@ -170,9 +172,22 @@ export async function sendPushNotification(
             });
 
             const dataStatus = await response.json();
+
+            // 1. Checa Erros Globais da API
             if (dataStatus?.errors?.length > 0) {
-                errors.push(`Expo API Error: ${dataStatus.errors[0]?.message || 'Desconhecido'}`);
+                errors.push(`Expo API Error Global: ${dataStatus.errors[0]?.message || 'Desconhecido'}`);
             }
+
+            // 2. Checa Erros Individuais Visuais escondidos nos "Tickets" de disparo
+            if (dataStatus?.data && Array.isArray(dataStatus.data)) {
+                dataStatus.data.forEach((ticket: any) => {
+                    if (ticket.status === 'error') {
+                        const errorReason = ticket.details?.error || ticket.message || 'Desconhecido';
+                        errors.push(`Ticket Falhou: ${errorReason}`);
+                    }
+                });
+            }
+
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : 'Erro desconhecido';
             errors.push(msg);
