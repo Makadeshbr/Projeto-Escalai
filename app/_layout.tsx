@@ -10,6 +10,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { ThemeProvider, DarkTheme } from '@react-navigation/native';
 import { aetherConfig } from '../src/lib/aether';
 import { initializeNotificationHandler } from '../src/lib/push';
+import OTAUpdater from '../src/components/OTAUpdater';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -96,6 +97,7 @@ export default function RootLayout() {
                         <Stack.Screen name="driver/dashboard" />
                         <Stack.Screen name="admin/dashboard" />
                     </Stack>
+                    <OTAUpdater />
                 </ThemeProvider>
             </AetherProvider>
         </View>
