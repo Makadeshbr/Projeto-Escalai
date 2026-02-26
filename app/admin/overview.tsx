@@ -94,7 +94,7 @@ export default function AdminOverviewScreen() {
             setWeeklyData({ labels: days, data: counts });
             setTotalSacas(sacasTotal);
         } catch (e) {
-            console.error('[Overview] Error fetching data:', e);
+            __DEV__ && console.error('[Overview] Error fetching data:', e);
         } finally {
             setIsLoading(false);
         }
@@ -113,11 +113,11 @@ export default function AdminOverviewScreen() {
         try {
             unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
                 .subscribe(() => {
-                    console.log('[Realtime Overview] Mudança detectada, atualizando KPIs...');
+                    __DEV__ && console.log('[Realtime Overview] Mudança detectada, atualizando KPIs...');
                     fetchOverviewData();
                 });
         } catch (subErr) {
-            console.warn('[Realtime Overview] Subscribe indisponível, usando apenas polling:', subErr);
+            __DEV__ && console.warn('[Realtime Overview] Subscribe indisponível, usando apenas polling:', subErr);
         }
 
         // Polling de 20s como fallback

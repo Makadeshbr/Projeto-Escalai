@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, RefreshControl, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, RefreshControl, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
 import { Bell, Zap, CheckCircle, Navigation, History, AlertTriangle, TrendingUp, User, MapPin, CheckCircle2, Package } from 'lucide-react-native';
@@ -21,6 +21,8 @@ export default function DashboardScreen() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
     const [stats, setStats] = useState({ total: 0, completed: 0 });
+    const [unreadCount, setUnreadCount] = useState(0);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     const [actionModal, setActionModal] = useState({
         visible: false,
@@ -60,14 +62,14 @@ export default function DashboardScreen() {
                             updatedByAdminId: 'system_self_healing',
                             created_at: new Date().toISOString()
                         });
-                        console.log('[Self-Healing] Driver Status criado via método direto');
+                        __DEV__ && console.log('[Self-Healing] Driver Status criado via método direto');
                     } catch (directError: any) {
-                        console.warn('[Self-Healing] Erro no método direto:', directError.message);
+                        __DEV__ && console.warn('[Self-Healing] Erro no método direto:', directError.message);
                     }
                 }
             } catch (healError) {
                 // O erro é silencioso para não impactar a usabilidade do condutor caso haja latência de rede
-                console.warn('[Self-Healing] Erro na sincronização de auto-cura do driver_status:', healError);
+                __DEV__ && console.warn('[Self-Healing] Erro na sincronização de auto-cura do driver_status:', healError);
             }
 
             // [PUSH AUTO-SYNC] Garante que o push token mais recente está no DRIVER_STATUS.
@@ -77,7 +79,7 @@ export default function DashboardScreen() {
                 user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
                 user.metadata?.vehiclePlate || 'S/Placa',
                 user.metadata?.avatarUrl || ''
-            ).catch(err => console.warn('[PushSync] Fire-and-forget falhou:', err));
+            ).catch(err => __DEV__ && console.warn('[PushSync] Fire-and-forget falhou:', err));
 
             // [SENIOR DEV FIX] Buscamos ALL via aetherFetchAll (robusto) e filtramos local.
             // O .query() do SDK em fallback às vezes retorna vazio durante oscilações.
@@ -87,9 +89,11 @@ export default function DashboardScreen() {
             // Filtra as atribuições deste motorista
             const allAssigned = allAssignmentsRaw.filter(a => a.driverId === user.id);
 
-            console.log(`[Driver Dashboard] ID local: ${user.id}`);
-            console.log(`[Driver Dashboard] Total de assignments recebidos: ${allAssignmentsRaw.length}`);
-            console.log(`[Driver Dashboard] Assignments correspondendo ao ID: ${allAssigned.length}`);
+            if (__DEV__) {
+                console.log(`[Driver Dashboard] ID local: ${user.id}`);
+                console.log(`[Driver Dashboard] Total de assignments recebidos: ${allAssignmentsRaw.length}`);
+                console.log(`[Driver Dashboard] Assignments correspondendo ao ID: ${allAssigned.length}`);
+            }
 
             if (allAssignmentsRaw.length > 0 && allAssigned.length === 0) {
                 // Tenta achar pelo nome ou placa para ver se o admin salvou com ID errado
@@ -98,23 +102,28 @@ export default function DashboardScreen() {
                     a.driverName === user.name
                 );
                 if (possibleMatches.length > 0) {
-                    console.log(`[Driver Dashboard WARNING] Achei ${possibleMatches.length} assignments com SEU NOME, mas com ID diferente! ID salvo: ${possibleMatches[0].driverId}`);
+                    __DEV__ && console.log(`[Driver Dashboard WARNING] Achei ${possibleMatches.length} assignments com SEU NOME, mas com ID diferente! ID salvo: ${possibleMatches[0].driverId}`);
                 }
             }
 
             if (allAssigned) {
                 const pendingOrConfirmed = allAssigned.filter(a => a.status === 'pending' || a.status === 'confirmed');
-                console.log(`[Driver Dashboard] Destes, pending/confirmed: ${pendingOrConfirmed.length}`);
+                __DEV__ && console.log(`[Driver Dashboard] Destes, pending/confirmed: ${pendingOrConfirmed.length}`);
 
                 // Sort to show the earliest created first
                 pendingOrConfirmed.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
                 setAssignments(pendingOrConfirmed);
 
                 const completed = allAssigned.filter(a => a.status === 'completed').length;
+
+                // Calculates unread notifications (not completed and flag driverDidReadNotification is false/undefined)
+                const unread = allAssigned.filter(a => a.status !== 'completed' && !a.driverDidReadNotification).length;
+
                 setStats({ total: allAssigned.length, completed });
+                setUnreadCount(unread);
             }
         } catch (e) {
-            console.error('[Dashboard] Erro fetching assignments:', e);
+            __DEV__ && console.error('[Dashboard] Erro fetching assignments:', e);
         } finally {
             setIsLoading(false);
         }
@@ -137,7 +146,17 @@ export default function DashboardScreen() {
             unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
                 .subscribe((updatedData: any) => {
                     if (!updatedData) return;
-                    const payload = updatedData._payload || updatedData;
+
+                    // Tratamento seguro para diferentes formatos de payload
+                    let payload = updatedData;
+                    if (updatedData.type === 'DELETE') {
+                        payload = updatedData.old_record || {};
+                    } else if (updatedData._payload) {
+                        payload = updatedData._payload;
+                    } else if (updatedData.record) {
+                        payload = updatedData.record;
+                    }
+
                     const updateId = payload.id || updatedData.id;
                     const explicitlyOwned = (payload.driverId || updatedData.driverId) === user.id;
 
@@ -147,12 +166,12 @@ export default function DashboardScreen() {
 
                     // Só refetch se a mudança for relacionada a ESTE motorista
                     if (explicitlyOwned || isCurrentlyAssigned) {
-                        console.log('[Realtime DriverDash] Mudança detectada para este motorista (Update ID):', updateId);
+                        __DEV__ && console.log('[Realtime DriverDash] Mudança detectada para este motorista (Update ID):', updateId);
                         fetchAssignments();
                     }
                 });
         } catch (subErr) {
-            console.warn('[Realtime DriverDash] Subscribe indisponível, usando apenas polling:', subErr);
+            __DEV__ && console.warn('[Realtime DriverDash] Subscribe indisponível, usando apenas polling:', subErr);
         }
 
         // Polling de 15s como fallback
@@ -165,6 +184,23 @@ export default function DashboardScreen() {
             clearInterval(interval);
         };
     }, [user, fetchAssignments]);
+
+    /**
+     * [SENIOR UX] Controla a Animação do Sino Baseado no Conto de Não Lidas
+     */
+    useEffect(() => {
+        if (unreadCount > 0 && !showNotifications) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 1.25, duration: 450, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 450, useNativeDriver: true })
+                ])
+            ).start();
+        } else {
+            pulseAnim.stopAnimation();
+            pulseAnim.setValue(1);
+        }
+    }, [unreadCount, showNotifications]);
 
     const handleConfirmRead = async (assignmentId: string) => {
         setIsConfirming(true);
@@ -184,7 +220,7 @@ export default function DashboardScreen() {
                     `${driverLabel} confirmou leitura da rota para ${cityLabel}.`
                 );
             } catch (pushErr) {
-                console.warn('[Fault Tolerance] Push admin falhou:', pushErr);
+                __DEV__ && console.warn('[Fault Tolerance] Push admin falhou:', pushErr);
             }
 
             await fetchAssignments(); // refresh list
@@ -229,7 +265,20 @@ export default function DashboardScreen() {
                         onPress={() => setShowNotifications(true)}
                         className="w-10 h-10 items-center justify-center rounded-full bg-surface border border-border"
                     >
-                        <Bell color={THEME.colors.primary} size={20} />
+                        {unreadCount > 0 ? (
+                            <Animated.View style={{ transform: [{ scale: pulseAnim }], alignItems: 'center', justifyContent: 'center' }}>
+                                <View className="relative">
+                                    <Bell color="#ef4444" size={20} />
+                                    <View className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 rounded-full border border-surface items-center justify-center">
+                                        <Text className="text-[9px] font-spaceGroteskBold text-white leading-none">
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </Animated.View>
+                        ) : (
+                            <Bell color={THEME.colors.primary} size={20} />
+                        )}
                     </TouchableOpacity>
                 </View>
 

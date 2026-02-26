@@ -181,15 +181,15 @@ export default function AdminDriversScreen() {
                                 email: (u.email as string) || '',
                                 role: (u.role as string) || 'driver',
                             }));
-                            console.log(`[Drivers] Auth users carregados: ${authUsers.length} (total autenticação)`);
+                            __DEV__ && console.log(`[Drivers] Auth users carregados: ${authUsers.length} (total autenticação)`);
                         } else {
-                            console.warn(`[Drivers] Falha ao buscar auth users (${resp.status}), usando apenas driver_status.`);
+                            __DEV__ && console.warn(`[Drivers] Falha ao buscar auth users (${resp.status}), usando apenas driver_status.`);
                         }
                     }
                 }
             } catch (authErr) {
                 // Fallback silencioso — se falhar, mostra apenas os que já logaram
-                console.warn('[Drivers] Auth users indisponível, exibindo apenas driver_status:', authErr);
+                __DEV__ && console.warn('[Drivers] Auth users indisponível, exibindo apenas driver_status:', authErr);
             }
 
             // 3. Mescla: identifica motoristas da auth que NÃO têm driver_status (nunca logaram)
@@ -209,7 +209,7 @@ export default function AdminDriversScreen() {
 
             // 4. Une os dois arrays
             const mergedDrivers = [...allDrivers, ...neverAccessedDrivers];
-            console.log(`[Drivers] Total mesclado: ${mergedDrivers.length} (${allDrivers.length} logados + ${neverAccessedDrivers.length} nunca acessaram)`);
+            __DEV__ && console.log(`[Drivers] Total mesclado: ${mergedDrivers.length} (${allDrivers.length} logados + ${neverAccessedDrivers.length} nunca acessaram)`);
 
             // 5. Busca respostas de disponibilidade para a data-alvo
             const allAnswersRaw = await aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY);
@@ -251,7 +251,7 @@ export default function AdminDriversScreen() {
 
             setCrossList(buildList);
         } catch (e) {
-            console.error('[Drivers] Error fetching availability cross-join:', e);
+            __DEV__ && console.error('[Drivers] Error fetching availability cross-join:', e);
             setCrossList([]);
         } finally {
             setIsLoading(false);

@@ -13,7 +13,7 @@ import {
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
-import { notifyAdmins, ensureDriverPushToken } from '~/src/lib/push';
+import { dispatchAdminAlert, ensureDriverPushToken } from '~/src/lib/push';
 
 type ScreenState = 'loading' | 'blocked' | 'no_window' | 'already_filled' | 'form';
 
@@ -265,13 +265,14 @@ export default function AvailabilityScreen() {
 
             showModal('Pronto!', `Sua disponibilidade foi confirmada para ${targetTitle.toLowerCase()}.`, 'success');
 
-            // Notifica admins que o motorista preencheu disponibilidade
             try {
                 const driverLabel = user.metadata?.name || user.name || user.email || 'Motorista';
                 const statusLabel = isAvailable ? 'DISPONÍVEL' : 'INDISPONÍVEL';
-                await notifyAdmins(
+                await dispatchAdminAlert(
                     `DISPONIBILIDADE REGISTRADA 📋`,
-                    `${driverLabel} se declarou ${statusLabel} para ${targetTitle.toLowerCase()} (${targetDateLabel}).`
+                    `${driverLabel} se declarou ${statusLabel} para ${targetTitle.toLowerCase()} (${targetDateLabel}).`,
+                    'availability_answered',
+                    user.id
                 );
             } catch (pushErr) {
                 console.warn('[Fault Tolerance] Push admin falhou:', pushErr);

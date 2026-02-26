@@ -16,7 +16,7 @@ import { useAuthStore } from '~/src/store/auth';
 import { aether } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
 import { THEME } from '~/src/constants/theme';
-import { notifyAdmins, ensureDriverPushToken } from '~/src/lib/push';
+import { dispatchAdminAlert, ensureDriverPushToken } from '~/src/lib/push';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 
 /**
@@ -203,9 +203,12 @@ export default function RouteStatusScreen() {
 
             // Notifica admins que o motorista saiu da doca
             try {
-                await notifyAdmins(
+                await dispatchAdminAlert(
                     'DOCA LIBERADA PELO MOTORISTA 🚛',
-                    `${assignment.driverName} (Placa: ${assignment.driverPlate || '--'}) saiu da doca ${assignment.dock} rumo a ${assignment.cityName}.`
+                    `${assignment.driverName} (Placa: ${assignment.driverPlate || '--'}) saiu da doca ${assignment.dock} rumo a ${assignment.cityName}.`,
+                    'route_confirmed',
+                    user?.id,
+                    assignment.id
                 );
             } catch (pushErr) {
                 console.warn('[Fault Tolerance] Push admin falhou:', pushErr);
@@ -450,9 +453,12 @@ export default function RouteStatusScreen() {
                                 }).then(() => {
                                     Alert.alert('Ticket Enviado ✓', 'O administrador receberá seu reporte e entrará em contato.');
                                     // Notifica admins via push
-                                    notifyAdmins(
+                                    dispatchAdminAlert(
                                         '🚨 Problema Reportado',
-                                        `${user.metadata?.name || 'Motorista'} reportou um problema na rota ${assignment?.routeLabel || 'N/A'}`
+                                        `${user.metadata?.name || 'Motorista'} reportou um problema na rota ${assignment?.routeLabel || 'N/A'}`,
+                                        'ticket_created',
+                                        user.id,
+                                        assignment?.id
                                     ).catch(() => { });
                                 }).catch(() => {
                                     Alert.alert('Erro', 'Não foi possível enviar o reporte. Tente contatar via WhatsApp.');

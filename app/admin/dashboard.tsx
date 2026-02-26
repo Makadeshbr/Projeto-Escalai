@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TouchableOpacity, ScrollView, TextInput, Switch,
-    ActivityIndicator, StyleSheet,
+    ActivityIndicator, StyleSheet, Modal, Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
@@ -10,7 +10,8 @@ import {
     Clock, Navigation, User, ArrowRight, Zap
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Assignment, DriverAvailability } from '~/src/lib/collections';
+import { Assignment, DriverAvailability, COLLECTIONS } from '~/src/lib/collections';
+import { aether } from '~/src/lib/aether';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { registerForPushNotificationsAsync, registerAdminPushToken } from '~/src/lib/push';
 import { useAuthStore } from '~/src/store/auth';
@@ -25,6 +26,7 @@ import { CityPickerModal } from '~/src/components/dashboard/CityPickerModal';
 import { DriverPickerModal } from '~/src/components/dashboard/DriverPickerModal';
 import { DashboardActionModal } from '~/src/components/dashboard/DashboardActionModal';
 import { RecentAssignmentsList, AssignmentDetailModal } from '~/src/components/dashboard/AssignmentComponents';
+import { AdminNotificationCenter } from '~/src/components/AdminNotificationCenter';
 
 /**
  * Tela principal de gestão de rotas do admin.
@@ -47,6 +49,9 @@ export default function AdminRouteManagement() {
     const [showAssignmentModal, setShowAssignmentModal] = useState(false);
     const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
     const [reassignTarget, setReassignTarget] = useState<Assignment | null>(null);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     // Hooks de negócio
     const { user } = useAuthStore();
@@ -76,6 +81,42 @@ export default function AdminRouteManagement() {
         fetchStats: data.fetchStats,
         showModal,
     });
+
+    // Realtime Notifications Hook
+    useEffect(() => {
+        let unsubscribe: (() => void) | undefined;
+        const fetchUnread = async () => {
+            try {
+                const res = await aether.db.collection(COLLECTIONS.ADMIN_NOTIFICATIONS)
+                    .query().eq('read', false).get();
+                if (res) setUnreadCount((res as any[]).length);
+            } catch (err) { }
+        };
+        fetchUnread();
+
+        try {
+            unsubscribe = aether.db.collection(COLLECTIONS.ADMIN_NOTIFICATIONS).subscribe(() => {
+                fetchUnread();
+            });
+        } catch (subErr) { }
+
+        return () => { if (unsubscribe) unsubscribe(); };
+    }, []);
+
+    // Notification Pulse Animation
+    useEffect(() => {
+        if (unreadCount > 0 && !showNotifications) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 1.25, duration: 450, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 450, useNativeDriver: true })
+                ])
+            ).start();
+        } else {
+            pulseAnim.stopAnimation();
+            pulseAnim.setValue(1);
+        }
+    }, [unreadCount, showNotifications]);
 
     /** Toggle de seleção de motorista */
     const toggleDriverSelection = (driverId: string) => {
@@ -126,9 +167,21 @@ export default function AdminRouteManagement() {
                     <Text className="text-2xl font-spaceGroteskBold tracking-tight text-white mb-1">Despacho</Text>
                     <Text className="text-xs font-spaceGrotesk text-[#94a3b8] uppercase tracking-[0.1em]">GESTÃO DE ROTAS</Text>
                 </View>
-                <TouchableOpacity className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center relative">
-                    <Bell color={THEME.colors.primary} size={20} />
-                    <View className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1e2332]" />
+                <TouchableOpacity onPress={() => setShowNotifications(true)} className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center relative">
+                    {unreadCount > 0 ? (
+                        <Animated.View style={{ transform: [{ scale: pulseAnim }], alignItems: 'center', justifyContent: 'center' }}>
+                            <View className="relative">
+                                <Bell color="#ef4444" size={20} />
+                                <View className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 rounded-full border border-surface items-center justify-center">
+                                    <Text className="text-[9px] font-spaceGroteskBold text-white leading-none">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </Text>
+                                </View>
+                            </View>
+                        </Animated.View>
+                    ) : (
+                        <Bell color={THEME.colors.primary} size={20} />
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -318,6 +371,20 @@ export default function AdminRouteManagement() {
             />
 
             <DashboardActionModal modal={actionModal} onDismiss={dismissModal} />
+
+            <Modal
+                visible={showNotifications}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowNotifications(false)}
+            >
+                <View className="flex-1 bg-black/60 pt-20">
+                    <View className="flex-1 rounded-t-3xl overflow-hidden bg-background">
+                        <AdminNotificationCenter visible={showNotifications} onClose={() => setShowNotifications(false)} />
+                    </View>
+                </View>
+            </Modal>
+
             <AdminBottomNav activeTab="dashboard" />
         </SafeAreaView>
     );

@@ -19,7 +19,7 @@ function createAetherProxy(): PlataformaClient {
     return new Proxy({} as PlataformaClient, {
         get(_target: PlataformaClient, prop: string | symbol) {
             if (!isAetherClientReady()) {
-                console.warn(`[Aether] Client não pronto. Aguardando para: ${String(prop)}`);
+                __DEV__ && console.warn(`[Aether] Client não pronto. Aguardando para: ${String(prop)}`);
             }
             const client = getAetherClient();
             const value = (client as unknown as Record<string | symbol, unknown>)[prop];
@@ -52,7 +52,7 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
 
     // Se mesmo após aguardar, o client não estiver pronto, retorna vazio
     if (!isAetherClientReady()) {
-        console.warn(`[aetherFetchAll] Client não pronto após timeout. Coleção: ${collectionName}`);
+        __DEV__ && console.warn(`[aetherFetchAll] Client não pronto após timeout. Coleção: ${collectionName}`);
         return [];
     }
 
@@ -86,7 +86,7 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
 
                 const resp = await fetch(url, { headers });
                 if (!resp.ok) {
-                    console.warn(`[aetherFetchAll] REST falhou (${resp.status}), usando SDK como fallback.`);
+                    __DEV__ && console.warn(`[aetherFetchAll] REST falhou (${resp.status}), usando SDK como fallback.`);
                     break;
                 }
 
@@ -99,27 +99,27 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
                 const hasMore = json.hasMore === true;
                 pageCount++;
 
-                console.log(`[aetherFetchAll] ${collectionName} página ${pageCount}: ${items.length} registros (total acumulado: ${allItems.length}, hasMore: ${hasMore})`);
+                __DEV__ && console.log(`[aetherFetchAll] ${collectionName} página ${pageCount}: ${items.length} registros (total acumulado: ${allItems.length}, hasMore: ${hasMore})`);
 
                 if (!hasMore || !cursor) break;
             } while (pageCount < MAX_PAGES);
 
             if (allItems.length > 0) {
-                console.log(`[aetherFetchAll] REST OK: ${collectionName} → ${allItems.length} registros TOTAL em ${pageCount} página(s)`);
+                __DEV__ && console.log(`[aetherFetchAll] REST OK: ${collectionName} → ${allItems.length} registros TOTAL em ${pageCount} página(s)`);
                 return allItems;
             }
         }
     } catch (restErr) {
-        console.warn('[aetherFetchAll] REST indisponível, usando SDK:', restErr);
+        __DEV__ && console.warn('[aetherFetchAll] REST indisponível, usando SDK:', restErr);
     }
 
     // Fallback: usa SDK padrão (com try/catch para não quebrar silenciosamente)
     try {
         const result = await aether.db.collection(collectionName).query().get();
-        console.log(`[aetherFetchAll] SDK fallback: ${collectionName} → ${(result || []).length} registros`);
+        __DEV__ && console.log(`[aetherFetchAll] SDK fallback: ${collectionName} → ${(result || []).length} registros`);
         return (result || []) as Record<string, unknown>[];
     } catch (sdkErr) {
-        console.error(`[aetherFetchAll] Fallback SDK falhou para ${collectionName}:`, sdkErr);
+        __DEV__ && console.error(`[aetherFetchAll] Fallback SDK falhou para ${collectionName}:`, sdkErr);
         return [];
     }
 }

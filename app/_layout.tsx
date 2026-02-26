@@ -2,7 +2,7 @@ import { Stack, router } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { THEME } from '~/src/constants/theme';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, StatusBar } from 'react-native';
 import { AetherProvider } from '@aether-baas/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +14,9 @@ import OTAUpdater from '../src/components/OTAUpdater';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { OfflineBanner } from '../src/components/OfflineBanner';
 import { crashReporter } from '../src/lib/crashReporter';
+
+/** Timeout máximo para carregamento de fontes (ms). Evita splash infinita em Android low-end. */
+const FONT_LOAD_TIMEOUT = 5000;
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -51,18 +54,38 @@ const AppDarkTheme = {
 };
 
 export default function RootLayout() {
-    const [loaded] = useFonts({
+    const [loaded, fontError] = useFonts({
         'SpaceGrotesk-Regular': require('../assets/fonts/SpaceGrotesk-Regular.ttf'),
         'SpaceGrotesk-Bold': require('../assets/fonts/SpaceGrotesk-Bold.ttf'),
     });
 
+    // Timeout de segurança: se fontes não carregarem em 5s, renderiza mesmo assim
+    const [fontTimedOut, setFontTimedOut] = useState(false);
+
     const responseListener = useRef<ReturnType<typeof import('expo-notifications').addNotificationResponseReceivedListener> | null>(null);
 
     useEffect(() => {
-        if (loaded) {
+        const timer = setTimeout(() => {
+            if (!loaded) {
+                setFontTimedOut(true);
+                crashReporter.captureException(
+                    new Error('[Startup] Font loading timeout — rendering with system fonts'),
+                    { fontError: fontError?.message }
+                );
+            }
+        }, FONT_LOAD_TIMEOUT);
+
+        return () => clearTimeout(timer);
+    }, [loaded, fontError]);
+
+    // Esconde splash assim que fontes carregarem OU timeout expirar
+    const canRender = loaded || fontTimedOut;
+
+    useEffect(() => {
+        if (canRender) {
             SplashScreen.hideAsync();
         }
-    }, [loaded]);
+    }, [canRender]);
 
     useEffect(() => {
         /**
@@ -72,12 +95,10 @@ export default function RootLayout() {
          */
         if (!isExpoGo) {
             const Notifications = require('expo-notifications');
-            // Trata toque físico na notificação (simula Deep Link para dashboard do motorista)
             responseListener.current = Notifications.addNotificationResponseReceivedListener((response: { notification: { request: { content: { data: Record<string, unknown> } } } }) => {
                 const data = response.notification.request.content.data;
-                console.log('[Push] Usuário tocou na notificação, redirecionando...', data);
+                if (__DEV__) console.log('[Push] Usuário tocou na notificação, redirecionando...', data);
 
-                // setTimeout garante que a navegação complete após a montagem do app
                 setTimeout(() => {
                     router.push('/driver/dashboard');
                 }, 500);
@@ -91,7 +112,7 @@ export default function RootLayout() {
         };
     }, []);
 
-    if (!loaded) return null;
+    if (!canRender) return null;
 
     return (
         <ErrorBoundary>
@@ -113,7 +134,6 @@ export default function RootLayout() {
                             <Stack.Screen name="driver/dashboard" />
                             <Stack.Screen name="admin/dashboard" />
                         </Stack>
-                        <OTAUpdater />
                     </ThemeProvider>
                 </AetherProvider>
             </View>

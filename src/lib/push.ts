@@ -456,6 +456,38 @@ export async function notifyAdmins(
 }
 
 /**
+ * [SENIOR UX] Dispara um Alerta para o Admin que persiste no banco 
+ * e envia Notificação Push simultaneamente.
+ */
+export async function dispatchAdminAlert(
+    title: string,
+    message: string,
+    type: 'availability_answered' | 'route_confirmed' | 'route_completed' | 'ticket_created' | 'system_alert' | 'info',
+    relatedDriverId?: string,
+    relatedAssignmentId?: string
+): Promise<void> {
+    try {
+        // 1. Salva no banco (para a Notification Center In-App do Admin)
+        await aether.db.collection(COLLECTIONS.ADMIN_NOTIFICATIONS).create({
+            title,
+            message,
+            type,
+            read: false,
+            relatedDriverId: relatedDriverId || null,
+            relatedAssignmentId: relatedAssignmentId || null,
+            createdAt: new Date().toISOString()
+        });
+    } catch (e) {
+        console.warn('[Push] Erro ao persistir notificação de admin:', e);
+    }
+
+    // 2. Dispara Push Notification (padrão nativo do Expo)
+    await notifyAdmins(title, message, {
+        type, relatedDriverId, relatedAssignmentId
+    });
+}
+
+/**
  * Envia notificação Push para um motorista específico pelo ID.
  * Busca o token do DRIVER_STATUS e dispara via Expo Push API.
  * @param driverId - ID do motorista no sistema

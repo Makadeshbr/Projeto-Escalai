@@ -425,72 +425,90 @@ export default function ImportRouteScreen() {
                 return validationMap[cleanPlate] === true;
             });
 
-            // [ENTERPRISE FIX] Batch Throttle: processa em lotes de 10
-            // Evita burst de 100+ requests que estourava o rate limiter (429).
+            // [ENTERPRISE FIX] Batch Throttle & Transacional: processa em lotes de 10
+            // Evita burst de 100+ requests, mas agora usa Retry e Push Bloqueante para precisão
             const BATCH_SIZE = 10;
             const BATCH_DELAY_MS = 200; // Delay pequeno, backend aguenta
+            const MAX_RETRIES = 3;
 
             for (let i = 0; i < validRoutes.length; i += BATCH_SIZE) {
                 const batch = validRoutes.slice(i, i + BATCH_SIZE);
 
-                // Processa a criação dos dados em paralelo
-                const dbPromises = batch.map(async (route) => {
+                // Em vez de Promise.allSettled solto, processamos o batch de forma resiliente
+                const batchPromises = batch.map(async (route) => {
                     const cleanPlate = route.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
                     const driverData = snapDrivers.find(d => d.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanPlate);
 
                     if (!driverData) return null;
+                    const driverActualId = driverData.driverId || driverData.id;
 
-                    // Cria Assignment mapeando TODOS os campos do PDF
-                    await aether.db.collection(COLLECTIONS.ASSIGNMENTS).create({
-                        cityId: 'auto-route',
-                        cityName: route.city,
-                        wave: 'morning',
-                        waveLabel: route.waveLabel,
-                        waveTime: 'Conforme Rota',
-                        waveNumber: route.waveNumber || '',
-                        dock: route.dock,
-                        ...(typeof route.sacas === 'number' && route.sacas > 0 ? { sacas: route.sacas } : {}),
-                        routeLabel: route.routeLabel || '',
-                        isSdd: route.isSdd,
-                        driverId: driverData.driverId || driverData.id,
-                        driverName: driverData.driverName,
-                        driverPlate: driverData.driverPlate,
-                        dockStatus: 'waiting',
-                        status: 'pending',
-                        createdByAdminId: snapAdminId,
-                        createdAt: new Date().toISOString(),
-                    });
+                    let dbCreated = false;
 
-                    return { route, driverData };
-                });
-
-                const createdResults = await Promise.allSettled(dbPromises);
-
-                // Extrai as rotas criadas com sucesso
-                const successfulCreations: { route: any, driverData: any }[] = [];
-                createdResults.forEach(r => {
-                    if (r.status === 'fulfilled' && r.value) {
-                        successfulCreations.push(r.value);
-                        successCount++;
-                    } else if (r.status === 'rejected') {
-                        console.warn('[Dispatch] Falha ao criar rota no DB:', r.reason);
+                    // Cria Assignment mapeando TODOS os campos do PDF com RETRY
+                    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                        try {
+                            await aether.db.collection(COLLECTIONS.ASSIGNMENTS).create({
+                                cityId: 'auto-route',
+                                cityName: route.city,
+                                wave: 'morning',
+                                waveLabel: route.waveLabel,
+                                waveTime: 'Conforme Rota',
+                                waveNumber: route.waveNumber || '',
+                                dock: route.dock,
+                                ...(typeof route.sacas === 'number' && route.sacas > 0 ? { sacas: route.sacas } : {}),
+                                routeLabel: route.routeLabel || '',
+                                isSdd: route.isSdd,
+                                driverId: driverActualId,
+                                driverName: driverData.driverName,
+                                driverPlate: driverData.driverPlate,
+                                dockStatus: 'waiting',
+                                status: 'pending',
+                                createdByAdminId: snapAdminId,
+                                createdAt: new Date().toISOString(),
+                            });
+                            dbCreated = true;
+                            break; // Sucesso na criacao
+                        } catch (dbErr: any) {
+                            __DEV__ && console.warn(`[Fault Tolerance / Import] Erro DB (T:${attempt}) p/ ${route.driverPlate}:`, dbErr.message);
+                            if (attempt === MAX_RETRIES) {
+                                console.error(`[Fault Tolerance / Import] Falha final DB p/ ${route.driverPlate}`);
+                                return null; // Falhou de vez
+                            }
+                            await new Promise(r => setTimeout(r, 500 * attempt));
+                        }
                     }
+
+                    if (dbCreated) {
+                        try {
+                            // [ENTERPRISE FIX] Push Bloqueante por Lote (Garante a metrificação real do sucesso)
+                            await notifyDriver(
+                                driverActualId,
+                                'NOVA ROTA NA ESCALA 📦',
+                                `Você foi escalado para a base ${route.city} (Turno: ${route.waveLabel}). Rota: ${route.routeLabel || 'N/A'}. Dirija-se à Doca ${route.dock}${route.isSdd ? ' com URGÊNCIA (Prioridade Laranja)' : ''}.`
+                            );
+                            return { route, driverData, pushSuccess: true };
+                        } catch (pushErr) {
+                            __DEV__ && console.warn(`[Fault Tolerance / Import] Push falhou p/ ${route.driverPlate}`, pushErr);
+                            return { route, driverData, pushSuccess: false };
+                        }
+                    }
+
+                    return null;
                 });
 
-                // [ENTERPRISE FIX] Disparo Assíncrono e Paralelo das Notificações (Fire and Forget)
-                // Não bloqueamos o laço com o await do push. O usuário verá a tela carregar instantaneamente.
-                Promise.allSettled(
-                    successfulCreations.map(({ route, driverData }) =>
-                        notifyDriver(
-                            driverData.driverId || driverData.id,
-                            'NOVA ROTA NA ESCALA 📦',
-                            `Você foi escalado para a base ${route.city} (Turno: ${route.waveLabel}). Rota: ${route.routeLabel || 'N/A'}. Dirija-se à Doca ${route.dock}${route.isSdd ? ' com URGÊNCIA (Prioridade Laranja)' : ''}.`
-                        )
-                    )
-                ).then(pushResults => {
-                    pushResults.forEach(pr => {
-                        if (pr.status === 'rejected') failedPushes++;
-                    });
+                const batchResults = await Promise.allSettled(batchPromises);
+
+                // Contabiliza sucessos absolutos e parciais
+                batchResults.forEach(r => {
+                    if (r.status === 'fulfilled' && r.value) {
+                        successCount++;
+                        if (!r.value.pushSuccess) {
+                            failedPushes++;
+                        }
+                    } else if (r.status === 'rejected') {
+                        // Isso é raro com nosso retry forte (ou se o promise map throws, o que controlamos)
+                        console.warn('[Dispatch] Falha sistêmica no Batch:', r.reason);
+                    }
                 });
 
                 // Delay entre batches do banco

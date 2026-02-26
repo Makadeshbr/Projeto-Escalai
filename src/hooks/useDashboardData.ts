@@ -66,7 +66,7 @@ export function useDashboardData(
                 }
             }
         } catch (e) {
-            console.error('[Dashboard] Erro ao buscar cidades:', e);
+            __DEV__ && console.error('[Dashboard] Erro ao buscar cidades:', e);
         }
     }, [selectedCity]);
 
@@ -89,7 +89,7 @@ export function useDashboardData(
             );
             setActiveDriverCount(todayAvailabilities.length);
         } catch (e) {
-            console.error('[Dashboard] Erro ao buscar stats:', e);
+            __DEV__ && console.error('[Dashboard] Erro ao buscar stats:', e);
         }
     }, []);
 
@@ -114,7 +114,7 @@ export function useDashboardData(
 
             setAvailableDrivers(filtered);
         } catch (e) {
-            console.error('[Dashboard] Erro ao buscar motoristas:', e);
+            __DEV__ && console.error('[Dashboard] Erro ao buscar motoristas:', e);
             setAvailableDrivers([]);
         } finally {
             setDriversLoading(false);
@@ -148,7 +148,7 @@ export function useDashboardData(
 
             setRecentAssignments(sorted);
         } catch (e) {
-            console.error('[Dashboard] Erro ao buscar assignments:', e);
+            __DEV__ && console.error('[Dashboard] Erro ao buscar assignments:', e);
         }
     }, []);
 
@@ -253,13 +253,13 @@ export function useDashboardData(
                     // O subscribe não deve bater nos endpoints para cada registro apagado
                     clearTimeout(debounceTimer);
                     debounceTimer = setTimeout(() => {
-                        console.log('[Realtime Dashboard] Mudança processada, atualizando em batch...');
+                        __DEV__ && console.log('[Realtime Dashboard] Mudança processada, atualizando em batch...');
                         fetchStats();
                         fetchRecentAssignments();
                     }, 1500);
                 });
         } catch (subErr) {
-            console.warn('[Realtime Dashboard] Subscribe indisponível, usando apenas polling:', subErr);
+            __DEV__ && console.warn('[Realtime Dashboard] Subscribe indisponível, usando apenas polling:', subErr);
         }
 
         // Polling de 15s como fallback e garantia de consistência

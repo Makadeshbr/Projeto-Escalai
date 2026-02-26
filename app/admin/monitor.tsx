@@ -111,80 +111,91 @@ const DriverCard = React.memo(function DriverCard({
                     </View>
                 )}
 
-                <View className="flex-row justify-between items-start">
-                    <View className="flex-row gap-3 items-center flex-1 mr-3">
-                        <DriverAvatar avatarUrl={avatarUrl} size={48} />
-                        <View className="flex-1">
-                            <Text className="text-lg font-bold text-white" numberOfLines={1}>{assignment.driverName}</Text>
-                            <View className="flex-row items-center gap-2 mt-0.5">
-                                <View className="px-2 py-0.5 rounded bg-[#f2db0d]/20 border border-[#f2db0d]/20">
-                                    <Text className="text-[#f2db0d] text-xs font-bold uppercase">
-                                        {assignment.waveNumber || 'Onda'}
-                                    </Text>
-                                </View>
-                                <Text className="text-slate-400 text-xs" numberOfLines={1}>• {assignment.driverPlate || '--'}</Text>
+                {/* VISÃO COMPACTA (Apenas fita para motoristas que já partiram) */}
+                {isDeparted ? (
+                    <View className="flex-row items-center justify-between py-1">
+                        <View className="flex-row items-center gap-3">
+                            <View className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 items-center justify-center">
+                                <Navigation size={14} color="#64748b" />
+                            </View>
+                            <View>
+                                <Text className="text-slate-300 font-bold" numberOfLines={1}>{assignment.driverName}</Text>
+                                <Text className="text-slate-500 text-[10px] uppercase font-mono mt-0.5">{assignment.driverPlate || '--'} • ROTA {assignment.routeLabel}</Text>
                             </View>
                         </View>
+                        <View className="items-end bg-black/20 px-3 py-1.5 rounded border border-white/5">
+                            <Text className="text-[9px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">Destino</Text>
+                            <Text className="text-slate-300 text-xs font-bold leading-none">{assignment.cityName}</Text>
+                        </View>
                     </View>
+                ) : (
+                    <>
+                        <View className="flex-row justify-between items-start">
+                            <View className="flex-row gap-3 items-center flex-1 mr-3">
+                                <DriverAvatar avatarUrl={avatarUrl} size={48} />
+                                <View className="flex-1">
+                                    <Text className="text-lg font-bold text-white" numberOfLines={1}>{assignment.driverName}</Text>
+                                    <View className="flex-row items-center gap-2 mt-0.5">
+                                        <View className="px-2 py-0.5 rounded bg-[#f2db0d]/20 border border-[#f2db0d]/20">
+                                            <Text className="text-[#f2db0d] text-xs font-bold uppercase">
+                                                {assignment.waveNumber || 'Onda'}
+                                            </Text>
+                                        </View>
+                                        <Text className="text-slate-400 text-xs" numberOfLines={1}>• {assignment.driverPlate || '--'}</Text>
+                                    </View>
+                                </View>
+                            </View>
 
-                    <View className="items-end" style={{ minWidth: 50 }}>
-                        <Text className="text-xs text-slate-400 uppercase tracking-wider font-bold">Doca</Text>
-                        <Text className="text-2xl font-bold text-primary leading-none">
-                            {assignment.dock || '--'}
-                        </Text>
-                    </View>
-                </View>
+                            <View className="items-end" style={{ minWidth: 50 }}>
+                                <Text className="text-xs text-slate-400 uppercase tracking-wider font-bold">Doca</Text>
+                                <Text className="text-2xl font-bold text-primary leading-none">
+                                    {assignment.dock || '--'}
+                                </Text>
+                            </View>
+                        </View>
 
-                <View className="flex-row gap-2 bg-black/20 p-3 rounded-lg border border-white/5">
-                    <View className="flex-1">
-                        <Text className="text-[10px] text-slate-500 uppercase">Destino</Text>
-                        <Text className="text-sm text-slate-200 font-medium">{assignment.cityName}</Text>
-                    </View>
-                    <View className="flex-1">
-                        <Text className="text-[10px] text-slate-500 uppercase">Rota</Text>
-                        <Text className="text-sm text-slate-200 font-medium">{assignment.routeLabel || '--'}</Text>
-                    </View>
-                </View>
+                        <View className="flex-row gap-2 bg-black/20 p-3 rounded-lg border border-white/5">
+                            <View className="flex-1">
+                                <Text className="text-[10px] text-slate-500 uppercase">Destino</Text>
+                                <Text className="text-sm text-slate-200 font-medium">{assignment.cityName}</Text>
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-[10px] text-slate-500 uppercase">Rota</Text>
+                                <Text className="text-sm text-slate-200 font-medium">{assignment.routeLabel || '--'}</Text>
+                            </View>
+                        </View>
 
-                {/* Estado: Aguardando liberação do admin → Botão de liberar */}
-                {isWaiting && (
-                    <TouchableOpacity
-                        onPress={() => onReleaseDock(assignment)}
-                        style={styles.actionBtn}
-                        activeOpacity={0.8}
-                    >
-                        <LinearGradient
-                            colors={shouldPulse ? ['#166534', '#15803d'] : ['#2d3270', '#1e3a8a']}
-                            style={styles.actionBtnGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                        >
-                            <CheckCircle2 size={20} color="white" />
-                            <Text className="text-white font-bold text-sm ml-2">
-                                {shouldPulse ? 'Liberar Doca (Próximo!)' : 'Liberar Doca'}
-                            </Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
-                )}
+                        {/* Estado: Aguardando liberação do admin → Botão de liberar */}
+                        {isWaiting && (
+                            <TouchableOpacity
+                                onPress={() => onReleaseDock(assignment)}
+                                style={styles.actionBtn}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={shouldPulse ? ['#166534', '#15803d'] : ['#2d3270', '#1e3a8a']}
+                                    style={styles.actionBtnGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                >
+                                    <CheckCircle2 size={20} color="white" />
+                                    <Text className="text-white font-bold text-sm ml-2">
+                                        {shouldPulse ? 'Liberar Doca (Próximo!)' : 'Liberar Doca'}
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        )}
 
-                {/* Estado: Liberado pelo admin, motorista na doca carregando */}
-                {isLiberated && (
-                    <View className="flex-row items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                        <Truck size={16} color="#22c55e" />
-                        <Text className="text-xs text-green-400 font-bold uppercase">
-                            Na Doca {assignment.dock} — Carregando
-                        </Text>
-                    </View>
-                )}
-
-                {/* Estado: Motorista saiu da doca → Doca livre */}
-                {isDeparted && (
-                    <View className="flex-row items-center gap-2 p-3 rounded-lg bg-slate-500/10 border border-slate-500/20">
-                        <Navigation size={16} color="#94a3b8" />
-                        <Text className="text-xs text-slate-400 font-bold uppercase">
-                            Doca {assignment.dock} Livre — Motorista em Trânsito
-                        </Text>
-                    </View>
+                        {/* Estado: Liberado pelo admin, motorista na doca carregando */}
+                        {isLiberated && (
+                            <View className="flex-row items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                                <Truck size={16} color="#22c55e" />
+                                <Text className="text-xs text-green-400 font-bold uppercase">
+                                    Na Doca {assignment.dock} — Carregando
+                                </Text>
+                            </View>
+                        )}
+                    </>
                 )}
             </View>
         </RNAnimated.View>
@@ -193,7 +204,7 @@ const DriverCard = React.memo(function DriverCard({
 
 export default function AdminMonitorScreen() {
     const router = useRouter();
-    const { assignments, groups, isLoading, releaseDock, refreshMonitor, actionModal, dismissModal } = useMonitorData();
+    const { assignments, kpis, groups, isLoading, releaseDock, refreshMonitor, actionModal, dismissModal } = useMonitorData();
     const [filter, setFilter] = useState<FilterType>('all');
     const [driverAvatars, setDriverAvatars] = useState<Record<string, string>>({});
 
@@ -301,7 +312,7 @@ export default function AdminMonitorScreen() {
 
     const monitorKeyExtractor = useCallback((item: FlatItem) => item.key, []);
 
-    const FilterChip = ({ title, value }: { title: string, value: FilterType }) => {
+    const FilterChip = ({ title, value, count }: { title: string, value: FilterType, count: number }) => {
         const isActive = filter === value;
         return (
             <TouchableOpacity
@@ -313,11 +324,15 @@ export default function AdminMonitorScreen() {
                 ]}
             >
                 <Text style={[styles.chipText, isActive ? styles.chipTextActive : styles.chipTextInactive]}>
-                    {title}
+                    {title} <Text style={{ fontSize: 13, opacity: 0.8 }}>({count})</Text>
                 </Text>
             </TouchableOpacity>
         );
     };
+
+    // Derived counts for filter chips
+    const wave1Count = assignments.filter(a => a.waveNumber?.toLowerCase().includes('1')).length;
+    const wave2Count = assignments.filter(a => a.waveNumber?.toLowerCase().includes('2')).length;
 
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
@@ -326,25 +341,47 @@ export default function AdminMonitorScreen() {
                 style={StyleSheet.absoluteFillObject}
             />
 
-            {/* Header */}
+            {/* Header / Hero */}
             <View className="px-4 py-3 border-b border-white/10 z-50 bg-[#222010]/95">
                 <View className="flex-row items-center justify-between mb-4 mt-2">
                     <TouchableOpacity onPress={() => router.back()} className="p-2 bg-white/5 rounded-full">
                         <ArrowLeft size={24} color="white" />
                     </TouchableOpacity>
-                    <Text className="text-lg font-bold text-white">Monitor de Rotas</Text>
+                    <Text className="text-lg font-bold text-white">Logística & Monitor</Text>
                     <TouchableOpacity onPress={refreshMonitor} className="p-2 bg-white/5 rounded-full relative">
                         <RefreshCw size={24} color="white" />
-                        <View className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
+                        {isLoading && <View className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full animate-pulse" />}
                     </TouchableOpacity>
+                </View>
+
+                {/* KPI Top Dashboard */}
+                <View className="flex-row gap-3 mb-4">
+                    <View className="flex-1 bg-surface border border-border rounded-xl p-3 shadow-lg">
+                        <View className="flex-row items-center gap-2 mb-1.5">
+                            <Truck size={14} color={THEME.colors.primary} />
+                            <Text className="text-[10px] font-spaceGrotesk uppercase text-slate-400 tracking-wider">Despachados</Text>
+                        </View>
+                        <Text className="text-2xl font-spaceGroteskBold text-white pb-1">{kpis.totalDispatched}</Text>
+                    </View>
+                    <View className="flex-1 bg-surface border border-border/50 rounded-xl p-3 flex-row gap-1 relative overflow-hidden">
+                        <View className="absolute top-0 right-0 w-16 h-16 bg-green-500/5 rounded-full -mr-6 -mt-6" />
+                        <View className="flex-1">
+                            <Text className="text-[10px] font-spaceGrotesk text-green-400 uppercase tracking-wider mb-1">Carregando</Text>
+                            <Text className="text-xl font-spaceGroteskBold text-green-400">{kpis.totalLoading}</Text>
+                        </View>
+                        <View className="flex-1 pl-2 border-l border-white/10">
+                            <Text className="text-[10px] font-spaceGrotesk text-blue-400 uppercase tracking-wider mb-1">Na Rua</Text>
+                            <Text className="text-xl font-spaceGroteskBold text-blue-400">{kpis.totalDeparted}</Text>
+                        </View>
+                    </View>
                 </View>
 
                 {/* Filters */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pb-2 gap-2 flex-row">
-                    <FilterChip title="Todas" value="all" />
-                    <FilterChip title="Onda 1" value="wave_1" />
-                    <FilterChip title="Onda 2" value="wave_2" />
-                    <FilterChip title="Liberados" value="transit" />
+                    <FilterChip title="Todos" value="all" count={kpis.totalDispatched} />
+                    <FilterChip title="Onda 1" value="wave_1" count={wave1Count} />
+                    <FilterChip title="Onda 2" value="wave_2" count={wave2Count} />
+                    <FilterChip title="Na Rua" value="transit" count={kpis.totalDeparted} />
                 </ScrollView>
             </View>
 
@@ -418,7 +455,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 12,
         overflow: 'hidden',
-        marginBottom: 12,
+        marginBottom: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,

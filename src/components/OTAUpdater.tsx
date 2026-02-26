@@ -33,14 +33,20 @@ export default function OTAUpdater() {
                 // Guard 2: Módulo nativo não disponível (Expo Go ou build sem expo-updates)
                 if (!Updates.isEnabled) return;
 
-                const update = await Updates.checkForUpdateAsync();
+                // Timeout de 5s evita travar a inicialização em rede lenta
+                const updatePromise = Updates.checkForUpdateAsync();
+                const timeoutPromise = new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('OTA check timeout')), 5000)
+                );
+
+                const update = await Promise.race([updatePromise, timeoutPromise]);
 
                 if (update.isAvailable) {
                     setIsUpdateAvailable(true);
                 }
             } catch (error) {
-                // Falha silenciosa — não impede o uso normal do app
-                console.log('[OTA] Erro silencioso ao checar update:', error);
+                // Falha silenciosa (timeout ou rede) — não impede o uso normal do app
+                if (__DEV__) console.log('[OTA] Erro silencioso ao checar update:', error);
             }
         }
 

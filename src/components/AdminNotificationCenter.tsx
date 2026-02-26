@@ -1,86 +1,60 @@
 /**
- * Central de Notificações do motorista.
- * Exibe notificações recentes (push local storage + assignments recentes).
- * Visual premium com mini-feed de cards.
+ * Central de Notificações In-App do Administrador.
+ * UI Premium com Click-to-Read, Animações e Limpar Tudo.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
-import { Bell, Package, MapPin, AlertTriangle, CheckCircle2, MessageCircle, X } from 'lucide-react-native';
+import { Bell, CalendarCheck, AlertTriangle, MessageCircle, Info, Ticket, X } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
-import { aether, aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS, Assignment } from '~/src/lib/collections';
-import { useAuthStore } from '~/src/store/auth';
+import { aether } from '~/src/lib/aether';
+import { COLLECTIONS, AdminNotification } from '~/src/lib/collections';
 
-/** Item de notificação renderizável */
-interface NotificationItem {
-    id: string;
-    title: string;
-    body: string;
-    type: 'route' | 'alert' | 'info' | 'success';
-    timestamp: Date;
-    read: boolean;
-}
-
-/** Mapa de tipo para configuração visual */
+/** Mapa de tipo para configuração visual no painel do Admin */
 const TYPE_CONFIG = {
-    route: { icon: MapPin, color: '#60a5fa', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-    alert: { icon: AlertTriangle, color: '#f59e0b', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+    availability_answered: { icon: CalendarCheck, color: '#4ade80', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+    route_confirmed: { icon: Info, color: '#60a5fa', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+    route_completed: { icon: CalendarCheck, color: '#4ade80', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+    ticket_created: { icon: Ticket, color: '#f87171', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+    system_alert: { icon: AlertTriangle, color: '#f59e0b', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
     info: { icon: Bell, color: '#94a3b8', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
-    success: { icon: CheckCircle2, color: '#4ade80', bg: 'bg-green-500/10', border: 'border-green-500/20' },
 } as const;
 
-interface NotificationCenterProps {
-    /** Flag de visibilidade */
+interface AdminNotificationCenterProps {
     visible: boolean;
-    /** Callback de fechamento */
     onClose: () => void;
 }
 
-/**
- * Componente de central de notificações.
- * Busca assignments recentes do motorista e os exibe como cards.
- * Ordenados do mais recente ao mais antigo.
- */
-export function NotificationCenter({ visible, onClose }: NotificationCenterProps) {
-    const { user } = useAuthStore();
-    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+export function AdminNotificationCenter({ visible, onClose }: AdminNotificationCenterProps) {
+    const [notifications, setNotifications] = useState<AdminNotification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    /**
-     * Busca assignments do motorista e transforma em notificações.
-     * Cada assignment vira um card com informações relevantes.
-     */
     const fetchNotifications = useCallback(async () => {
-        if (!user?.id) return;
         setIsLoading(true);
         try {
-            const allAssignments = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
-            const myAssignments = (allAssignments as any[])
-                .filter((a: any) => a.driverId === user.id)
-                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .slice(0, 20);
-
-            const items: NotificationItem[] = myAssignments.map((a: any) => ({
-                id: a.id,
-                title: a.status === 'completed'
-                    ? `Rota concluída — ${a.cityName}`
-                    : a.status === 'confirmed'
-                        ? `Rota confirmada — ${a.cityName}`
-                        : `Nova rota — ${a.cityName}`,
-                body: `Doca ${a.dock || 'N/A'} • ${a.waveLabel || a.wave || ''} • ${a.sacas || 0} sacas`,
-                type: a.status === 'completed' ? 'success' : a.status === 'confirmed' ? 'route' : 'info',
-                timestamp: new Date(a.createdAt),
-                read: a.status === 'completed' || !!a.driverDidReadNotification,
-            }));
+            // Busca apenas ultimas 30 ou as nao logadas
+            const allRaw = await aether.db.collection(COLLECTIONS.ADMIN_NOTIFICATIONS).query().get();
+            const items = (allRaw as any[] || [])
+                .map((a: any) => ({
+                    id: a.id,
+                    title: a.title,
+                    message: a.message,
+                    type: a.type || 'info',
+                    createdAt: a.createdAt,
+                    read: !!a.read,
+                    relatedDriverId: a.relatedDriverId,
+                    relatedAssignmentId: a.relatedAssignmentId
+                } as AdminNotification))
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .slice(0, 30); // Limite de visualizacao para performance
 
             setNotifications(items);
         } catch (err) {
-            console.error('[NotificationCenter] Erro ao buscar notificações:', err);
+            console.error('[AdminNotificationCenter] Erro ao buscar notificações:', err);
         } finally {
             setIsLoading(false);
         }
-    }, [user?.id]);
+    }, []);
 
     useEffect(() => {
         if (visible) fetchNotifications();
@@ -88,26 +62,22 @@ export function NotificationCenter({ visible, onClose }: NotificationCenterProps
 
     if (!visible) return null;
 
-    /**
-     * Renderiza um card de notificação individual.
-     * Usa configuração visual baseada no tipo (route, alert, info, success).
-     */
-    const renderNotification = ({ item }: { item: NotificationItem }) => {
-        const config = TYPE_CONFIG[item.type];
+    const renderNotification = ({ item }: { item: AdminNotification }) => {
+        const config = TYPE_CONFIG[item.type as keyof typeof TYPE_CONFIG] || TYPE_CONFIG.info;
         const Icon = config.icon;
-        const timeAgo = getRelativeTime(item.timestamp);
+        const timeAgo = getRelativeTime(new Date(item.createdAt));
 
         const handlePress = async () => {
             if (item.read) return;
             try {
-                // Atualiza db: motorista leu a notificação
-                await aether.db.collection(COLLECTIONS.ASSIGNMENTS).update(item.id, {
-                    driverDidReadNotification: true
+                // Atualiza db: admin leu a notificação
+                await aether.db.collection(COLLECTIONS.ADMIN_NOTIFICATIONS).update(item.id, {
+                    read: true
                 });
-                // Atualiza UI instantaneamente
+                // Atualiza UI
                 setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
             } catch (err) {
-                console.error('[NotificationCenter] Erro ao marcar como lida:', err);
+                console.error('[AdminNotificationCenter] Erro ao marcar como lida:', err);
             }
         };
 
@@ -131,7 +101,7 @@ export function NotificationCenter({ visible, onClose }: NotificationCenterProps
                         {item.title}
                     </Text>
                     <Text className="text-[#94a3b8] font-spaceGrotesk text-[12px] mb-1" numberOfLines={2}>
-                        {item.body}
+                        {item.message}
                     </Text>
                     <Text className="text-[#4b5563] font-spaceGrotesk text-[10px] uppercase tracking-wider">
                         {timeAgo}
@@ -141,30 +111,26 @@ export function NotificationCenter({ visible, onClose }: NotificationCenterProps
         );
     };
 
-    /** Marca todas as notificações não lidas como lidas de uma vez */
     const handleMarkAllAsRead = async () => {
         const unreadItems = notifications.filter(n => !n.read);
         if (unreadItems.length === 0) return;
 
         try {
-            // Paraleliza os updates no banco
             await Promise.allSettled(
                 unreadItems.map(item =>
-                    aether.db.collection(COLLECTIONS.ASSIGNMENTS)
-                        .update(item.id, { driverDidReadNotification: true })
+                    aether.db.collection(COLLECTIONS.ADMIN_NOTIFICATIONS).update(item.id, { read: true })
                 )
             );
-
-            // Atualiza UI instantaneamente
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
         } catch (err) {
-            console.error('[NotificationCenter] Erro ao limpar notificações:', err);
+            console.error('[AdminNotificationCenter] Erro ao limpar notificações:', err);
         }
     };
 
     return (
-        <View className="flex-1">
-            <View className="flex-row items-center justify-between px-6 py-4">
+        <View className="flex-1 border-l border-border bg-surface">
+            {/* Header */}
+            <View className="flex-row items-center justify-between px-6 py-5 border-b border-border bg-[#151724]">
                 <View className="flex-row items-center gap-3">
                     <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center border border-primary/20 relative">
                         <Bell color={THEME.colors.primary} size={20} />
@@ -173,18 +139,18 @@ export function NotificationCenter({ visible, onClose }: NotificationCenterProps
                         )}
                     </View>
                     <View>
-                        <Text className="text-white font-spaceGroteskBold text-lg">Notificações</Text>
+                        <Text className="text-white font-spaceGroteskBold text-lg">Central de Alertas</Text>
                         <Text className="text-[#94a3b8] font-spaceGrotesk text-xs">{notifications.length} evento(s)</Text>
                     </View>
                 </View>
 
                 <View className="flex-row items-center gap-2">
                     {notifications.some(n => !n.read) && (
-                        <TouchableOpacity onPress={handleMarkAllAsRead} className="px-3 py-2 rounded-xl bg-surface border border-border">
-                            <Text className="text-[11px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-wider">Limpar</Text>
+                        <TouchableOpacity onPress={handleMarkAllAsRead} className="px-3 py-2 rounded-xl bg-background border border-border">
+                            <Text className="text-[11px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-wider">Limpar Tudo</Text>
                         </TouchableOpacity>
                     )}
-                    <TouchableOpacity onPress={onClose} className="w-10 h-10 rounded-full bg-surface border border-border items-center justify-center">
+                    <TouchableOpacity onPress={onClose} className="w-10 h-10 rounded-full bg-background border border-border items-center justify-center">
                         <X color="#94a3b8" size={18} />
                     </TouchableOpacity>
                 </View>
@@ -194,8 +160,8 @@ export function NotificationCenter({ visible, onClose }: NotificationCenterProps
                 data={notifications}
                 keyExtractor={(item) => item.id}
                 renderItem={renderNotification}
-                className="flex-1 px-4"
-                contentContainerStyle={{ paddingBottom: 20 }}
+                className="flex-1 px-4 pt-4 bg-background"
+                contentContainerStyle={{ paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchNotifications} tintColor={THEME.colors.primary} />}
                 ListEmptyComponent={
@@ -204,9 +170,9 @@ export function NotificationCenter({ visible, onClose }: NotificationCenterProps
                             <View className="w-16 h-16 rounded-full bg-surface border border-border items-center justify-center mb-4">
                                 <Bell color="#4b5563" size={24} />
                             </View>
-                            <Text className="text-white font-spaceGroteskBold text-base mb-1">Tudo limpo</Text>
+                            <Text className="text-white font-spaceGroteskBold text-base mb-1">Painel Limpo</Text>
                             <Text className="text-[#94a3b8] font-spaceGrotesk text-sm text-center px-8">
-                                Nenhuma notificação recente. Quando houver atualizações nas suas rotas, elas aparecerão aqui.
+                                Nenhuma notificação recente da frota ou do sistema.
                             </Text>
                         </View>
                     ) : null
@@ -216,14 +182,10 @@ export function NotificationCenter({ visible, onClose }: NotificationCenterProps
     );
 }
 
-/**
- * Calcula tempo relativo legível em PT-BR.
- * @param date - Data a comparar com agora
- * @returns String como 'Há 2h', 'Há 3d', 'Agora'
- */
 function getRelativeTime(date: Date): string {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return 'Agora';
     const diffMin = Math.floor(diffMs / 60000);
     const diffHrs = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);

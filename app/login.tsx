@@ -9,6 +9,7 @@ import AlertModal from '~/src/components/AlertModal';
 import { aether } from '~/src/lib/aether';
 import { Input } from '~/src/components/ui/Input';
 import { Button } from '~/src/components/ui/Button';
+import { ensureDriverPushToken } from '~/src/lib/push';
 
 export default function LoginScreen() {
     const [driverId, setDriverId] = useState('');
@@ -77,6 +78,17 @@ export default function LoginScreen() {
             };
 
             login(typedUser, role);
+
+            // [SENIOR FIX] Captura a permissão de Push no exato momento do Login.
+            // O driver é instruído pelo SO a aceitar a notificação antes mesmo de ver a dashboard.
+            if (role === 'driver') {
+                await ensureDriverPushToken(
+                    typedUser.id,
+                    (typedUser.metadata?.name as string) || typedUser.name || typedUser.email?.split('@')[0] || 'Motorista',
+                    (typedUser.metadata?.vehiclePlate as string) || 'S/Placa',
+                    (typedUser.metadata?.avatarUrl as string) || ''
+                );
+            }
 
             if (role === 'admin') {
                 router.replace('/admin/dashboard');

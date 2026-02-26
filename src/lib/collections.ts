@@ -11,6 +11,7 @@ export const COLLECTIONS = {
     ADMIN_STATUS: 'admin_status',
     SUPPORT_TICKETS: 'support_tickets',
     AUDIT_LOG: 'audit_log',
+    ADMIN_NOTIFICATIONS: 'admin_notifications',
 } as const;
 
 // ---- Cities ----
@@ -68,6 +69,7 @@ export interface Assignment {
     driverPlate: string;
     dockStatus: 'waiting' | 'liberated' | 'departed'; // Ciclo: waiting → liberated (admin) → departed (motorista saiu)
     status: 'pending' | 'confirmed' | 'in_progress' | 'completed';
+    driverDidReadNotification?: boolean; // Tracking de leitura (UX do Sino pulsante)
     createdByAdminId: string;
     createdAt: string;
 }
@@ -118,6 +120,18 @@ export interface SupportTicket {
     createdAt: string;
     resolvedAt?: string;
     resolvedByAdminId?: string;
+}
+
+// ---- Admin Notifications (Persistent in-app notifications for admins) ----
+export interface AdminNotification {
+    id: string;
+    title: string;
+    message: string;
+    type: 'availability_answered' | 'route_confirmed' | 'route_completed' | 'ticket_created' | 'system_alert' | 'info';
+    read: boolean;
+    relatedDriverId?: string;
+    relatedAssignmentId?: string;
+    createdAt: string;
 }
 
 // ---- Helper: wave metadata ----

@@ -14,6 +14,13 @@ export interface RouteGroup {
     assignments: Assignment[];
 }
 
+export interface MonitorKPIs {
+    totalDispatched: number;
+    totalWaiting: number;
+    totalLoading: number;
+    totalDeparted: number;
+}
+
 /**
  * Hook de dados do Monitor de Docas do admin.
  * Implementa realtime via Aether subscribe + fallback polling de 10s.
@@ -24,6 +31,12 @@ export function useMonitorData() {
     const { actionModal, showModal, dismissModal } = useActionModal();
     const [isLoading, setIsLoading] = useState(true);
     const [assignments, setAssignments] = useState<Assignment[]>([]);
+    const [kpis, setKpis] = useState<MonitorKPIs>({
+        totalDispatched: 0,
+        totalWaiting: 0,
+        totalLoading: 0,
+        totalDeparted: 0
+    });
 
     // Ref para manter a lista de assignments atualizada dentro do subscribe callback
     const assignmentsRef = useRef<Assignment[]>([]);
@@ -71,18 +84,33 @@ export function useMonitorData() {
                 return isToday || isStillActive;
             });
 
-            // Ordena por prioridade: waiting > liberated > departed
+            // Calcula KPIs Totais
+            const newKpis = {
+                totalDispatched: todayActive.length,
+                totalWaiting: todayActive.filter(a => a.dockStatus === 'waiting' || !a.dockStatus).length,
+                totalLoading: todayActive.filter(a => a.dockStatus === 'liberated').length,
+                totalDeparted: todayActive.filter(a => a.dockStatus === 'departed' || a.status === 'in_progress').length,
+            };
+            setKpis(newKpis);
+
+            // Ordena por prioridade Tática Rigorosa (Quem precisa da baia VEM PRIMEIRO)
+            // waiting (0) > liberated (1) > departed (2)
             const dockPriority: Record<string, number> = { waiting: 0, liberated: 1, departed: 2 };
             todayActive.sort((a, b) => {
-                const aPriority = dockPriority[a.dockStatus] ?? 1;
-                const bPriority = dockPriority[b.dockStatus] ?? 1;
+                const aStatus = a.dockStatus || 'waiting';
+                const bStatus = b.dockStatus || 'waiting';
+                const aPriority = dockPriority[aStatus] ?? 0;
+                const bPriority = dockPriority[bStatus] ?? 0;
+
                 if (aPriority !== bPriority) return aPriority - bPriority;
+
+                // Prioridade secundária: quem foi criado antes (First in, First out da fila)
                 return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
             });
 
-            setAssignments(todayActive);
+            setAssignments([...todayActive]); // Força refresh de ponteiro
         } catch (error) {
-            console.error('[useMonitorData] Erro ao buscar dados:', error);
+            __DEV__ && console.error('[useMonitorData] Erro ao buscar dados:', error);
             showModal('Erro', 'Não foi possível carregar as rotas ativas.', 'error');
         } finally {
             setIsLoading(false);
@@ -135,7 +163,7 @@ export function useMonitorData() {
                         showModal('Sucesso', 'Doca liberada. O motorista foi notificado.', 'success');
                     } catch (pushErr) {
                         const reason = diagnosePushError(pushErr);
-                        console.warn('[Fault Tolerance] Push Falhou:', reason);
+                        __DEV__ && console.warn('[Fault Tolerance] Push Falhou:', reason);
                         showModal('Doca Liberada (Sem Push)', `A doca foi liberada no sistema com sucesso.\n\nMotivo do push não enviado: ${reason}`, 'warning');
                     }
                 } catch (error) {
@@ -170,16 +198,37 @@ export function useMonitorData() {
 
                     if (!updateId) return;
 
-                    console.log('[Realtime Admin] Recebido update:', updateId, payload.dockStatus || payload.status);
+                    __DEV__ && console.log('[Realtime Admin] Recebido update:', updateId, payload.dockStatus || payload.status);
 
                     // Atualiza o assignment específico na lista local (merge in-place)
                     setAssignments(prev => {
                         const exists = prev.some(a => a.id === updateId);
                         if (exists) {
-                            console.log('[Realtime Admin] Atualizando doca na UI para:', updateId);
-                            return prev.map(a =>
+                            __DEV__ && console.log('[Realtime Admin] Atualizando doca na UI para:', updateId);
+                            // Merge and resort inline
+                            const nextList = prev.map(a =>
                                 a.id === updateId ? { ...a, ...payload, id: a.id } as Assignment : a
                             );
+                            // Recalcula ordenacao para jogar loading/departed p/ tras
+                            const dockPriority: Record<string, number> = { waiting: 0, liberated: 1, departed: 2 };
+                            nextList.sort((a, b) => {
+                                const aStatus = a.dockStatus || 'waiting';
+                                const bStatus = b.dockStatus || 'waiting';
+                                const aPriority = dockPriority[aStatus] ?? 0;
+                                const bPriority = dockPriority[bStatus] ?? 0;
+                                if (aPriority !== bPriority) return aPriority - bPriority;
+                                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                            });
+
+                            // Live KPI update
+                            setKpis({
+                                totalDispatched: nextList.length,
+                                totalWaiting: nextList.filter(a => a.dockStatus === 'waiting' || !a.dockStatus).length,
+                                totalLoading: nextList.filter(a => a.dockStatus === 'liberated').length,
+                                totalDeparted: nextList.filter(a => a.dockStatus === 'departed' || a.status === 'in_progress').length,
+                            });
+
+                            return nextList;
                         }
                         // Se não existia na tela MAS a data é de hoje, pode ser um novo assignment rápido
                         fetchMonitorAssignments();
@@ -187,7 +236,7 @@ export function useMonitorData() {
                     });
                 });
         } catch (subErr) {
-            console.warn('[Realtime Admin] Subscribe não disponível, usando apenas polling:', subErr);
+            __DEV__ && console.warn('[Realtime Admin] Subscribe não disponível, usando apenas polling:', subErr);
         }
 
         // Polling de 10s como fallback e garantia de consistência
@@ -203,6 +252,7 @@ export function useMonitorData() {
 
     return {
         assignments,
+        kpis,
         groups,
         isLoading,
         releaseDock,
