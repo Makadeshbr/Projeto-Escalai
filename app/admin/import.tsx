@@ -20,6 +20,9 @@ export default function ImportRouteScreen() {
     const [routes, setRoutes] = useState<RouteDraft[]>([]);
     const [loadingStep, setLoadingStep] = useState(0);
 
+    // Image/PDF Previews
+    const [selectedImages, setSelectedImages] = useState<{ uri: string; mimeType: string; name: string }[]>([]);
+
     // Engine State
     const [availableDrivers, setAvailableDrivers] = useState<DriverAvailability[]>([]);
     const [knownDatabaseCities, setKnownDatabaseCities] = useState<City[]>([]);
@@ -213,17 +216,82 @@ export default function ImportRouteScreen() {
             const result = await DocumentPicker.getDocumentAsync({
                 type: ['application/pdf', 'image/jpeg', 'image/png'],
                 copyToCacheDirectory: true,
+                multiple: true,
             });
 
             if (result.canceled || !result.assets || result.assets.length === 0) return;
 
-            const file = result.assets[0];
-            setFilesCount(prev => prev + 1);
-            processFileWithGemini(file.uri, file.mimeType || 'application/pdf');
+            // [SENIOR FEATURE] Accumulate selected images for preview before AI processing
+            const newImages = result.assets.map(file => ({
+                uri: file.uri,
+                mimeType: file.mimeType || 'application/pdf',
+                name: file.name
+            }));
+
+            setSelectedImages(prev => [...prev, ...newImages]);
+            setFilesCount(prev => prev + newImages.length);
 
         } catch (err: any) {
             setResultData({ title: 'Erro', message: err.message || 'Falha ao ler documento.', type: 'error' });
             setResultModalVisible(true);
+        }
+    };
+
+    const handleProcessImages = async () => {
+        if (selectedImages.length === 0) return;
+
+        setIsProcessing(true);
+        setLoadingStep(0);
+
+        // Animated loading sequence simulation to keep user engaged
+        const stepInterval = setInterval(() => {
+            setLoadingStep(prev => (prev < 3 ? prev + 1 : prev));
+        }, 1800);
+
+        try {
+            // Processa todas as imagens da fila sequencialmente ou em paralelo seguro
+            let allFormattedRoutes: any[] = [];
+
+            for (const img of selectedImages) {
+                const base64 = await FileSystem.readAsStringAsync(img.uri, { encoding: 'base64' });
+                const extractedRoutes = await parseLogisticsSheet(base64, img.mimeType);
+
+                // Auto Format Plates
+                const formatted = extractedRoutes.map(r => ({
+                    ...r,
+                    driverPlate: r.driverPlate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+                }));
+                allFormattedRoutes = [...allFormattedRoutes, ...formatted];
+            }
+
+            setRoutes(prev => {
+                const accumulated = [...prev, ...allFormattedRoutes];
+                recalculateValidationMap(accumulated, availableDrivers);
+                return accumulated;
+            });
+
+            // Cross-check cities
+            if (knownDatabaseCities.length > 0) {
+                const uniqueExtractedCities = Array.from(new Set(allFormattedRoutes.map(r => r.city.trim().toUpperCase())));
+                const knownCityNames = knownDatabaseCities.map((c: any) => c.name.trim().toUpperCase());
+
+                const unlistedCities = uniqueExtractedCities.filter(extCity => !knownCityNames.includes(extCity));
+
+                if (unlistedCities.length > 0) {
+                    setPendingCitiesToRegister(unlistedCities);
+                    setUnlistedCitiesModalVisible(true);
+                }
+            }
+
+            setSelectedImages([]); // Limpa a galeria após o sucesso
+
+        } catch (e: any) {
+            setResultData({ title: 'Falha na IA', message: e.message || 'Ocorreu um erro no servidor de Visão Computacional.', type: 'error' });
+            setResultModalVisible(true);
+        } finally {
+            clearInterval(stepInterval);
+            setIsProcessing(false);
+            setLoadingStep(0);
         }
     };
 
@@ -357,44 +425,77 @@ export default function ImportRouteScreen() {
                 return validationMap[cleanPlate] === true;
             });
 
-            for (const route of validRoutes) {
-                const cleanPlate = route.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                const driverData = snapDrivers.find(d => d.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanPlate);
+            // [ENTERPRISE FIX] Batch Throttle: processa em lotes de 10
+            // Evita burst de 100+ requests que estourava o rate limiter (429).
+            const BATCH_SIZE = 10;
+            const BATCH_DELAY_MS = 200; // Delay pequeno, backend aguenta
 
-                if (!driverData) continue;
+            for (let i = 0; i < validRoutes.length; i += BATCH_SIZE) {
+                const batch = validRoutes.slice(i, i + BATCH_SIZE);
 
-                // [SENIOR DEV] Cria Assignment mapeando TODOS os campos do PDF:
-                // dock = NUMÉRICO (1, 2, 10); routeLabel = ALFANUMÉRICO (B5_AM, SP_01)
-                await aether.db.collection(COLLECTIONS.ASSIGNMENTS).create({
-                    cityId: 'auto-route',
-                    cityName: route.city,
-                    wave: 'morning', // Fallback genérico — turno real é derivado do waveLabel
-                    waveLabel: route.waveLabel,
-                    waveTime: 'Conforme Rota',
-                    waveNumber: route.waveNumber || '',
-                    dock: route.dock,
-                    ...(typeof route.sacas === 'number' && route.sacas > 0 ? { sacas: route.sacas } : {}),
-                    routeLabel: route.routeLabel || '',
-                    isSdd: route.isSdd,
-                    driverId: driverData.driverId || driverData.id,
-                    driverName: driverData.driverName,
-                    driverPlate: driverData.driverPlate,
-                    dockStatus: 'waiting', // [CRITICAL] Sem isso, o Monitor de Docas não exibe o card
-                    status: 'pending',
-                    createdByAdminId: snapAdminId,
-                    createdAt: new Date().toISOString(),
+                // Processa a criação dos dados em paralelo
+                const dbPromises = batch.map(async (route) => {
+                    const cleanPlate = route.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    const driverData = snapDrivers.find(d => d.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanPlate);
+
+                    if (!driverData) return null;
+
+                    // Cria Assignment mapeando TODOS os campos do PDF
+                    await aether.db.collection(COLLECTIONS.ASSIGNMENTS).create({
+                        cityId: 'auto-route',
+                        cityName: route.city,
+                        wave: 'morning',
+                        waveLabel: route.waveLabel,
+                        waveTime: 'Conforme Rota',
+                        waveNumber: route.waveNumber || '',
+                        dock: route.dock,
+                        ...(typeof route.sacas === 'number' && route.sacas > 0 ? { sacas: route.sacas } : {}),
+                        routeLabel: route.routeLabel || '',
+                        isSdd: route.isSdd,
+                        driverId: driverData.driverId || driverData.id,
+                        driverName: driverData.driverName,
+                        driverPlate: driverData.driverPlate,
+                        dockStatus: 'waiting',
+                        status: 'pending',
+                        createdByAdminId: snapAdminId,
+                        createdAt: new Date().toISOString(),
+                    });
+
+                    return { route, driverData };
                 });
 
-                successCount++;
+                const createdResults = await Promise.allSettled(dbPromises);
 
-                try {
-                    await notifyDriver(
-                        driverData.driverId || driverData.id,
-                        'NOVA ROTA NA ESCALA 📦',
-                        `Você foi escalado para a base ${route.city} (Turno: ${route.waveLabel}). Rota: ${route.routeLabel || 'N/A'}. Dirija-se à Doca ${route.dock}${route.isSdd ? ' com URGÊNCIA (Prioridade Laranja)' : ''}.`
-                    );
-                } catch (pushErr) {
-                    failedPushes++;
+                // Extrai as rotas criadas com sucesso
+                const successfulCreations: { route: any, driverData: any }[] = [];
+                createdResults.forEach(r => {
+                    if (r.status === 'fulfilled' && r.value) {
+                        successfulCreations.push(r.value);
+                        successCount++;
+                    } else if (r.status === 'rejected') {
+                        console.warn('[Dispatch] Falha ao criar rota no DB:', r.reason);
+                    }
+                });
+
+                // [ENTERPRISE FIX] Disparo Assíncrono e Paralelo das Notificações (Fire and Forget)
+                // Não bloqueamos o laço com o await do push. O usuário verá a tela carregar instantaneamente.
+                Promise.allSettled(
+                    successfulCreations.map(({ route, driverData }) =>
+                        notifyDriver(
+                            driverData.driverId || driverData.id,
+                            'NOVA ROTA NA ESCALA 📦',
+                            `Você foi escalado para a base ${route.city} (Turno: ${route.waveLabel}). Rota: ${route.routeLabel || 'N/A'}. Dirija-se à Doca ${route.dock}${route.isSdd ? ' com URGÊNCIA (Prioridade Laranja)' : ''}.`
+                        )
+                    )
+                ).then(pushResults => {
+                    pushResults.forEach(pr => {
+                        if (pr.status === 'rejected') failedPushes++;
+                    });
+                });
+
+                // Delay entre batches do banco
+                if (i + BATCH_SIZE < validRoutes.length) {
+                    await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
                 }
             }
 
@@ -466,34 +567,21 @@ export default function ImportRouteScreen() {
 
             <View className="flex-1 p-4">
                 {/* Upload Zone */}
-                <TouchableOpacity
-                    onPress={handleUploadPress}
-                    disabled={isProcessing || isDispatching}
-                    className={`w-full overflow-hidden bg-surface border-2 border-dashed ${isProcessing ? 'border-primary' : 'border-border'} rounded-2xl mb-6 relative`}
-                >
-                    {isProcessing ? (
-                        <View className="items-center justify-center py-10 px-6">
-                            <ActivityIndicator color={THEME.colors.primary} size="large" />
-                            <Text className="text-white font-spaceGroteskBold mt-4 text-[16px]">
-                                {loadingStep === 0 && 'Inicializando Motor OCR...'}
-                                {loadingStep === 1 && 'Enviando ao servidor Gemini...'}
-                                {loadingStep === 2 && 'Mapeando células da planilha...'}
-                                {loadingStep === 3 && 'Limpando dados logísticos...'}
-                            </Text>
-                            <Text className="text-[#94a3b8] font-spaceGrotesk mt-1 text-center text-[12px]">
-                                Isso pode levar alguns segundos dependendo do tamanho do formato.
-                            </Text>
-                        </View>
-                    ) : (
+                {selectedImages.length === 0 && !isProcessing && (
+                    <TouchableOpacity
+                        onPress={handleUploadPress}
+                        disabled={isProcessing || isDispatching}
+                        className={`w-full overflow-hidden bg-surface border-2 border-dashed ${isProcessing ? 'border-primary' : 'border-border'} rounded-2xl mb-6 relative`}
+                    >
                         <View className="items-center py-10">
                             <UploadCloud color={THEME.colors.primary} size={32} />
                             <Text className="text-white font-spaceGroteskBold mt-2 text-[15px]">
-                                {routes.length > 0 ? 'Adicionar Mais Arquivos' : 'Tocar para Escolher Arquivo'}
+                                {routes.length > 0 ? 'Adicionar Mais Arquivos' : 'Tocar para Escolher Imagens/PDF'}
                             </Text>
                             <Text className="text-text-muted font-spaceGrotesk text-[13px] mt-1">
                                 {filesCount > 0
                                     ? `${filesCount} arquivo(s) processado(s) • ${routes.length} rotas na tabela`
-                                    : 'PDF, JPEG ou PNG'}
+                                    : 'PDF, JPEG ou PNG (Permite Múltiplos)'}
                             </Text>
                             {isSameDay !== undefined && (
                                 <View className={`mt-3 px-3 py-1 rounded-full border ${isSameDay ? 'bg-primary/10 border-primary/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
@@ -503,8 +591,69 @@ export default function ImportRouteScreen() {
                                 </View>
                             )}
                         </View>
-                    )}
-                </TouchableOpacity>
+                    </TouchableOpacity>
+                )}
+
+                {/* Previews / Loading */}
+                {(selectedImages.length > 0 || isProcessing) && (
+                    <View className="w-full bg-surface border border-border rounded-2xl mb-6 p-4">
+                        {isProcessing ? (
+                            <View className="items-center justify-center py-6">
+                                <ActivityIndicator color={THEME.colors.primary} size="large" />
+                                <Text className="text-white font-spaceGroteskBold mt-4 text-[16px]">
+                                    {loadingStep === 0 && 'Inicializando Motor OCR...'}
+                                    {loadingStep === 1 && 'Enviando Imagens ao Servidor...'}
+                                    {loadingStep === 2 && 'Mapeando células da planilha...'}
+                                    {loadingStep === 3 && 'Cruzando dados logísticos...'}
+                                </Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk mt-1 text-center text-[12px]">
+                                    O Gemini 2.5 Pro está lendo {selectedImages.length} captura(s)...
+                                </Text>
+                            </View>
+                        ) : (
+                            <View>
+                                <View className="flex-row justify-between items-center mb-3">
+                                    <Text className="text-white font-spaceGroteskBold text-[15px]">Preview da Captura</Text>
+                                    <TouchableOpacity onPress={() => setSelectedImages([])}>
+                                        <X color="#f87171" size={20} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                                    {selectedImages.map((img, idx) => (
+                                        <View key={idx} className="mr-3 items-center justify-center bg-background border border-[#2d3345] rounded-xl overflow-hidden w-24 h-24">
+                                            {img.mimeType.includes('image') ? (
+                                                <FileText color={THEME.colors.primary} size={32} /> // Native image caching was throwing context issues, used standard Icon
+                                            ) : (
+                                                <FileText color={THEME.colors.primary} size={32} />
+                                            )}
+                                            <Text className="text-[9px] text-text-muted mt-2 font-mono text-center px-1" numberOfLines={1}>
+                                                {img.name}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                    <TouchableOpacity
+                                        onPress={handleUploadPress}
+                                        className="w-24 h-24 rounded-xl border border-dashed border-border items-center justify-center bg-background"
+                                    >
+                                        <UploadCloud color="#94a3b8" size={24} />
+                                        <Text className="text-[10px] font-spaceGrotesk text-[#94a3b8] mt-1">Mais</Text>
+                                    </TouchableOpacity>
+                                </ScrollView>
+
+                                <TouchableOpacity
+                                    onPress={handleProcessImages}
+                                    className="w-full bg-primary h-12 rounded-xl flex-row items-center justify-center shadow-lg"
+                                >
+                                    <Zap color="#000" size={18} className="mr-2" />
+                                    <Text className="text-black font-spaceGroteskBold uppercase tracking-wide">
+                                        Analisar {selectedImages.length} Arquivo(s) com IA
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                )}
 
                 {/* Matchmaker Info Badge */}
                 <View className="flex-row items-center justify-between mb-2">

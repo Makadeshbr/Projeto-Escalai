@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
 import { History, FileText, Calendar, Cloud, Navigation, Package, Zap, ArrowRight, ArrowDownToLine, MapPin } from 'lucide-react-native';
@@ -8,6 +8,9 @@ import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { useAuthStore } from '~/src/store/auth';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment, DriverAvailability } from '~/src/lib/collections';
+import { validateArray, AssignmentSchema, DriverAvailabilitySchema } from '~/src/lib/schemas';
+import { SkeletonList } from '~/src/components/ui/Skeleton';
+import { AssignmentDetailModal } from '~/src/components/AssignmentDetailModal';
 
 interface TimelineItem {
     type: 'route' | 'off';
@@ -82,10 +85,10 @@ function HeaderMetrics({ stats }: { stats: { routesCount: number; offDaysCount: 
  * Componente extraído para card individual da timeline.
  * Usa StyleSheet em vez de className dinâmico para evitar crash do NativeWind CSS interop.
  */
-function TimelineCard({ item, isLast }: { item: TimelineItem; isLast: boolean }) {
+const TimelineCard = React.memo(function TimelineCard({ item, isLast, onPress }: { item: TimelineItem; isLast: boolean; onPress?: (assignment: Assignment) => void }) {
     const isRoute = item.type === 'route';
 
-    return (
+    const cardContent = (
         <View className="flex-row relative mb-4">
             {/* Indicador Linha do Tempo (Connector) */}
             <View className="w-12 items-center mr-2 z-10">
@@ -171,16 +174,28 @@ function TimelineCard({ item, isLast }: { item: TimelineItem; isLast: boolean })
             </View>
         </View>
     );
-}
+
+    // Wrap em TouchableOpacity se for rota (permite abrir detalhes)
+    if (isRoute && onPress) {
+        return (
+            <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(item.data as Assignment)}>
+                {cardContent}
+            </TouchableOpacity>
+        );
+    }
+    return cardContent;
+});
 
 export default function DriverHistoryScreen() {
     const { user } = useAuthStore();
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [historyItems, setHistoryItems] = useState<TimelineItem[]>([]);
+    const [visibleCount, setVisibleCount] = useState(20);
 
     // Filtros
     const [activeFilter, setActiveFilter] = useState<'all' | 'route' | 'off'>('all');
+    const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
 
     const fetchHistory = useCallback(async (showRefreshIndicator = false) => {
         if (!user) return;
@@ -188,21 +203,23 @@ export default function DriverHistoryScreen() {
         else setIsLoading(true);
 
         try {
+            setVisibleCount(20); // Reset paginação ao recarregar
             // [SENIOR DEV] Buscamos de forma agnóstica em ambas as entidades cruciais de RH.
             const [allRawAssignments, allRawAvailability] = await Promise.all([
                 aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as Promise<any[]>,
                 aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY) as Promise<any[]>
             ]);
 
-            const allAssignments = allRawAssignments.filter(item => {
-                const p = item._payload || item;
-                return p.driverId === user.id && (p.status === 'completed' || p.status === 'confirmed');
-            });
+            const validatedAssignments = validateArray(allRawAssignments, AssignmentSchema, 'assignments');
+            const validatedAvailability = validateArray(allRawAvailability, DriverAvailabilitySchema, 'driver_availability');
 
-            const allAvailability = allRawAvailability.filter(item => {
-                const p = item._payload || item;
-                return p.driverId === user.id;
-            });
+            const allAssignments = validatedAssignments.filter(item =>
+                item.driverId === user.id && (item.status === 'completed' || item.status === 'confirmed')
+            );
+
+            const allAvailability = validatedAvailability.filter(item =>
+                item.driverId === user.id
+            );
 
             const timeline: TimelineItem[] = [];
 
@@ -261,8 +278,8 @@ export default function DriverHistoryScreen() {
             // 3. Ordem Cronológica Decrescente (Mais recente primeiro)
             timeline.sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
 
-            // 4. Limita o Extrato para os últimos 30 dias na UI Mobile (Performance)
-            setHistoryItems(timeline.slice(0, 30));
+            // 4. Salva todos no estado (a paginação vira controle de visualização)
+            setHistoryItems(timeline);
 
         } catch (error) {
             console.error('[History] Falha ao compilar métricas RH:', error);
@@ -303,7 +320,13 @@ export default function DriverHistoryScreen() {
         return historyItems.filter(item => item.type === activeFilter);
     }, [historyItems, activeFilter]);
 
-    // Removido: renderHeaderMetrics inline → extraído para componente HeaderMetrics
+    const visibleItems = useMemo(() => {
+        return filteredItems.slice(0, visibleCount);
+    }, [filteredItems, visibleCount]);
+
+    const handleLoadMore = () => {
+        setVisibleCount(prev => prev + 20);
+    };
 
     return (
         <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -311,9 +334,10 @@ export default function DriverHistoryScreen() {
 
             <View className="flex-1">
                 {isLoading ? (
-                    <View className="flex-1 justify-center items-center">
-                        <ActivityIndicator size="large" color={THEME.colors.primary} />
-                        <Text className="text-[#94a3b8] mt-4 font-spaceGrotesk">Buscando seu histórico...</Text>
+                    <View className="flex-1 px-5 pt-6">
+                        <View className="mb-6">
+                            <SkeletonList count={5} />
+                        </View>
                     </View>
                 ) : (
                     <ScrollView
@@ -336,22 +360,40 @@ export default function DriverHistoryScreen() {
                             {filteredItems.length === 0 ? (
                                 <View className="py-12 items-center justify-center">
                                     <FileText color="#475569" size={48} />
-                                    <Text className="text-center text-slate-400 font-spaceGrotesk mt-4">Nenhum histórico encontrado para o filtro selecionado nos últimos 30 dias.</Text>
+                                    <Text className="text-center text-slate-400 font-spaceGrotesk mt-4">Nenhum histórico encontrado para o filtro selecionado.</Text>
                                 </View>
                             ) : (
-                                filteredItems.map((item, index) => (
-                                    <TimelineCard
-                                        key={(item.data as any).id || (item.data as any)._id || `${item.type}-${item.dateObj.getTime()}-${index}`}
-                                        item={item}
-                                        isLast={index === filteredItems.length - 1}
-                                    />
-                                ))
+                                <>
+                                    {visibleItems.map((item, index) => (
+                                        <TimelineCard
+                                            key={(item.data as any).id || (item.data as any)._id || `${item.type}-${item.dateObj.getTime()}-${index}`}
+                                            item={item}
+                                            isLast={index === visibleItems.length - 1 && visibleItems.length === filteredItems.length}
+                                            onPress={(assignment) => setSelectedAssignment(assignment)}
+                                        />
+                                    ))}
+
+                                    {visibleItems.length < filteredItems.length && (
+                                        <TouchableOpacity
+                                            onPress={handleLoadMore}
+                                            className="mt-4 mb-2 py-3 px-6 bg-surface/80 border border-border rounded-xl items-center flex-row justify-center gap-2 self-center"
+                                        >
+                                            <Text className="text-[#94a3b8] font-spaceGroteskBold text-sm uppercase tracking-wider">Carregar mais antigas</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </>
                             )}
                         </View>
 
                     </ScrollView>
                 )}
             </View>
+
+            <AssignmentDetailModal
+                visible={!!selectedAssignment}
+                onClose={() => setSelectedAssignment(null)}
+                assignment={selectedAssignment}
+            />
 
             <DriverBottomNav activeTab="history" />
         </SafeAreaView>

@@ -202,35 +202,178 @@ export async function sendPushNotification(
 }
 
 /**
+ * Resultado do disparo de notificações em massa.
+ * Inclui detalhes de quantos receberam e quais ficaram de fora.
+ */
+export interface MassNotifyResult {
+    /** Quantidade de tokens que receberam a notificação */
+    sent: number;
+    /** Quantidade de motoristas sem token (não receberão push) */
+    skipped: number;
+    /** Total de motoristas na base */
+    total: number;
+    /** Nomes dos motoristas que NÃO possuem push token */
+    missingTokenDrivers: string[];
+}
+
+/**
  * Envia notificação Push para TODOS os motoristas ativos na base.
  * Busca tokens do DRIVER_STATUS e dispara via Expo Push API.
+ * Retorna relatório detalhado incluindo motoristas sem token.
+ *
  * @param title - Título da notificação
  * @param body - Corpo da mensagem
  * @param data - Dados extras opcionais
- * @returns Quantidade de tokens notificados
+ * @returns Relatório completo do disparo (sent, skipped, missingTokenDrivers)
  */
 export async function notifyAllDrivers(
     title: string,
     body: string,
     data: Record<string, unknown> = {}
-): Promise<number> {
+): Promise<MassNotifyResult> {
     const allStats = await aetherFetchAll(COLLECTIONS.DRIVER_STATUS);
     if (!allStats || (allStats as Record<string, unknown>[]).length === 0) {
         throw new Error('Nenhum motorista encontrado no controle de frota.');
     }
 
-    // Suporta ambos os formatos: coluna flat e _payload (backwards compatibility)
-    const tokens = (allStats as Record<string, unknown>[]).map(d => {
+    const drivers = allStats as Record<string, unknown>[];
+    const tokens: string[] = [];
+    const missingTokenDrivers: string[] = [];
+
+    // Classifica cada motorista: tem token válido ou está sem
+    drivers.forEach(d => {
         const payload = d._payload as Record<string, unknown> | undefined;
-        return (d.expoPushToken as string) || (payload?.expoPushToken as string) || '';
-    }).filter(t => t && t.trim() !== '');
+        const token = (d.expoPushToken as string) || (payload?.expoPushToken as string) || '';
+        const name = (d.driverName as string) || (payload?.driverName as string) || 'Sem nome';
+
+        if (token && token.trim() !== '') {
+            tokens.push(token.trim());
+        } else {
+            missingTokenDrivers.push(name);
+        }
+    });
 
     if (tokens.length === 0) {
         throw new Error('Nenhum motorista possui um aplicativo registrado para receber notificações.');
     }
 
     await sendPushNotification(tokens, title, body, data);
-    return tokens.length;
+
+    // Log diagnóstico para depuração
+    if (missingTokenDrivers.length > 0) {
+        console.warn(
+            `[Push] ${missingTokenDrivers.length} motorista(s) SEM push token: ${missingTokenDrivers.join(', ')}`
+        );
+    }
+
+    return {
+        sent: tokens.length,
+        skipped: missingTokenDrivers.length,
+        total: drivers.length,
+        missingTokenDrivers,
+    };
+}
+
+/**
+ * Garante que o motorista tem um push token válido e atualizado
+ * no DRIVER_STATUS. Chamada automaticamente a cada abertura do app.
+ *
+ * Fluxo:
+ * 1. Solicita permissão de notificação (se ainda não concedida)
+ * 2. Obtém o token mais recente do dispositivo
+ * 3. Compara com o token atual no DRIVER_STATUS
+ * 4. Se diferente ou inexistente, atualiza via upsert
+ *
+ * TOLERANTE A FALHAS: nunca lança exceção. Se algo falhar,
+ * loga o motivo e retorna null. O app continua funcionando normalmente.
+ *
+ * @param userId - ID do motorista autenticado
+ * @param driverName - Nome do motorista (para criação de registro)
+ * @param driverPlate - Placa do veículo (para criação de registro)
+ * @param avatarUrl - URL do avatar (opcional)
+ * @returns Token atualizado ou null se indisponível
+ */
+export async function ensureDriverPushToken(
+    userId: string,
+    driverName: string,
+    driverPlate: string,
+    avatarUrl?: string
+): Promise<string | null> {
+    try {
+        // Guard 1: Módulo de notificações não disponível (Expo Go)
+        if (!Notifications) {
+            console.log('[PushSync] Notificações indisponíveis (Expo Go ou módulo ausente).');
+            return null;
+        }
+
+        // Guard 2: Verificar permissão sem solicitar novamente (não-intrusivo)
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') {
+            // Solicita permissão uma vez — se negar, respeita
+            const { status: newStatus } = await Notifications.requestPermissionsAsync();
+            if (newStatus !== 'granted') {
+                console.log('[PushSync] Permissão de notificação negada pelo usuário.');
+                return null;
+            }
+        }
+
+        // Obtém token mais recente do dispositivo
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId
+            || process.env.EXPO_PUBLIC_AETHER_PROJECT_ID
+            || '2df3cb3a-25ab-4246-9596-8c608bff2603';
+
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        const freshToken = tokenData.data;
+
+        if (!freshToken) {
+            console.warn('[PushSync] Token retornado vazio pelo Expo.');
+            return null;
+        }
+
+        // Verifica se o token já está correto no DRIVER_STATUS (evita write desnecessário)
+        const statusRecords = await aether.db.collection(COLLECTIONS.DRIVER_STATUS)
+            .query()
+            .eq('user_id', userId)
+            .get();
+
+        if (statusRecords && (statusRecords as any[]).length > 0) {
+            const record = (statusRecords as any[])[0];
+            const currentToken = record.expoPushToken || record._payload?.expoPushToken || '';
+
+            // Só atualiza se o token mudou (evita writes desnecessários no banco)
+            if (currentToken === freshToken) {
+                console.log('[PushSync] Token já está atualizado no DRIVER_STATUS ✓');
+                return freshToken;
+            }
+
+            // Atualiza com o token fresco
+            await aether.db.collection(COLLECTIONS.DRIVER_STATUS).update(record.id, {
+                expoPushToken: freshToken,
+                updatedAt: new Date().toISOString(),
+            });
+            console.log(`[PushSync] Token atualizado no DRIVER_STATUS (${currentToken ? 'renovado' : 'primeiro registro'})`);
+        } else {
+            // Motorista sem DRIVER_STATUS — cria com token (self-healing + push)
+            await aether.db.collection(COLLECTIONS.DRIVER_STATUS).create({
+                user_id: userId,
+                driverName,
+                driverPlate,
+                avatarUrl: avatarUrl || '',
+                expoPushToken: freshToken,
+                status: 'active',
+                updatedByAdminId: 'system_push_auto_sync',
+                created_at: new Date().toISOString(),
+            });
+            console.log('[PushSync] DRIVER_STATUS criado com push token (novo motorista)');
+        }
+
+        return freshToken;
+    } catch (error: unknown) {
+        // Tolerância total: qualquer falha é logada mas não impede o uso do app
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn(`[PushSync] Falha tolerada no auto-sync de push token: ${msg}`);
+        return null;
+    }
 }
 
 /**

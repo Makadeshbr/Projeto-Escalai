@@ -38,12 +38,11 @@ export const aether = createAetherProxy();
  * Busca TODOS os registros de uma coleção com paginação automática.
  * Usa REST direto quando o token está disponível, com fallback para SDK.
  *
+ * [FIX] Passa limit=5000 e faz paginação automática via cursor para
+ * garantir que TODOS os registros são retornados (backend tem LIMIT default de 1000).
+ *
  * @param collectionName - Nome da coleção no banco de dados
  * @returns Array com todos os registros da coleção
- *
- * [NOTA ARQUITETURAL] Esta função baixa TODOS os registros para o client.
- * Para coleções grandes (>1000 registros), considerar uso de queries
- * server-side com filtros e paginação.
  */
 export async function aetherFetchAll(collectionName: string): Promise<Record<string, unknown>[]> {
     // Aguarda o client ficar pronto (AetherProvider precisa montar primeiro)
@@ -60,7 +59,6 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
     // Tenta via REST direto (mais rápido, sem overhead do SDK)
     try {
         const client = getAetherClient();
-        // CORREÇÃO: chama getToken() diretamente no client para manter binding de `this`
         const token = typeof client.getToken === 'function'
             ? client.getToken()
             : null;
@@ -70,17 +68,46 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'X-Project-ID': aetherConfig.apiKey,
+                'X-Skip-Cache': 'true', // [FIX] Sempre pula cache para dados realtime
             };
-            // CORREÇÃO: URL alinhada com o endpoint real do backend Aether
-            const url = `${aetherConfig.baseUrl}/v1/db/${collectionName}`;
-            const resp = await fetch(url, { headers });
-            if (resp.ok) {
+
+            // [FIX] Paginação automática: busca todas as páginas via cursor
+            let allItems: Record<string, unknown>[] = [];
+            let cursor: string | null = null;
+            let pageCount = 0;
+            const MAX_PAGES = 10; // Segurança: no máximo 10 páginas (50.000 registros)
+
+            do {
+                // [FIX] limit=5000 para maximizar registros por request
+                let url = `${aetherConfig.baseUrl}/v1/db/${collectionName}?limit=5000`;
+                if (cursor) {
+                    url += `&cursor=${encodeURIComponent(cursor)}`;
+                }
+
+                const resp = await fetch(url, { headers });
+                if (!resp.ok) {
+                    console.warn(`[aetherFetchAll] REST falhou (${resp.status}), usando SDK como fallback.`);
+                    break;
+                }
+
                 const json = await resp.json();
-                const items = (json.data || json.records || json) as Record<string, unknown>[];
-                console.log(`[aetherFetchAll] REST OK: ${collectionName} → ${items.length} registros`);
-                return items;
+                const items = (json.data || json.records || []) as Record<string, unknown>[];
+                allItems = allItems.concat(items);
+
+                // Verifica se há mais páginas
+                cursor = json.cursor || null;
+                const hasMore = json.hasMore === true;
+                pageCount++;
+
+                console.log(`[aetherFetchAll] ${collectionName} página ${pageCount}: ${items.length} registros (total acumulado: ${allItems.length}, hasMore: ${hasMore})`);
+
+                if (!hasMore || !cursor) break;
+            } while (pageCount < MAX_PAGES);
+
+            if (allItems.length > 0) {
+                console.log(`[aetherFetchAll] REST OK: ${collectionName} → ${allItems.length} registros TOTAL em ${pageCount} página(s)`);
+                return allItems;
             }
-            console.warn(`[aetherFetchAll] REST falhou (${resp.status}), usando SDK como fallback.`);
         }
     } catch (restErr) {
         console.warn('[aetherFetchAll] REST indisponível, usando SDK:', restErr);

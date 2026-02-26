@@ -4,6 +4,7 @@ import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections'
 import { useAuthStore } from '~/src/store/auth';
 import { notifyDriver, diagnosePushError } from '~/src/lib/push';
 import { useActionModal } from './useActionModal';
+import { validateArray, AssignmentSchema } from '~/src/lib/schemas';
 
 export interface RouteGroup {
     cityId: string;
@@ -39,7 +40,8 @@ export function useMonitorData() {
             // [SENIOR DEV FIX] Usar aetherFetchAll importado em vez de .list() do SDK
             // Importar aetherFetchAll no topo do arquivo se não houver
             const { aetherFetchAll } = require('~/src/lib/aether');
-            const allAssignments = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as Assignment[];
+            const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
+            const allAssignments = validateArray(allAssignmentsRaw, AssignmentSchema, 'assignments') as Assignment[];
 
             // [TIMEZONE FIX] Em vez de a.createdAt.startsWith(hoje_local),
             // verificamos se a data_local(createdAt) === hoje_local
@@ -47,9 +49,11 @@ export function useMonitorData() {
             // Doca ativa não deve sumir da tela apenas porque a hora virou.
             const todayStr = getTodayDateStr();
 
+            // [FIX] Mostra TODOS os assignments de hoje, sem filtrar por !dock ou status.
+            // Anteriormente filtrava `!a.dock` que excluía rotas sem doca definida,
+            // e `status=completed` que removia rotas finalizadas — ambos causavam
+            // motoristas desaparecendo da lista do admin.
             const todayActive = allAssignments.filter(a => {
-                if (a.status === 'completed' || !a.dock) return false;
-
                 if (!a.createdAt) return false;
 
                 // Converte timestamp UTC do banco para data local
@@ -59,9 +63,10 @@ export function useMonitorData() {
                 const day = String(createdDate.getDate()).padStart(2, '0');
                 const localCreatedStr = `${year}-${month}-${day}`;
 
-                // Considera válido se foi criado hoje OU se AINDA está pendente/esperando
+                // Considera válido se foi criado hoje OU se ainda está ativo (qualquer status não-completado)
                 const isToday = localCreatedStr === todayStr;
-                const isStillActive = (a.status === 'pending' || a.dockStatus === 'waiting' || a.dockStatus === 'liberated');
+                const isStillActive = (a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress'
+                    || a.dockStatus === 'waiting' || a.dockStatus === 'liberated');
 
                 return isToday || isStillActive;
             });

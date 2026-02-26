@@ -1,13 +1,13 @@
 import { useCallback } from 'react';
 import { aether } from '~/src/lib/aether';
 import {
-    COLLECTIONS, WAVE_META, Assignment, DriverAvailability,
+    COLLECTIONS, Assignment, DriverAvailability,
     getTodayDateStr
 } from '~/src/lib/collections';
 import { notifyDriver, diagnosePushError, isExpoGo } from '~/src/lib/push';
 import type { ModalType } from './useActionModal';
 import { useAuthStore, AuthUser } from '~/src/store/auth';
-import type { WaveKey } from './useDashboardData';
+
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Paths, File as ExpoFile } from 'expo-file-system';
@@ -19,8 +19,6 @@ import * as XLSX from 'xlsx';
 export interface CreateAssignmentParams {
     /** Cidade selecionada para o despacho */
     selectedCity: { id: string; name: string } | null;
-    /** Turno selecionado */
-    selectedWave: WaveKey;
     /** Número da onda */
     waveNum: string;
     /** Número da doca */
@@ -63,7 +61,7 @@ export function useAssignmentActions(callbacks: {
         setIsLoading: (v: boolean) => void,
         onSuccess: () => void
     ) => {
-        const { selectedCity, selectedWave, waveNum, dock, sacas, isSddEnabled, selectedDriverIds, availableDrivers } = params;
+        const { selectedCity, waveNum, dock, sacas, isSddEnabled, selectedDriverIds, availableDrivers } = params;
 
         if (!selectedCity) {
             showModal('Atenção', 'Selecione a Cidade/Centro de Distribuição.', 'error');
@@ -87,7 +85,7 @@ export function useAssignmentActions(callbacks: {
             let failedPushes = 0;
 
             try {
-                const waveMeta = WAVE_META[selectedWave];
+                const waveLabel = waveNum.trim() || 'Geral';
                 const selectedDriversList = availableDrivers.filter(
                     d => selectedDriverIds.has(d.driverId || d.id)
                 );
@@ -102,9 +100,9 @@ export function useAssignmentActions(callbacks: {
                     await aether.db.collection(COLLECTIONS.ASSIGNMENTS).create({
                         cityId: snapCity.id,
                         cityName: snapCity.name,
-                        wave: selectedWave,
-                        waveLabel: waveMeta.label,
-                        waveTime: waveMeta.time,
+                        wave: 'general',
+                        waveLabel: waveLabel,
+                        waveTime: 'Conforme Rota',
                         waveNumber: waveNum.trim(),
                         dock: dock.trim(),
                         ...(sacas && sacas.trim() ? { sacas: parseInt(sacas.trim(), 10) } : {}),
@@ -122,7 +120,7 @@ export function useAssignmentActions(callbacks: {
                         await notifyDriver(
                             driver.driverId || driver.id,
                             'ROTA ATRIBUÍDA DISPONÍVEL 📦',
-                            `Designado para ${snapCity.name} (${waveMeta.label}). Doca ${dock.trim()}${isSddEnabled ? ' - Priority SDD' : ''}.`
+                            `Designado para ${snapCity.name} (${waveLabel}). Doca ${dock.trim()}${isSddEnabled ? ' - Priority SDD' : ''}.`
                         );
                     } catch (pushErr) {
                         console.warn(`[Fault Tolerance] Push falhou para ${driver.driverId}:`, pushErr);

@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Modal } from 'react-native';
 import { X, Check, User } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
-import { WAVE_META, DriverAvailability } from '~/src/lib/collections';
-import type { WaveKey } from '~/src/hooks/useDashboardData';
+import { DriverAvailability } from '~/src/lib/collections';
 
 /**
  * Props do modal de seleção de motoristas com checkboxes.
@@ -11,12 +10,10 @@ import type { WaveKey } from '~/src/hooks/useDashboardData';
 interface DriverPickerModalProps {
     /** Se o modal está visível */
     visible: boolean;
-    /** Lista de motoristas disponíveis no turno/data */
+    /** Lista de motoristas disponíveis para a data */
     drivers: DriverAvailability[];
     /** IDs dos motoristas selecionados */
     selectedIds: Set<string>;
-    /** Turno atual (para exibir label) */
-    selectedWave: WaveKey;
     /** Se está carregando motoristas */
     loading: boolean;
     /** Callback ao clicar em um motorista (toggle seleção) */
@@ -32,7 +29,7 @@ interface DriverPickerModalProps {
  * Exibe nome, placa e quantidade de selecionados.
  */
 export function DriverPickerModal({
-    visible, drivers, selectedIds, selectedWave, loading,
+    visible, drivers, selectedIds, loading,
     onToggle, onConfirm, onClose
 }: DriverPickerModalProps) {
     return (
@@ -43,7 +40,7 @@ export function DriverPickerModal({
                     <View className="flex-row items-center justify-between p-6 border-b border-border bg-[#1a1d2e] rounded-t-3xl">
                         <View>
                             <Text className="text-white font-spaceGroteskBold text-lg">Selecionar Motoristas</Text>
-                            <Text className="text-primary font-spaceGrotesk text-xs mt-1 tracking-wider uppercase">TURNO: {WAVE_META[selectedWave].label}</Text>
+                            <Text className="text-primary font-spaceGrotesk text-xs mt-1 tracking-wider uppercase">MOTORISTAS DISPONÍVEIS</Text>
                         </View>
                         <TouchableOpacity onPress={onClose} className="w-8 h-8 bg-background items-center justify-center rounded-full">
                             <X color="#94a3b8" size={18} />
@@ -72,7 +69,7 @@ export function DriverPickerModal({
                             </View>
                             <Text className="text-white font-spaceGroteskBold text-base mb-1">Nenhum disponível</Text>
                             <Text className="text-[#94a3b8] font-spaceGrotesk text-[13px] text-center">
-                                Nenhum motorista sinalizou disponibilidade para o turno {WAVE_META[selectedWave].label} ainda.
+                                Nenhum motorista sinalizou disponibilidade para esta data ainda.
                             </Text>
                         </View>
                     ) : (

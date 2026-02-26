@@ -45,7 +45,8 @@
           "defaultChannel": "default",
           "sounds": []
         }
-      ]
+      ],
+      "expo-updates"
     ],
     "extra": {
       "router": {},

@@ -13,7 +13,7 @@ import {
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
-import { notifyAdmins } from '~/src/lib/push';
+import { notifyAdmins, ensureDriverPushToken } from '~/src/lib/push';
 
 type ScreenState = 'loading' | 'blocked' | 'no_window' | 'already_filled' | 'form';
 
@@ -79,6 +79,21 @@ export default function AvailabilityScreen() {
             clearInterval(interval);
         };
     }, []);
+
+    /**
+     * [PUSH FIX] Garante registro de push token ao montar a tela.
+     * Cobre motoristas que nunca abriram o dashboard.
+     */
+    useEffect(() => {
+        if (user?.id) {
+            ensureDriverPushToken(
+                user.id,
+                user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
+                user.metadata?.vehiclePlate || 'S/Placa',
+                user.metadata?.avatarUrl,
+            );
+        }
+    }, [user?.id]);
 
     const formatLabel = (dateRaw: string, isToday: boolean) => {
         const dateObj = new Date(dateRaw + 'T12:00:00Z');

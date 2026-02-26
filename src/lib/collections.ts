@@ -9,6 +9,8 @@ export const COLLECTIONS = {
     ASSIGNMENTS: 'assignments',
     DRIVER_STATUS: 'driver_status',
     ADMIN_STATUS: 'admin_status',
+    SUPPORT_TICKETS: 'support_tickets',
+    AUDIT_LOG: 'audit_log',
 } as const;
 
 // ---- Cities ----
@@ -101,6 +103,21 @@ export interface AdminStatus {
     expoPushToken: string;
     createdAt: string;
     updatedAt?: string;
+}
+
+// ---- Support Tickets (motorista → admin) ----
+export interface SupportTicket {
+    id: string;
+    driverId: string;
+    driverName: string;
+    driverPlate: string;
+    assignmentId?: string;
+    type: 'problem' | 'suggestion' | 'question';
+    message: string;
+    status: 'open' | 'in_progress' | 'resolved';
+    createdAt: string;
+    resolvedAt?: string;
+    resolvedByAdminId?: string;
 }
 
 // ---- Helper: wave metadata ----

@@ -1,18 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, TouchableOpacity, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
 import { ArrowLeft, Search, User, Check, X, Clock, CalendarClock, Zap, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { aether, aetherFetchAll } from '~/src/lib/aether';
+import { aether, aetherFetchAll, aetherConfig } from '~/src/lib/aether';
+import { getAetherClient, isAetherClientReady } from '@aether-baas/react-native';
 import { COLLECTIONS, getTomorrowDateStr, getTodayDateStr, DriverAvailability } from '~/src/lib/collections';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { FloatingActionButton } from '~/src/components/FloatingActionButton';
+import { DriverDetailModal } from '~/src/components/DriverDetailModal';
 import { router } from 'expo-router';
 import { TextInput } from 'react-native';
 import { useAuthStore } from '~/src/store/auth';
 import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
+import { SkeletonList } from '~/src/components/ui/Skeleton';
 
 // Tipagem unida que cruza Base (Status) com Answer (Availability)
 interface DriverCrossList {
@@ -20,15 +23,102 @@ interface DriverCrossList {
     driverName: string;
     driverPlate: string;
     avatarUrl?: string;
-    status: 'confirmed' | 'denied' | 'pending';
+    status: 'confirmed' | 'denied' | 'pending' | 'inactive';
     shifts?: { morning: boolean; afternoon: boolean; night: boolean };
+    /** Indica se o motorista nunca acessou o app */
+    neverAccessed?: boolean;
 }
+
+/** Altura fixa de cada card na lista (72px conteúdo + 12px margin) */
+const DRIVER_CARD_HEIGHT = 84;
+
+/**
+ * Card individual do motorista — memoizado para evitar re-render
+ * quando outros items mudam na lista. Só re-renderiza se o item
+ * ou a função onPress mudar por referência.
+ */
+const DriverListCard = React.memo(function DriverListCard({
+    item,
+    onPress,
+}: {
+    item: DriverCrossList;
+    onPress: (driver: DriverCrossList) => void;
+}) {
+    return (
+        <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onPress(item)}
+            className="mb-3 bg-surface border border-border rounded-xl p-4 flex-row items-center"
+        >
+            {/* Driver Avatar + Status Badge */}
+            <View className="relative">
+                <DriverAvatar avatarUrl={item.avatarUrl} size={48} />
+                <View
+                    className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full items-center justify-center border-2 border-[#1e2332]"
+                    style={{
+                        backgroundColor: item.status === 'confirmed' ? '#22c55e' :
+                            item.status === 'denied' ? '#ef4444' :
+                                item.status === 'inactive' ? '#475569' :
+                                    '#eab308'
+                    }}
+                >
+                    {item.status === 'confirmed' && <Check color="#fff" size={10} strokeWidth={3} />}
+                    {item.status === 'denied' && <X color="#fff" size={10} strokeWidth={3} />}
+                    {item.status === 'pending' && <Clock color="#fff" size={10} strokeWidth={3} />}
+                    {item.status === 'inactive' && <AlertCircle color="#fff" size={10} strokeWidth={3} />}
+                </View>
+            </View>
+
+            {/* Textos */}
+            <View className="flex-1 ml-4 justify-center">
+                <Text className="text-white font-spaceGroteskBold text-[15px]">{item.driverName}</Text>
+                <View className="flex-row items-center mt-1">
+                    <Text className="text-[#94a3b8] text-[10px] font-spaceGrotesk uppercase tracking-wider">
+                        {item.driverPlate} •
+                        <Text style={{
+                            fontFamily: 'SpaceGrotesk-Bold',
+                            color: item.status === 'confirmed' ? '#4ade80' :
+                                item.status === 'denied' ? '#f87171' :
+                                    item.status === 'inactive' ? '#64748b' :
+                                        '#eab308'
+                        }}>
+                            {' '}{item.status === 'confirmed' ? 'Aceito' :
+                                item.status === 'denied' ? 'Ausente' :
+                                    item.status === 'inactive' ? 'Nunca acessou' :
+                                        'Pendente'}
+                        </Text>
+                    </Text>
+                </View>
+            </View>
+
+            {/* Turnos confirmados */}
+            {item.status === 'confirmed' && item.shifts && (
+                <View className="flex-row gap-1 border-l border-border pl-3 ml-2">
+                    {item.shifts.morning && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">M</Text></View>}
+                    {item.shifts.afternoon && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">T</Text></View>}
+                    {item.shifts.night && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">N</Text></View>}
+                </View>
+            )}
+            {item.status === 'pending' && (
+                <TouchableOpacity className="ml-2 w-10 h-10 rounded-full border border-yellow-500/20 bg-yellow-500/5 items-center justify-center">
+                    <AlertCircle color="#eab308" size={16} />
+                </TouchableOpacity>
+            )}
+            {item.status === 'inactive' && (
+                <View style={{ marginLeft: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(100,116,139,0.15)', borderWidth: 1, borderColor: 'rgba(100,116,139,0.2)' }}>
+                    <Text style={{ color: '#64748b', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.8 }}>Sem app</Text>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+});
 
 export default function AdminDriversScreen() {
     const { role } = useAuthStore();
     const [selectedTab, setSelectedTab] = useState<'sd' | 'd1'>('d1');
     const [crossList, setCrossList] = useState<DriverCrossList[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // CRUD States
     const [isFormModalVisible, setIsFormModalVisible] = useState(false);
@@ -41,14 +131,17 @@ export default function AdminDriversScreen() {
     const [resultModalVisible, setResultModalVisible] = useState(false);
     const [resultData, setResultData] = useState<{ title: string, message: string, type: 'success' | 'error' }>({ title: '', message: '', type: 'success' });
 
+    // Estado para modal de detalhes do motorista
+    const [selectedDriver, setSelectedDriver] = useState<DriverCrossList | null>(null);
+    const [isDetailVisible, setIsDetailVisible] = useState(false);
+
     const fetchAvailabilityData = useCallback(async () => {
         setIsLoading(true);
         try {
             const targetStr = selectedTab === 'd1' ? getTomorrowDateStr() : getTodayDateStr();
 
-            // [SENIOR DEV] Usar aetherFetchAll primeiro para paginação completa
+            // 1. Busca motoristas que já logaram no app (driver_status)
             const allDriversRaw = await aetherFetchAll(COLLECTIONS.DRIVER_STATUS);
-            // Normaliza para suportar campos flat e formato _payload
             const allDrivers = (allDriversRaw || []).map((d: Record<string, unknown>) => {
                 const payload = (d._payload as Record<string, unknown>) || {};
                 return {
@@ -60,14 +153,83 @@ export default function AdminDriversScreen() {
                 };
             }).filter(d => d.status === 'active');
 
-            // Pega todas as respostas para a data-alvo
+            // 2. Busca TODOS os usuários cadastrados na autenticação do Aether (inclui quem nunca logou)
+            let authUsers: Array<{ id: string; name: string | null; email: string; role: string }> = [];
+            try {
+                if (isAetherClientReady()) {
+                    const client = getAetherClient();
+                    const token = typeof client.getToken === 'function' ? client.getToken() : null;
+
+                    if (token) {
+                        const projectId = aetherConfig.apiKey;
+                        const resp = await fetch(
+                            `${aetherConfig.baseUrl}/v1/projects/${projectId}/admin/users?limit=100`,
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json',
+                                    'X-Project-ID': projectId,
+                                },
+                            }
+                        );
+
+                        if (resp.ok) {
+                            const json = await resp.json();
+                            authUsers = (json.users || []).map((u: Record<string, unknown>) => ({
+                                id: u.id as string,
+                                name: (u.name as string) || null,
+                                email: (u.email as string) || '',
+                                role: (u.role as string) || 'driver',
+                            }));
+                            console.log(`[Drivers] Auth users carregados: ${authUsers.length} (total autenticação)`);
+                        } else {
+                            console.warn(`[Drivers] Falha ao buscar auth users (${resp.status}), usando apenas driver_status.`);
+                        }
+                    }
+                }
+            } catch (authErr) {
+                // Fallback silencioso — se falhar, mostra apenas os que já logaram
+                console.warn('[Drivers] Auth users indisponível, exibindo apenas driver_status:', authErr);
+            }
+
+            // 3. Mescla: identifica motoristas da auth que NÃO têm driver_status (nunca logaram)
+            // Filtra apenas users com role=driver (exclui admin e outros roles)
+            const driverAuthUsers = authUsers.filter(au => au.role === 'driver');
+            const driverStatusUserIds = new Set(allDrivers.map(d => d.user_id));
+            const neverAccessedDrivers = driverAuthUsers
+                .filter(au => !driverStatusUserIds.has(au.id))
+                .map(au => ({
+                    user_id: au.id,
+                    driverName: au.name || au.email.split('@')[0] || 'Sem nome',
+                    driverPlate: 'S/PLACA',
+                    avatarUrl: '',
+                    status: 'active' as const,
+                    neverAccessed: true,
+                }));
+
+            // 4. Une os dois arrays
+            const mergedDrivers = [...allDrivers, ...neverAccessedDrivers];
+            console.log(`[Drivers] Total mesclado: ${mergedDrivers.length} (${allDrivers.length} logados + ${neverAccessedDrivers.length} nunca acessaram)`);
+
+            // 5. Busca respostas de disponibilidade para a data-alvo
             const allAnswersRaw = await aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY);
             const answers = (allAnswersRaw || []).filter((a: Record<string, unknown>) => a.targetDate === targetStr) as unknown as DriverAvailability[];
 
-            // 3. Faz o "Left Join"
-            const buildList: DriverCrossList[] = allDrivers.map(base => {
-                const answer = answers.find(a => a.driverId === base.user_id);
+            // 6. Faz o "Left Join" com disponibilidade
+            const buildList: DriverCrossList[] = mergedDrivers.map(base => {
+                // Motoristas que nunca acessaram não têm disponibilidade
+                if ((base as any).neverAccessed) {
+                    return {
+                        id: base.user_id,
+                        driverName: base.driverName,
+                        driverPlate: base.driverPlate,
+                        avatarUrl: base.avatarUrl || undefined,
+                        status: 'inactive' as const,
+                        neverAccessed: true,
+                    };
+                }
 
+                const answer = answers.find(a => a.driverId === base.user_id);
                 let driverStatus: 'confirmed' | 'denied' | 'pending' = 'pending';
                 if (answer) {
                     driverStatus = answer.isAvailable ? 'confirmed' : 'denied';
@@ -83,14 +245,14 @@ export default function AdminDriversScreen() {
                 };
             });
 
-            // Ordena listagem: Confirmados -> Pendentes -> Negados
-            const orderScore = { confirmed: 1, pending: 2, denied: 3 };
+            // 7. Ordena: Confirmados → Pendentes → Ausentes → Inativos (nunca acessou)
+            const orderScore = { confirmed: 1, pending: 2, denied: 3, inactive: 4 };
             buildList.sort((a, b) => orderScore[a.status] - orderScore[b.status]);
 
             setCrossList(buildList);
         } catch (e) {
             console.error('[Drivers] Error fetching availability cross-join:', e);
-            setCrossList([]); // Resets list securely on error
+            setCrossList([]);
         } finally {
             setIsLoading(false);
         }
@@ -110,6 +272,100 @@ export default function AdminDriversScreen() {
 
     const targetDateLabel = selectedTab === 'd1' ? new Date(Date.now() + 86400000).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
 
+    // CRUD handler declarado antes dos helpers do FlatList (referência necessária)
+    const openEditModal = useCallback((driver: DriverCrossList) => {
+        setEditingDriverId(driver.id);
+        setFormData({ name: driver.driverName, plate: driver.driverPlate });
+        setIsFormModalVisible(true);
+    }, []);
+
+    // ── FlatList helpers (estáveis por referência para evitar re-renders) ──
+
+    /** Extrator de chave para reconciliação eficiente */
+    const driverKeyExtractor = useCallback((item: DriverCrossList) => item.id, []);
+
+    /** Callback de render — onPress abre modal de detalhes */
+    const renderDriverItem = useCallback(({ item }: { item: DriverCrossList }) => (
+        <DriverListCard item={item} onPress={(driver) => {
+            setSelectedDriver(driver);
+            setIsDetailVisible(true);
+        }} />
+    ), []);
+
+    /** Layout pré-calculado — elimina medição de altura em runtime */
+    const driverGetItemLayout = useCallback((_data: any, index: number) => ({
+        length: DRIVER_CARD_HEIGHT,
+        offset: DRIVER_CARD_HEIGHT * index,
+        index,
+    }), []);
+
+    /** Contagens memoizadas para os summary cards (evita .filter() a cada render) */
+    const statusCounts = useMemo(() => ({
+        confirmed: crossList.filter(a => a.status === 'confirmed').length,
+        pending: crossList.filter(a => a.status === 'pending').length,
+        denied: crossList.filter(a => a.status === 'denied').length,
+        inactive: crossList.filter(a => a.status === 'inactive').length,
+    }), [crossList]);
+
+    /** Lista filtrada por busca (nome ou placa) — memoizada */
+    const filteredList = useMemo(() => {
+        if (!searchQuery.trim()) return crossList;
+        const q = searchQuery.toLowerCase();
+        return crossList.filter(d =>
+            d.driverName.toLowerCase().includes(q) ||
+            d.driverPlate.toLowerCase().includes(q)
+        );
+    }, [crossList, searchQuery]);
+
+    /** Header da lista com barra de busca + summary cards + título da seção */
+    const listHeader = useMemo(() => (
+        <>
+            {/* Barra de Busca */}
+            <View className="mb-4 relative justify-center">
+                <TextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Buscar por nome ou placa..."
+                    placeholderTextColor={THEME.colors.textMuted}
+                    className="w-full bg-[#1e2332] border border-border rounded-xl py-3 pl-11 pr-4 text-white font-spaceGrotesk text-[13px]"
+                />
+                <View className="absolute left-4 opacity-50">
+                    <Search color="#94a3b8" size={18} />
+                </View>
+            </View>
+
+            {/* Summary Cards */}
+            <View className="flex-row gap-2 mb-6 mt-1">
+                <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
+                    <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Confirmados</Text>
+                    <Text className="text-xl font-spaceGrotesk text-[#4ade80]">{statusCounts.confirmed}</Text>
+                </View>
+                <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
+                    <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Pendentes</Text>
+                    <Text className="text-xl font-spaceGrotesk text-[#eab308]">{statusCounts.pending}</Text>
+                </View>
+                <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
+                    <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Ausentes</Text>
+                    <Text className="text-xl font-spaceGrotesk text-[#f87171]">{statusCounts.denied}</Text>
+                </View>
+                <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
+                    <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Inativos</Text>
+                    <Text className="text-xl font-spaceGrotesk" style={{ color: '#64748b' }}>{statusCounts.inactive}</Text>
+                </View>
+            </View>
+
+            {/* Section Label */}
+            <View className="mb-4 ml-1">
+                <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-wider">
+                    {searchQuery.trim()
+                        ? `Resultados para "${searchQuery}" (${filteredList.length})`
+                        : `Visão Consolidada (${targetDateLabel})`
+                    }
+                </Text>
+            </View>
+        </>
+    ), [statusCounts, targetDateLabel, searchQuery, filteredList.length]);
+
     // CRUD Handlers
     const openCreateModal = () => {
         setEditingDriverId(null);
@@ -117,11 +373,7 @@ export default function AdminDriversScreen() {
         setIsFormModalVisible(true);
     };
 
-    const openEditModal = (driver: DriverCrossList) => {
-        setEditingDriverId(driver.id);
-        setFormData({ name: driver.driverName, plate: driver.driverPlate });
-        setIsFormModalVisible(true);
-    };
+
 
     const confirmDelete = () => {
         setIsFormModalVisible(false);
@@ -256,40 +508,20 @@ export default function AdminDriversScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView
+            <FlatList
+                data={filteredList}
+                keyExtractor={driverKeyExtractor}
+                renderItem={renderDriverItem}
+                getItemLayout={driverGetItemLayout}
                 className="flex-1 px-4 z-10"
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 112 }}
                 refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchAvailabilityData} tintColor={THEME.colors.primary} />}
-            >
-                {/* Status Summary Cards */}
-                <View className="flex-row gap-2 mb-6 mt-1">
-                    <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
-                        <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Confirmados</Text>
-                        <Text className="text-xl font-spaceGrotesk text-[#4ade80]">
-                            {crossList.filter(a => a.status === 'confirmed').length}
-                        </Text>
-                    </View>
-                    <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
-                        <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Pendentes</Text>
-                        <Text className="text-xl font-spaceGrotesk text-[#eab308]">
-                            {crossList.filter(a => a.status === 'pending').length}
-                        </Text>
-                    </View>
-                    <View className="flex-1 bg-surface border border-border p-3 rounded-2xl items-center">
-                        <Text className="text-text-muted text-[10px] font-spaceGrotesk uppercase mb-1 tracking-wider">Ausentes</Text>
-                        <Text className="text-xl font-spaceGrotesk text-[#f87171]">
-                            {crossList.filter(a => a.status === 'denied').length}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Driver List by Selected Target */}
-                <View className="mb-4 ml-1">
-                    <Text className="text-[12px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-wider">Visão Consolidada ({targetDateLabel})</Text>
-                </View>
-
-                <View className="pb-28">
-                    {!isLoading && crossList.length === 0 ? (
+                ListHeaderComponent={listHeader}
+                ListEmptyComponent={
+                    isLoading ? (
+                        <SkeletonList count={6} />
+                    ) : (
                         <View className="p-8 items-center justify-center border border-border rounded-2xl bg-surface/50 border-dashed mt-4">
                             <View className="w-16 h-16 rounded-full bg-background items-center justify-center mb-4 border border-border">
                                 <User color={THEME.colors.textMuted} size={24} />
@@ -299,63 +531,25 @@ export default function AdminDriversScreen() {
                                 Nenhum perfil de motorista localizado. Eles precisam acessar o aplicativo para criar o perfil (Status).
                             </Text>
                         </View>
-                    ) : (
-                        crossList.map((item) => (
-                            <TouchableOpacity
-                                key={item.id}
-                                activeOpacity={0.7}
-                                onPress={() => openEditModal(item)}
-                                className="mb-3 bg-surface border border-border rounded-xl p-4 flex-row items-center"
-                            >
-                                {/* Driver Avatar + Status Badge */}
-                                <View className="relative">
-                                    <DriverAvatar avatarUrl={item.avatarUrl} size={48} />
-                                    <View className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full items-center justify-center border-2 border-[#1e2332] ${
-                                        item.status === 'confirmed' ? 'bg-green-500' :
-                                        item.status === 'denied' ? 'bg-red-500' :
-                                        'bg-yellow-500'
-                                    }`}>
-                                        {item.status === 'confirmed' && <Check color="#fff" size={10} strokeWidth={3} />}
-                                        {item.status === 'denied' && <X color="#fff" size={10} strokeWidth={3} />}
-                                        {item.status === 'pending' && <Clock color="#fff" size={10} strokeWidth={3} />}
-                                    </View>
-                                </View>
-
-                                {/* Texts */}
-                                <View className="flex-1 ml-4 justify-center">
-                                    <Text className="text-white font-spaceGroteskBold text-[15px]">{item.driverName}</Text>
-                                    <View className="flex-row items-center mt-1">
-                                        <Text className="text-[#94a3b8] text-[10px] font-spaceGrotesk uppercase tracking-wider">
-                                            {item.driverPlate} •
-                                            <Text className={item.status === 'pending' ? 'text-yellow-500 font-spaceGroteskBold' : item.status === 'confirmed' ? 'text-green-400 font-spaceGroteskBold' : 'text-red-400 font-spaceGroteskBold'}>
-                                                {' '} {item.status === 'confirmed' ? 'Aceito' : item.status === 'denied' ? 'Ausente' : 'Pendente'}
-                                            </Text>
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                {/* Shifts */}
-                                {item.status === 'confirmed' && item.shifts && (
-                                    <View className="flex-row gap-1 border-l border-border pl-3 ml-2">
-                                        {item.shifts.morning && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">M</Text></View>}
-                                        {item.shifts.afternoon && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">T</Text></View>}
-                                        {item.shifts.night && <View className="bg-background border border-border w-6 h-6 items-center justify-center rounded"><Text className="text-text-light text-[10px] font-spaceGroteskBold">N</Text></View>}
-                                    </View>
-                                )}
-                                {item.status === 'pending' && (
-                                    <TouchableOpacity className="ml-2 w-10 h-10 rounded-full border border-yellow-500/20 bg-yellow-500/5 items-center justify-center">
-                                        <AlertCircle color="#eab308" size={16} />
-                                    </TouchableOpacity>
-                                )}
-                            </TouchableOpacity>
-                        ))
-                    )}
-                </View>
-            </ScrollView>
+                    )
+                }
+                initialNumToRender={10}
+                maxToRenderPerBatch={15}
+                windowSize={5}
+                removeClippedSubviews
+            />
 
             <FloatingActionButton onPress={openCreateModal} />
 
             <AdminBottomNav activeTab="drivers" />
+
+            {/* Modal de Detalhes do Motorista */}
+            <DriverDetailModal
+                visible={isDetailVisible}
+                onClose={() => setIsDetailVisible(false)}
+                driver={selectedDriver}
+                onEdit={(driver) => openEditModal(driver)}
+            />
 
             {/* Form Modal (Create/Edit) */}
             <EnterpriseModal

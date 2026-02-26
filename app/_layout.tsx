@@ -11,6 +11,9 @@ import { ThemeProvider, DarkTheme } from '@react-navigation/native';
 import { aetherConfig } from '../src/lib/aether';
 import { initializeNotificationHandler } from '../src/lib/push';
 import OTAUpdater from '../src/components/OTAUpdater';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import { OfflineBanner } from '../src/components/OfflineBanner';
+import { crashReporter } from '../src/lib/crashReporter';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -19,6 +22,16 @@ const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreCl
  * Evita duplicação e garante configuração consistente em todo o app.
  */
 initializeNotificationHandler();
+
+/**
+ * Handler global de erros não capturados (JS exceptions fora do render).
+ * Complementa o ErrorBoundary que só captura erros de render React.
+ */
+const defaultHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+    crashReporter.captureException(error instanceof Error ? error : new Error(String(error)), { isFatal });
+    defaultHandler(error, isFatal);
+});
 
 import '../global.css';
 
@@ -81,25 +94,29 @@ export default function RootLayout() {
     if (!loaded) return null;
 
     return (
-        <View style={{ flex: 1, backgroundColor: THEME.colors.background }}>
-            <StatusBar barStyle="light-content" backgroundColor={THEME.colors.background} translucent={false} />
-            <AetherProvider config={aetherConfig} storage={AsyncStorage as any}>
-                <ThemeProvider value={AppDarkTheme}>
-                    <Stack screenOptions={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: THEME.colors.background },
-                        animation: 'fade',
-                    }}>
-                        <Stack.Screen name="index" />
-                        <Stack.Screen name="splash" />
-                        <Stack.Screen name="login" />
-                        <Stack.Screen name="driver/availability" />
-                        <Stack.Screen name="driver/dashboard" />
-                        <Stack.Screen name="admin/dashboard" />
-                    </Stack>
-                    <OTAUpdater />
-                </ThemeProvider>
-            </AetherProvider>
-        </View>
+        <ErrorBoundary>
+            <View style={{ flex: 1, backgroundColor: THEME.colors.background }}>
+                <StatusBar barStyle="light-content" backgroundColor={THEME.colors.background} translucent={false} />
+                <OTAUpdater />
+                <OfflineBanner />
+                <AetherProvider config={aetherConfig} storage={AsyncStorage as any}>
+                    <ThemeProvider value={AppDarkTheme}>
+                        <Stack screenOptions={{
+                            headerShown: false,
+                            contentStyle: { backgroundColor: THEME.colors.background },
+                            animation: 'fade',
+                        }}>
+                            <Stack.Screen name="index" />
+                            <Stack.Screen name="splash" />
+                            <Stack.Screen name="login" />
+                            <Stack.Screen name="driver/availability" />
+                            <Stack.Screen name="driver/dashboard" />
+                            <Stack.Screen name="admin/dashboard" />
+                        </Stack>
+                        <OTAUpdater />
+                    </ThemeProvider>
+                </AetherProvider>
+            </View>
+        </ErrorBoundary>
     );
 }

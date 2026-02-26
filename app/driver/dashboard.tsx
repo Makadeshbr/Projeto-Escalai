@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, RefreshControl, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
 import { Bell, Zap, CheckCircle, Navigation, History, AlertTriangle, TrendingUp, User, MapPin, CheckCircle2, Package } from 'lucide-react-native';
@@ -9,7 +9,8 @@ import { COLLECTIONS, Assignment } from '~/src/lib/collections';
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
-import { notifyAdmins } from '~/src/lib/push';
+import { notifyAdmins, ensureDriverPushToken } from '~/src/lib/push';
+import { NotificationCenter } from '~/src/components/NotificationCenter';
 
 export default function DashboardScreen() {
     const { user } = useAuthStore();
@@ -17,6 +18,7 @@ export default function DashboardScreen() {
     const assignmentsRef = useRef<Assignment[]>([]);
     assignmentsRef.current = assignments;
     const [isLoading, setIsLoading] = useState(true);
+    const [showNotifications, setShowNotifications] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
     const [stats, setStats] = useState({ total: 0, completed: 0 });
 
@@ -67,6 +69,15 @@ export default function DashboardScreen() {
                 // O erro é silencioso para não impactar a usabilidade do condutor caso haja latência de rede
                 console.warn('[Self-Healing] Erro na sincronização de auto-cura do driver_status:', healError);
             }
+
+            // [PUSH AUTO-SYNC] Garante que o push token mais recente está no DRIVER_STATUS.
+            // Executa em paralelo (fire-and-forget) para não bloquear carregamento do dashboard.
+            ensureDriverPushToken(
+                user.id,
+                user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
+                user.metadata?.vehiclePlate || 'S/Placa',
+                user.metadata?.avatarUrl || ''
+            ).catch(err => console.warn('[PushSync] Fire-and-forget falhou:', err));
 
             // [SENIOR DEV FIX] Buscamos ALL via aetherFetchAll (robusto) e filtramos local.
             // O .query() do SDK em fallback às vezes retorna vazio durante oscilações.
@@ -184,8 +195,6 @@ export default function DashboardScreen() {
         }
     };
 
-    const activeAssignment = assignments.length > 0 ? assignments[0] : null;
-
     const driverName = user?.metadata?.name || user?.email?.split('@')[0] || 'Motorista';
     const driverIdShort = user?.id ? user.id.substring(0, 6).toUpperCase() : '----';
     const punctuality = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 100;
@@ -216,7 +225,10 @@ export default function DashboardScreen() {
                             <Text className="text-lg font-spaceGroteskBold leading-none text-white">{driverName}</Text>
                         </View>
                     </View>
-                    <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-surface border border-border">
+                    <TouchableOpacity
+                        onPress={() => setShowNotifications(true)}
+                        className="w-10 h-10 items-center justify-center rounded-full bg-surface border border-border"
+                    >
                         <Bell color={THEME.colors.primary} size={20} />
                     </TouchableOpacity>
                 </View>
@@ -228,108 +240,110 @@ export default function DashboardScreen() {
                         <Text className="text-[#94a3b8] mt-1 font-spaceGrotesk tracking-wide">Aqui está sua escala de hoje.</Text>
                     </View>
 
-                    {/* Today's Route Card dynamically rendered */}
-                    {isLoading && !activeAssignment ? (
+                    {/* Today's Route Cards dynamically rendered */}
+                    {isLoading && assignments.length === 0 ? (
                         <View key="loading-state" className="w-full p-8 bg-surface rounded-2xl border border-border items-center justify-center mb-6">
                             <ActivityIndicator size="large" color={THEME.colors.primary} />
                             <Text className="text-[#94a3b8] mt-4 font-spaceGrotesk">Buscando atribuições...</Text>
                         </View>
-                    ) : activeAssignment ? (
-                        <View key={activeAssignment.id} className="relative w-full bg-surface rounded-2xl border border-border overflow-hidden shadow-lg mb-6">
-                            <View className={`absolute top-0 left-0 w-1.5 h-full ${activeAssignment.status === 'confirmed' ? 'bg-green-500' : 'bg-primary'}`} />
+                    ) : assignments.length > 0 ? (
+                        assignments.map((assignment, index) => (
+                            <View key={assignment.id} className="relative w-full bg-surface rounded-2xl border border-border overflow-hidden shadow-lg mb-4">
+                                <View className={`absolute top-0 left-0 w-1.5 h-full ${assignment.status === 'confirmed' ? 'bg-green-500' : 'bg-primary'}`} />
 
-                            <View className="p-5 flex-row justify-between items-start border-b border-border">
-                                <View className="flex-col">
-                                    <Text className="text-[#94a3b8] text-xs uppercase tracking-wider font-spaceGroteskBold mb-1">
-                                        Sua Atribuição
-                                    </Text>
-                                    <View className="flex-row items-center gap-2">
-                                        <MapPin color={THEME.colors.primary} size={18} />
-                                        <Text className="text-xl font-spaceGroteskBold text-white">{activeAssignment.cityName || 'Destino'}</Text>
-                                    </View>
-                                </View>
-                                <View className="flex-col items-end gap-2">
-                                    <View className="px-3 py-1 bg-background rounded-full border border-border">
-                                        <Text className="text-xs font-spaceGroteskBold text-primary tracking-wider">
-                                            {activeAssignment.waveNumber
-                                                ? activeAssignment.waveNumber.toUpperCase()
-                                                : activeAssignment.waveLabel?.toUpperCase() || 'ONDA'}
+                                <View className="p-5 flex-row justify-between items-start border-b border-border">
+                                    <View className="flex-col">
+                                        <Text className="text-[#94a3b8] text-xs uppercase tracking-wider font-spaceGroteskBold mb-1">
+                                            Sua Atribuição {assignments.length > 1 ? `#${index + 1}` : ''}
                                         </Text>
+                                        <View className="flex-row items-center gap-2">
+                                            <MapPin color={THEME.colors.primary} size={18} />
+                                            <Text className="text-xl font-spaceGroteskBold text-white">{assignment.cityName || 'Destino'}</Text>
+                                        </View>
                                     </View>
-                                    {activeAssignment.waveNumber && activeAssignment.waveLabel && (
-                                        <View className="px-2 py-0.5 bg-background/60 rounded-full border border-border/50">
-                                            <Text className="text-[10px] font-spaceGrotesk text-[#94a3b8] tracking-wider">
-                                                {activeAssignment.waveLabel.toUpperCase()}
+                                    <View className="flex-col items-end gap-2">
+                                        <View className="px-3 py-1 bg-background rounded-full border border-border">
+                                            <Text className="text-xs font-spaceGroteskBold text-primary tracking-wider">
+                                                {assignment.waveNumber
+                                                    ? assignment.waveNumber.toUpperCase()
+                                                    : assignment.waveLabel?.toUpperCase() || 'ONDA'}
                                             </Text>
                                         </View>
-                                    )}
-                                    {activeAssignment.isSdd && (
-                                        <View className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 flex-row items-center gap-1">
-                                            <Zap color={THEME.colors.primary} size={14} />
-                                            <Text className="text-[11px] font-spaceGroteskBold text-primary tracking-widest">SDD</Text>
-                                        </View>
-                                    )}
-                                    {!!activeAssignment.sacas && (
-                                        <View className="px-3 py-1 bg-orange-500/10 rounded-full border border-orange-500/30 flex-row items-center gap-1">
-                                            <Package color="#f97316" size={14} />
-                                            <Text className="text-[11px] font-spaceGroteskBold tracking-widest" style={{ color: '#f97316' }}>
-                                                {activeAssignment.sacas} SACA{activeAssignment.sacas > 1 ? 'S' : ''}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-                            </View>
-
-                            <View className="p-6 flex-row justify-between items-center">
-                                <View className="flex-col justify-center">
-                                    <Text className="text-[#94a3b8] text-xs uppercase tracking-widest font-spaceGrotesk mb-1">Doca</Text>
-                                    <Text className="text-5xl font-spaceGroteskBold text-white tracking-tighter" style={{ textShadowColor: 'rgba(217, 196, 0, 0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
-                                        {activeAssignment.dock || '--'}
-                                    </Text>
-                                    {activeAssignment.routeLabel ? (
-                                        <View className="mt-2 bg-primary/10 border border-primary/20 px-3 py-1 rounded-lg self-start">
-                                            <Text className="text-primary text-xs font-spaceGroteskBold tracking-wider">
-                                                ROTA {activeAssignment.routeLabel}
-                                            </Text>
-                                        </View>
-                                    ) : null}
-                                </View>
-                                <View className="flex-col justify-center items-end gap-3">
-                                    <View className="items-end bg-background px-3 py-2 rounded-xl border border-border min-w-[100px]">
-                                        <Text className="text-[#94a3b8] text-[10px] uppercase tracking-widest font-spaceGrotesk">Horário</Text>
-                                        <Text className="text-lg font-spaceGroteskBold text-white">
-                                            {activeAssignment.waveTime || '--:--'}
-                                        </Text>
-                                    </View>
-                                    <View className="items-end">
-                                        <Text className="text-[#94a3b8] text-[10px] uppercase tracking-widest font-spaceGrotesk">Status</Text>
-                                        <Text className={`text-[13px] font-spaceGroteskBold uppercase tracking-wide mt-0.5 ${activeAssignment.status === 'confirmed' ? 'text-green-400' : 'text-yellow-400'}`}>
-                                            {activeAssignment.status === 'confirmed' ? 'Confirmado' : 'Aguardando'}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </View>
-
-                            {activeAssignment.status === 'pending' && (
-                                <View className="p-5 pt-2 bg-[#1a1d2e] border-t border-border">
-                                    <TouchableOpacity
-                                        onPress={() => handleConfirmRead(activeAssignment.id)}
-                                        disabled={isConfirming}
-                                        className={`w-full h-14 bg-primary rounded-xl flex-row items-center justify-center gap-2 shadow-lg ${isConfirming ? 'opacity-50' : ''}`}
-                                        style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
-                                    >
-                                        {isConfirming ? (
-                                            <ActivityIndicator size="small" color="#000" />
-                                        ) : (
-                                            <>
-                                                <CheckCircle2 color="#000" size={20} />
-                                                <Text className="text-[#13151f] font-spaceGroteskBold text-base tracking-wide uppercase">Confirmar Leitura</Text>
-                                            </>
+                                        {assignment.waveNumber && assignment.waveLabel && (
+                                            <View className="px-2 py-0.5 bg-background/60 rounded-full border border-border/50">
+                                                <Text className="text-[10px] font-spaceGrotesk text-[#94a3b8] tracking-wider">
+                                                    {assignment.waveLabel.toUpperCase()}
+                                                </Text>
+                                            </View>
                                         )}
-                                    </TouchableOpacity>
+                                        {assignment.isSdd && (
+                                            <View className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 flex-row items-center gap-1">
+                                                <Zap color={THEME.colors.primary} size={14} />
+                                                <Text className="text-[11px] font-spaceGroteskBold text-primary tracking-widest">SDD</Text>
+                                            </View>
+                                        )}
+                                        {!!assignment.sacas && (
+                                            <View className="px-3 py-1 bg-orange-500/10 rounded-full border border-orange-500/30 flex-row items-center gap-1">
+                                                <Package color="#f97316" size={14} />
+                                                <Text className="text-[11px] font-spaceGroteskBold tracking-widest" style={{ color: '#f97316' }}>
+                                                    {assignment.sacas} SACA{assignment.sacas > 1 ? 'S' : ''}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
                                 </View>
-                            )}
-                        </View>
+
+                                <View className="p-6 flex-row justify-between items-center">
+                                    <View className="flex-col justify-center">
+                                        <Text className="text-[#94a3b8] text-xs uppercase tracking-widest font-spaceGrotesk mb-1">Doca</Text>
+                                        <Text className="text-5xl font-spaceGroteskBold text-white tracking-tighter" style={{ textShadowColor: 'rgba(217, 196, 0, 0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+                                            {assignment.dock || '--'}
+                                        </Text>
+                                        {assignment.routeLabel ? (
+                                            <View className="mt-2 bg-primary/10 border border-primary/20 px-3 py-1 rounded-lg self-start">
+                                                <Text className="text-primary text-xs font-spaceGroteskBold tracking-wider">
+                                                    ROTA {assignment.routeLabel}
+                                                </Text>
+                                            </View>
+                                        ) : null}
+                                    </View>
+                                    <View className="flex-col justify-center items-end gap-3">
+                                        <View className="items-end bg-background px-3 py-2 rounded-xl border border-border min-w-[100px]">
+                                            <Text className="text-[#94a3b8] text-[10px] uppercase tracking-widest font-spaceGrotesk">Horário</Text>
+                                            <Text className="text-lg font-spaceGroteskBold text-white">
+                                                {assignment.waveTime || '--:--'}
+                                            </Text>
+                                        </View>
+                                        <View className="items-end">
+                                            <Text className="text-[#94a3b8] text-[10px] uppercase tracking-widest font-spaceGrotesk">Status</Text>
+                                            <Text className={`text-[13px] font-spaceGroteskBold uppercase tracking-wide mt-0.5 ${assignment.status === 'confirmed' ? 'text-green-400' : 'text-yellow-400'}`}>
+                                                {assignment.status === 'confirmed' ? 'Confirmado' : 'Aguardando'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {assignment.status === 'pending' && (
+                                    <View className="p-5 pt-2 bg-[#1a1d2e] border-t border-border">
+                                        <TouchableOpacity
+                                            onPress={() => handleConfirmRead(assignment.id)}
+                                            disabled={isConfirming}
+                                            className={`w-full h-14 bg-primary rounded-xl flex-row items-center justify-center gap-2 shadow-lg ${isConfirming ? 'opacity-50' : ''}`}
+                                            style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
+                                        >
+                                            {isConfirming ? (
+                                                <ActivityIndicator size="small" color="#000" />
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 color="#000" size={20} />
+                                                    <Text className="text-[#13151f] font-spaceGroteskBold text-base tracking-wide uppercase">Confirmar Leitura</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+                        ))
                     ) : (
                         <View key="empty-state" className="w-full p-8 bg-surface rounded-2xl border border-border border-dashed items-center justify-center mb-6">
                             <View className="mb-4 bg-background w-16 h-16 rounded-full items-center justify-center border border-border">
@@ -393,6 +407,14 @@ export default function DashboardScreen() {
                 cancelText="Fechar"
                 onClose={() => setActionModal(prev => ({ ...prev, visible: false }))}
             />
+
+            {/* Central de Notificações */}
+            <Modal visible={showNotifications} animationType="slide" transparent={false}>
+                <View className="flex-1 bg-background">
+                    <LinearGradient colors={['#1a1d2e', THEME.colors.background]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+                    <NotificationCenter visible={showNotifications} onClose={() => setShowNotifications(false)} />
+                </View>
+            </Modal>
 
             <DriverBottomNav activeTab="dashboard" />
         </SafeAreaView>

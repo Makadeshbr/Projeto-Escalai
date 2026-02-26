@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Dimensions, StyleSheet, Animated as RNAnimated } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, FlatList, SafeAreaView, Dimensions, StyleSheet, Animated as RNAnimated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, RefreshCw, User, CheckCircle2, Truck, MapPin, Navigation, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { THEME } from '~/src/constants/theme';
 import { DashboardActionModal } from '~/src/components/dashboard/DashboardActionModal';
 import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
 import { aetherFetchAll } from '~/src/lib/aether';
+import { SkeletonList } from '~/src/components/ui/Skeleton';
 
 type FilterType = 'all' | 'wave_1' | 'wave_2' | 'transit';
 
@@ -18,7 +19,7 @@ type FilterType = 'all' | 'wave_1' | 'wave_2' | 'transit';
  * Quando `shouldPulse` é true (doca livre pelo motorista anterior),
  * a borda do card pulsa em verde para chamar atenção do admin.
  */
-function DriverCard({
+const DriverCard = React.memo(function DriverCard({
     assignment,
     shouldPulse,
     onReleaseDock,
@@ -111,22 +112,22 @@ function DriverCard({
                 )}
 
                 <View className="flex-row justify-between items-start">
-                    <View className="flex-row gap-3 items-center">
+                    <View className="flex-row gap-3 items-center flex-1 mr-3">
                         <DriverAvatar avatarUrl={avatarUrl} size={48} />
-                        <View>
-                            <Text className="text-lg font-bold text-white">{assignment.driverName}</Text>
+                        <View className="flex-1">
+                            <Text className="text-lg font-bold text-white" numberOfLines={1}>{assignment.driverName}</Text>
                             <View className="flex-row items-center gap-2 mt-0.5">
                                 <View className="px-2 py-0.5 rounded bg-[#f2db0d]/20 border border-[#f2db0d]/20">
                                     <Text className="text-[#f2db0d] text-xs font-bold uppercase">
                                         {assignment.waveNumber || 'Onda'}
                                     </Text>
                                 </View>
-                                <Text className="text-slate-400 text-xs">• {assignment.driverPlate || '--'}</Text>
+                                <Text className="text-slate-400 text-xs" numberOfLines={1}>• {assignment.driverPlate || '--'}</Text>
                             </View>
                         </View>
                     </View>
 
-                    <View className="items-end">
+                    <View className="items-end" style={{ minWidth: 50 }}>
                         <Text className="text-xs text-slate-400 uppercase tracking-wider font-bold">Doca</Text>
                         <Text className="text-2xl font-bold text-primary leading-none">
                             {assignment.dock || '--'}
@@ -188,7 +189,7 @@ function DriverCard({
             </View>
         </RNAnimated.View>
     );
-}
+});
 
 export default function AdminMonitorScreen() {
     const router = useRouter();
@@ -240,6 +241,66 @@ export default function AdminMonitorScreen() {
         return { ...group, assignments: filteredAssignments };
     }).filter(g => g.assignments.length > 0);
 
+    /**
+     * Achata os grupos em uma lista linear para o FlatList virtualizar.
+     * Cada item é 'header' (cabeçalho do grupo) ou 'card' (assignment).
+     */
+    type FlatItem =
+        | { type: 'header'; key: string; cityName: string; waveLabel: string }
+        | { type: 'card'; key: string; assignment: Assignment; shouldPulse: boolean; avatarUrl?: string };
+
+    const flatData = useMemo<FlatItem[]>(() => {
+        const items: FlatItem[] = [];
+        filteredGroups.forEach(group => {
+            items.push({
+                type: 'header',
+                key: `header-${group.cityId}-${group.waveLabel}`,
+                cityName: group.cityName,
+                waveLabel: group.waveLabel,
+            });
+            group.assignments.forEach(assignment => {
+                items.push({
+                    type: 'card',
+                    key: assignment.id,
+                    assignment,
+                    shouldPulse: assignment.dockStatus === 'waiting' && freedDocks.has(assignment.dock),
+                    avatarUrl: driverAvatars[assignment.driverId],
+                });
+            });
+        });
+        return items;
+    }, [filteredGroups, freedDocks, driverAvatars]);
+
+    /** Render callback para FlatList — despacha entre header e card */
+    const renderMonitorItem = useCallback(({ item }: { item: FlatItem }) => {
+        if (item.type === 'header') {
+            return (
+                <View className="flex-row items-center justify-between px-1 mb-3 mt-6">
+                    <View className="flex-row items-center gap-2">
+                        <MapPin size={24} color={THEME.colors.primary} />
+                        <Text className="text-xl font-bold text-white">
+                            {item.cityName} - {item.waveLabel}
+                        </Text>
+                    </View>
+                    <View className="bg-primary/10 px-2 py-1 rounded">
+                        <Text className="text-xs font-mono text-primary font-bold">AO VIVO</Text>
+                    </View>
+                </View>
+            );
+        }
+
+        return (
+            <DriverCard
+                assignment={item.assignment}
+                shouldPulse={item.shouldPulse}
+                onReleaseDock={releaseDock}
+                avatarUrl={item.avatarUrl}
+            />
+        );
+    }, [releaseDock]);
+
+    const monitorKeyExtractor = useCallback((item: FlatItem) => item.key, []);
+
     const FilterChip = ({ title, value }: { title: string, value: FilterType }) => {
         const isActive = filter === value;
         return (
@@ -288,44 +349,25 @@ export default function AdminMonitorScreen() {
             </View>
 
             {/* Lista Principal */}
-            <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                {isLoading && filteredGroups.length === 0 ? (
-                    <Text className="text-center text-slate-400 mt-10">Carregando mapa de docas...</Text>
-                ) : filteredGroups.length === 0 ? (
-                    <Text className="text-center text-slate-400 mt-10">Nenhuma rota ou onda encontrada hoje.</Text>
-                ) : (
-                    filteredGroups.map(group => (
-                        <View key={`${group.cityId}-${group.waveLabel}`} className="mb-6">
-                            <View className="flex-row items-center justify-between px-1 mb-3">
-                                <View className="flex-row items-center gap-2">
-                                    <MapPin size={24} color={THEME.colors.primary} />
-                                    <Text className="text-xl font-bold text-white">
-                                        {group.cityName} - {group.waveLabel}
-                                    </Text>
-                                </View>
-                                <View className="bg-primary/10 px-2 py-1 rounded">
-                                    <Text className="text-xs font-mono text-primary font-bold">
-                                        AO VIVO
-                                    </Text>
-                                </View>
-                            </View>
-
-                            {group.assignments.map(assignment => (
-                                <DriverCard
-                                    key={assignment.id}
-                                    assignment={assignment}
-                                    shouldPulse={
-                                        assignment.dockStatus === 'waiting' &&
-                                        freedDocks.has(assignment.dock)
-                                    }
-                                    onReleaseDock={releaseDock}
-                                    avatarUrl={driverAvatars[assignment.driverId]}
-                                />
-                            ))}
-                        </View>
-                    ))
-                )}
-            </ScrollView>
+            <FlatList
+                data={flatData}
+                keyExtractor={monitorKeyExtractor}
+                renderItem={renderMonitorItem}
+                className="flex-1 px-4 pt-4"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                ListEmptyComponent={
+                    isLoading && flatData.length === 0 ? (
+                        <SkeletonList count={4} />
+                    ) : (
+                        <Text className="text-center text-slate-400 mt-10">Nenhuma rota ou onda encontrada hoje.</Text>
+                    )
+                }
+                initialNumToRender={8}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews
+            />
 
             <AdminBottomNav activeTab="monitor" />
 

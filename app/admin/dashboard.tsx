@@ -10,14 +10,14 @@ import {
     Clock, Navigation, User, ArrowRight, Zap
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { WAVE_META, Assignment, DriverAvailability } from '~/src/lib/collections';
+import { Assignment, DriverAvailability } from '~/src/lib/collections';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { registerForPushNotificationsAsync, registerAdminPushToken } from '~/src/lib/push';
 import { useAuthStore } from '~/src/store/auth';
 
 // Hooks extraídos (AUDIT FIX — CLEAN-001)
 import { useActionModal } from '~/src/hooks/useActionModal';
-import { useDashboardData, WaveKey } from '~/src/hooks/useDashboardData';
+import { useDashboardData } from '~/src/hooks/useDashboardData';
 import { useAssignmentActions } from '~/src/hooks/useAssignmentActions';
 
 // Subcomponentes extraídos (AUDIT FIX — CLEAN-001)
@@ -33,7 +33,6 @@ import { RecentAssignmentsList, AssignmentDetailModal } from '~/src/components/d
  */
 export default function AdminRouteManagement() {
     // Estado de UI local (não compartilhado)
-    const [selectedWave, setSelectedWave] = useState<WaveKey>('morning');
     const [waveNum, setWaveNum] = useState('');
     const [dock, setDock] = useState('');
     const [sacas, setSacas] = useState('');
@@ -52,7 +51,7 @@ export default function AdminRouteManagement() {
     // Hooks de negócio
     const { user } = useAuthStore();
     const { actionModal, showModal, dismissModal } = useActionModal();
-    const data = useDashboardData(selectedWave, isSameDay, showModal);
+    const data = useDashboardData(isSameDay, showModal);
 
     // Auto-registra push token do admin no mount
     useEffect(() => {
@@ -92,7 +91,7 @@ export default function AdminRouteManagement() {
     const initReassign = (assignment: Assignment) => {
         setReassignTarget(assignment);
         setShowAssignmentModal(false);
-        setSelectedWave(assignment.wave as WaveKey);
+        // Seletor de turno removido — operação não segmenta por turno
         setIsSameDay(assignment.isSdd || false);
         setSelectedDriverIds(new Set());
         data.fetchAvailableDrivers();
@@ -179,26 +178,6 @@ export default function AdminRouteManagement() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Wave Selector */}
-                    <View className="mb-5">
-                        <Text className="text-[13px] font-spaceGroteskBold text-text-light ml-1 mb-2">Turno / Onda de Saída</Text>
-                        <View className="flex-row gap-2">
-                            {(['morning', 'afternoon', 'night'] as WaveKey[]).map((wave) => {
-                                const meta = WAVE_META[wave];
-                                const isSelected = selectedWave === wave;
-                                return (
-                                    <TouchableOpacity
-                                        key={wave}
-                                        onPress={() => { setSelectedWave(wave); setSelectedDriverIds(new Set()); }}
-                                        className={`flex-1 h-[68px] flex-col items-center justify-center rounded-xl border ${isSelected ? 'bg-primary border-primary' : 'bg-surface border-border'}`}
-                                    >
-                                        <Text className={`text-[13px] font-spaceGroteskBold mb-0.5 ${isSelected ? 'text-[#13151f]' : 'text-white'}`}>{meta.label}</Text>
-                                        <Text className={`text-[10px] font-spaceGrotesk ${isSelected ? 'text-[#1a1c29]' : 'text-text-muted'}`}>{meta.time}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </View>
 
                     {/* Driver Selector */}
                     <View className="mb-5">
@@ -273,7 +252,7 @@ export default function AdminRouteManagement() {
                 {/* Submit Action */}
                 <TouchableOpacity
                     onPress={() => actions.handleCreateAssignments(
-                        { selectedCity: data.selectedCity, selectedWave, waveNum, dock, sacas, isSddEnabled, selectedDriverIds, availableDrivers: data.availableDrivers },
+                        { selectedCity: data.selectedCity, waveNum, dock, sacas, isSddEnabled, selectedDriverIds, availableDrivers: data.availableDrivers },
                         setIsLoading,
                         () => { setDock(''); setSacas(''); setWaveNum(''); setSelectedDriverIds(new Set()); }
                     )}
@@ -324,7 +303,6 @@ export default function AdminRouteManagement() {
                 visible={showDriverModal}
                 drivers={data.availableDrivers}
                 selectedIds={selectedDriverIds}
-                selectedWave={selectedWave}
                 loading={data.driversLoading}
                 onToggle={toggleDriverSelection}
                 onConfirm={handleConfirmDriverSelection}

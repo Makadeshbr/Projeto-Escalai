@@ -214,7 +214,7 @@ export default function LoginScreen() {
                             </Text>
                         </Text>
                         <Text className="text-[10px] text-slate-600 font-spaceGrotesk tracking-[0.15em] uppercase opacity-60">
-                            Feito pela plataforma Aether
+                            Feito pela plataforma Aether • v1.1
                         </Text>
                     </View>
 

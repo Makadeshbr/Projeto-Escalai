@@ -79,12 +79,12 @@ export function RecentAssignmentsList({
                                     {assignment.isSdd ? <Zap color={THEME.colors.primary} size={18} /> : <Package color="#94a3b8" size={18} />}
                                 </View>
                                 <View className="flex-1">
-                                    <View className="flex-row items-center gap-2">
-                                        <Text className="text-white text-[15px] font-spaceGroteskBold" numberOfLines={1}>
+                                    <View className="flex-row items-center gap-2 pr-1">
+                                        <Text className="text-white text-[15px] font-spaceGroteskBold flex-shrink" numberOfLines={1}>
                                             {assignment.driverName || 'Motorista'}
                                         </Text>
                                         {assignment.status === 'confirmed' && (
-                                            <View className="bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded flex-row items-center">
+                                            <View className="bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded flex-row items-center flex-shrink-0">
                                                 <CheckCircle2 color="#4ade80" size={10} className="mr-1" />
                                                 <Text className="text-green-400 text-[9px] font-spaceGroteskBold uppercase tracking-wider">Aceito</Text>
                                             </View>

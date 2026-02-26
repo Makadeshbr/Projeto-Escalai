@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, RefreshControl, Dimensions, StyleSheet } from 'react-native';
+import { BarChart } from 'react-native-chart-kit';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
-import { Users, Truck, Activity, TrendingUp, HelpCircle } from 'lucide-react-native';
+import { Users, Truck, Activity, TrendingUp, Package } from 'lucide-react-native';
 import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
@@ -10,6 +11,7 @@ import { useAuthStore } from '~/src/store/auth';
 import { COLLECTIONS, getTodayDateStr } from '~/src/lib/collections';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { router } from 'expo-router';
+import { SkeletonList } from '~/src/components/ui/Skeleton';
 
 export default function AdminOverviewScreen() {
     const { role } = useAuthStore();
@@ -21,6 +23,8 @@ export default function AdminOverviewScreen() {
     });
     const [recentActivies, setRecentActivities] = useState<any[]>([]);
     const [driverAvatars, setDriverAvatars] = useState<Record<string, string>>({});
+    const [weeklyData, setWeeklyData] = useState<{ labels: string[]; data: number[] }>({ labels: [], data: [] });
+    const [totalSacas, setTotalSacas] = useState(0);
 
     const fetchOverviewData = useCallback(async () => {
         setIsLoading(true);
@@ -50,10 +54,18 @@ export default function AdminOverviewScreen() {
                 a.status === 'completed'
             );
 
-            // [SENIOR DEV] Recent activities
+            // [FIX] Mostra TODAS as movimentações de hoje — não apenas 5.
+            // Anteriormente .slice(0,5) truncava para 5 itens, omitindo motoristas despachados.
             const recent = [...allAssignments]
-                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .slice(0, 5);
+                .filter((a: any) => {
+                    if (!a.createdAt) return false;
+                    const createdDate = new Date(a.createdAt);
+                    const year = createdDate.getFullYear();
+                    const month = String(createdDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(createdDate.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}` === todayStr;
+                })
+                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
             setStats({
                 totalDrivers: (drivers as any[]).length,
@@ -62,6 +74,25 @@ export default function AdminOverviewScreen() {
             });
 
             setRecentActivities(recent as any[]);
+
+            // Calcular dados da semana (7 dias) para BarChart
+            const days: string[] = [];
+            const counts: number[] = [];
+            let sacasTotal = 0;
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().slice(0, 10);
+                const dayLabel = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').substring(0, 3);
+                days.push(dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1));
+                const count = (allAssignments as any[]).filter((a: any) =>
+                    a.createdAt?.startsWith(dateStr) && (a.status === 'completed' || a.status === 'confirmed')
+                ).length;
+                counts.push(count);
+            }
+            (allAssignments as any[]).forEach((a: any) => { sacasTotal += Number(a.sacas) || 0; });
+            setWeeklyData({ labels: days, data: counts });
+            setTotalSacas(sacasTotal);
         } catch (e) {
             console.error('[Overview] Error fetching data:', e);
         } finally {
@@ -155,16 +186,55 @@ export default function AdminOverviewScreen() {
                         <Text className="text-2xl font-spaceGroteskBold text-white">{stats.completedRuns}</Text>
                     </View>
 
-                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl items-center justify-center border-dashed opacity-50">
-                        <HelpCircle color={THEME.colors.textMuted} size={24} className="mb-2" />
-                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider text-center">Métrica em breve</Text>
+                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
+                        <View className="w-8 h-8 rounded-full bg-orange-500/10 items-center justify-center mb-3 border border-orange-500/20">
+                            <Package color="#f97316" size={16} />
+                        </View>
+                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Total Sacas</Text>
+                        <Text className="text-2xl font-spaceGroteskBold text-white">{totalSacas.toLocaleString('pt-BR')}</Text>
                     </View>
                 </View>
+
+                {/* Chart — Rotas últimos 7 dias */}
+                {weeklyData.labels.length > 0 && (
+                    <View className="mb-6 px-1">
+                        <Text className="text-white text-[15px] font-spaceGroteskBold mb-3">Rotas / 7 Dias</Text>
+                        <View className="bg-surface border border-border rounded-2xl overflow-hidden py-3">
+                            <BarChart
+                                data={{
+                                    labels: weeklyData.labels,
+                                    datasets: [{ data: weeklyData.data.every(v => v === 0) ? [0.1] : weeklyData.data }],
+                                }}
+                                width={Dimensions.get('window').width - 48}
+                                height={180}
+                                yAxisLabel=""
+                                yAxisSuffix=""
+                                fromZero
+                                showValuesOnTopOfBars
+                                withInnerLines={false}
+                                chartConfig={{
+                                    backgroundColor: 'transparent',
+                                    backgroundGradientFrom: '#1a1d2e',
+                                    backgroundGradientTo: '#1a1d2e',
+                                    decimalPlaces: 0,
+                                    color: (opacity = 1) => `rgba(96, 165, 250, ${opacity})`,
+                                    labelColor: () => '#94a3b8',
+                                    barPercentage: 0.5,
+                                    propsForLabels: { fontSize: 10, fontFamily: 'SpaceGrotesk_400Regular' },
+                                    propsForBackgroundLines: { stroke: '#2d3345' },
+                                }}
+                                style={{ borderRadius: 16, marginLeft: -6 }}
+                            />
+                        </View>
+                    </View>
+                )}
 
                 {/* Recent Activity Mini-Feed */}
                 <View className="mb-28 px-1">
                     <Text className="text-white text-[15px] font-spaceGroteskBold mb-4">Últimas Movimentações</Text>
-                    {recentActivies.length === 0 && !isLoading ? (
+                    {isLoading && recentActivies.length === 0 ? (
+                        <SkeletonList count={3} />
+                    ) : recentActivies.length === 0 && !isLoading ? (
                         <View className="bg-surface/50 border border-border border-dashed rounded-xl p-6 items-center flex-row justify-center gap-3">
                             <Activity color={THEME.colors.textMuted} size={16} />
                             <Text className="text-text-muted font-spaceGrotesk text-sm">Nenhuma atividade recente.</Text>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Modal, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
-import { ArrowLeft, Settings2, ShieldAlert, Send, Clock, UserX, UserCheck, Search, Target, X, CalendarClock, Zap, CheckCircle2, AlertTriangle, LogOut, MapPin, Edit2, Plus, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Settings2, ShieldAlert, Send, Clock, UserX, UserCheck, Search, Target, X, CalendarClock, Zap, CheckCircle2, AlertTriangle, LogOut, MapPin, Edit2, Plus, ChevronRight, Download, RotateCcw, BellRing } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { useAuthStore } from '~/src/store/auth';
@@ -12,6 +12,8 @@ import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import DateSelectionModal from '~/src/components/DateSelectionModal';
 import { router } from 'expo-router';
+import { exportToCSV, ExportColumn } from '~/src/lib/export';
+import { logAudit } from '~/src/lib/audit';
 
 export default function AdminSettingsScreen() {
     const { logout, role } = useAuthStore();
@@ -321,11 +323,15 @@ export default function AdminSettingsScreen() {
                         });
 
                         try {
-                            const count = await notifyAllDrivers(
+                            const result = await notifyAllDrivers(
                                 'NOVA ESCALA LIBERADA 🚀',
                                 `A janela de disponibilidade para o dia ${labelStr} foi aberta. Acesse o app para preencher e garantir sua vaga!`
                             );
-                            showModal('Janela Aberta!', `A disponibilidade para ${labelStr} foi liberada. Notificações push entregues para ${count} motoristas offline/online.`, 'success');
+                            let msg = `A disponibilidade para ${labelStr} foi liberada. Push entregue para ${result.sent}/${result.total} motoristas.`;
+                            if (result.skipped > 0) {
+                                msg += `\n\n⚠️ Sem push token: ${result.missingTokenDrivers.join(', ')}`;
+                            }
+                            showModal('Janela Aberta!', msg, result.skipped > 0 ? 'warning' : 'success');
                         } catch (pushErr: any) {
                             const reason = diagnosePushError(pushErr);
                             console.warn('[Defesa] Push em lote falhou:', reason);
@@ -370,8 +376,12 @@ export default function AdminSettingsScreen() {
                 setActionModal(prev => ({ ...prev, visible: false }));
                 setSendingNotif(true);
                 try {
-                    const count = await notifyAllDrivers(safeTitle, safeBody);
-                    showModal('Push Enviado', `A notificação foi entregue com sucesso para a fila de envio de ${count} dispositivo(s).`, 'success');
+                    const result = await notifyAllDrivers(safeTitle, safeBody);
+                    let successMsg = `Notificação disparada para ${result.sent} de ${result.total} motorista(s).`;
+                    if (result.skipped > 0) {
+                        successMsg += `\n\n⚠️ ${result.skipped} motorista(s) SEM push token (não receberão):\n• ${result.missingTokenDrivers.join('\n• ')}\n\nEsses motoristas precisam abrir o app para ativar as notificações.`;
+                    }
+                    showModal('Push Enviado', successMsg, result.skipped > 0 ? 'warning' : 'success');
                     setNotificationTitle('');
                     setNotificationBody('');
                 } catch (e: any) {
@@ -625,6 +635,114 @@ export default function AdminSettingsScreen() {
                                 </ScrollView>
                             </View>
                         )}
+                    </View>
+                </View>
+
+                {/* Section: Ações em Lote */}
+                <View className="mb-6">
+                    <Text className="text-[13px] font-spaceGroteskBold text-text-light uppercase tracking-wider mb-3 ml-1">Ações em Lote</Text>
+                    <View className="bg-surface border border-border rounded-2xl p-5 gap-3">
+                        {/* Exportar Frota */}
+                        <TouchableOpacity
+                            onPress={async () => {
+                                try {
+                                    const allDrivers = await aetherFetchAll(COLLECTIONS.DRIVER_STATUS);
+                                    if (!allDrivers || (allDrivers as any[]).length === 0) {
+                                        showModal('Vazio', 'Nenhum motorista encontrado para exportar.', 'warning');
+                                        return;
+                                    }
+                                    await exportToCSV(
+                                        allDrivers as Record<string, unknown>[],
+                                        [
+                                            { key: 'driverName', label: 'Nome' },
+                                            { key: 'driverPlate', label: 'Placa' },
+                                            { key: 'status', label: 'Status' },
+                                            { key: 'createdAt', label: 'Criado em' },
+                                        ] as ExportColumn<Record<string, unknown>>[],
+                                        `frota_escalai_${new Date().toISOString().slice(0, 10)}`,
+                                    );
+                                } catch (e: any) {
+                                    showModal('Erro', e.message || 'Falha ao exportar.', 'error');
+                                }
+                            }}
+                            className="flex-row items-center gap-4 py-3 px-1"
+                        >
+                            <View className="w-10 h-10 rounded-full bg-green-500/10 items-center justify-center border border-green-500/20">
+                                <Download color="#4ade80" size={18} />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-white font-spaceGroteskBold text-[14px]">Exportar Frota (CSV)</Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-0.5">Download de todos os motoristas em planilha</Text>
+                            </View>
+                            <ChevronRight color="#4b5563" size={16} />
+                        </TouchableOpacity>
+
+                        <View className="h-[1px] bg-border" />
+
+                        {/* Resetar Disponibilidades */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                showModal(
+                                    'Resetar Disponibilidades',
+                                    'Isso removerá TODAS as disponibilidades de TODOS os motoristas para a data de amanhã. Só use se precisar reabrir a janela de escala. Esta ação NÃO pode ser desfeita.',
+                                    'confirm',
+                                    async () => {
+                                        setActionModal(p => ({ ...p, visible: false }));
+                                        try {
+                                            const tomorrowStr = getTomorrowDateStr();
+                                            const all = await aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY);
+                                            const toDelete = (all as any[]).filter((a: any) => a.targetDate === tomorrowStr);
+                                            let deleted = 0;
+                                            for (const item of toDelete) {
+                                                await aether.db.collection(COLLECTIONS.DRIVER_AVAILABILITY).delete(item.id);
+                                                deleted++;
+                                            }
+                                            showModal('Concluído', `${deleted} disponibilidade(s) de ${tomorrowStr} removidas. A janela pode ser reaberta.`, 'success');
+                                            logAudit('admin', 'Admin', 'batch.reset_availability', `Reset de ${deleted} disponibilidades para ${tomorrowStr}`, { count: deleted, targetDate: tomorrowStr });
+                                        } catch (e: any) {
+                                            showModal('Erro', e.message || 'Falha ao resetar.', 'error');
+                                        }
+                                    }
+                                );
+                            }}
+                            className="flex-row items-center gap-4 py-3 px-1"
+                        >
+                            <View className="w-10 h-10 rounded-full bg-amber-500/10 items-center justify-center border border-amber-500/20">
+                                <RotateCcw color="#f59e0b" size={18} />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-white font-spaceGroteskBold text-[14px]">Resetar Disponibilidades</Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-0.5">Remove respostas de D+1 para reabrir escala</Text>
+                            </View>
+                            <ChevronRight color="#4b5563" size={16} />
+                        </TouchableOpacity>
+
+                        <View className="h-[1px] bg-border" />
+
+                        {/* Notificar Todos */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                showModal(
+                                    'Push em Massa',
+                                    'Enviar notificação push para TODOS os motoristas com token cadastrado. Use para avisos urgentes.',
+                                    'confirm',
+                                    async () => {
+                                        setActionModal(p => ({ ...p, visible: false }));
+                                        handleSendNotification();
+                                    }
+                                );
+                            }}
+                            className="flex-row items-center gap-4 py-3 px-1"
+                        >
+                            <View className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center border border-blue-500/20">
+                                <BellRing color="#60a5fa" size={18} />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-white font-spaceGroteskBold text-[14px]">Push em Massa</Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-0.5">Notificar todos os motoristas ativos</Text>
+                            </View>
+                            <ChevronRight color="#4b5563" size={16} />
+                        </TouchableOpacity>
                     </View>
                 </View>
 

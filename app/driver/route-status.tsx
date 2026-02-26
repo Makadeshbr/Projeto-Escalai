@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Dimensions, StyleSheet, Linking, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu, Truck, Waves, Hourglass, CheckCircle2, MessageCircle, Bell, Navigation, PartyPopper, Package } from 'lucide-react-native';
+import { Menu, Truck, Waves, Hourglass, CheckCircle2, MessageCircle, Bell, Navigation, PartyPopper, Package, AlertTriangle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     useSharedValue,
@@ -16,7 +16,8 @@ import { useAuthStore } from '~/src/store/auth';
 import { aether } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
 import { THEME } from '~/src/constants/theme';
-import { notifyAdmins } from '~/src/lib/push';
+import { notifyAdmins, ensureDriverPushToken } from '~/src/lib/push';
+import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 
 /**
  * Tela de status de rota do motorista.
@@ -44,6 +45,22 @@ export default function RouteStatusScreen() {
         ring2.value = withDelay(1000, withRepeat(withTiming(1, ringConfig), -1, false));
         ring3.value = withDelay(2000, withRepeat(withTiming(1, ringConfig), -1, false));
     }, [ring1, ring2, ring3]);
+
+    /**
+     * [PUSH FIX] Garante push token em todas as telas do motorista.
+     * Maximiza cobertura — cobre cenários onde o motorista
+     * só acessa o status da rota sem passar pelo dashboard.
+     */
+    useEffect(() => {
+        if (user?.id) {
+            ensureDriverPushToken(
+                user.id,
+                user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
+                user.metadata?.vehiclePlate || 'S/Placa',
+                user.metadata?.avatarUrl,
+            );
+        }
+    }, [user?.id]);
 
     const ring1Style = useAnimatedStyle(() => ({
         transform: [{ scale: 1 + (ring1.value * 0.5) }],
@@ -398,12 +415,53 @@ export default function RouteStatusScreen() {
                     )}
                 </View>
 
-                {/* Footer Action */}
+                {/* Footer Actions */}
                 {!isDeparted && (
-                    <View className="mt-auto items-center pb-6">
-                        <TouchableOpacity className="w-full py-4 bg-white/5 border border-white/10 rounded-xl flex-row items-center justify-center gap-3">
+                    <View className="mt-auto pb-6 gap-3">
+                        {/* Contatar Administrador via WhatsApp */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                const phone = '5514988407303';
+                                const msg = encodeURIComponent(
+                                    `*Escalai — Motorista*\n\nNome: ${user?.metadata?.name || 'Motorista'}\nPlaca: ${user?.metadata?.vehiclePlate || 'N/A'}\nRota: ${assignment?.routeLabel || assignment?.id?.substring(0, 8) || 'N/A'}\nDoca: ${assignment?.dock || 'N/A'}\n\nPreciso de suporte.`
+                                );
+                                Linking.openURL(`https://wa.me/${phone}?text=${msg}`);
+                            }}
+                            className="w-full py-4 bg-white/5 border border-white/10 rounded-xl flex-row items-center justify-center gap-3"
+                        >
                             <MessageCircle size={20} color={THEME.colors.primary} />
                             <Text className="text-slate-300 font-medium">Contatar Administrador</Text>
+                        </TouchableOpacity>
+
+                        {/* Reportar Problema */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (!user?.id) return;
+                                // Cria ticket de suporte via collection
+                                aether.db.collection(COLLECTIONS.SUPPORT_TICKETS).create({
+                                    driverId: user.id,
+                                    driverName: user.metadata?.name || user.email?.split('@')[0] || 'Motorista',
+                                    driverPlate: user.metadata?.vehiclePlate || 'S/Placa',
+                                    assignmentId: assignment?.id || '',
+                                    type: 'problem',
+                                    message: `Problema reportado na rota ${assignment?.routeLabel || 'N/A'} — Doca ${assignment?.dock || 'N/A'}`,
+                                    status: 'open',
+                                    createdAt: new Date().toISOString(),
+                                }).then(() => {
+                                    Alert.alert('Ticket Enviado ✓', 'O administrador receberá seu reporte e entrará em contato.');
+                                    // Notifica admins via push
+                                    notifyAdmins(
+                                        '🚨 Problema Reportado',
+                                        `${user.metadata?.name || 'Motorista'} reportou um problema na rota ${assignment?.routeLabel || 'N/A'}`
+                                    ).catch(() => { });
+                                }).catch(() => {
+                                    Alert.alert('Erro', 'Não foi possível enviar o reporte. Tente contatar via WhatsApp.');
+                                });
+                            }}
+                            className="w-full py-4 bg-red-500/5 border border-red-500/15 rounded-xl flex-row items-center justify-center gap-3"
+                        >
+                            <AlertTriangle size={20} color="#f87171" />
+                            <Text className="text-red-400 font-medium">Reportar Problema</Text>
                         </TouchableOpacity>
                     </View>
                 )}
