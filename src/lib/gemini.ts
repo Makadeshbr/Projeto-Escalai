@@ -103,8 +103,23 @@ export async function parseLogisticsSheet(base64String: string, mimeType: string
         // Cleanup markdown artifacts if any slip through
         const cleanString = rawJsonString.replace(/```json/g, '').replace(/```/g, '').trim();
 
-        const data: RouteDraft[] = JSON.parse(cleanString);
-        return data;
+        const rawData: RouteDraft[] = JSON.parse(cleanString);
+
+        // Limpeza rigorosa a nível de código: a IA às vezes ignora o prompt
+        const sanitizedData = rawData.map(route => {
+            let cleanPlate = route.driverPlate || '';
+            // Se a IA mandou SDD-ABC1234, extrai só o ABC1234
+            cleanPlate = cleanPlate.replace(/SDD-?/i, '');
+            // Remove qualquer outro hífen ou espaço que a IA inventar
+            cleanPlate = cleanPlate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+
+            return {
+                ...route,
+                driverPlate: cleanPlate
+            };
+        });
+
+        return sanitizedData;
 
     } catch (e: any) {
         console.error('[Gemini AI] Erro no OCR ou Parse JSON:', e);
