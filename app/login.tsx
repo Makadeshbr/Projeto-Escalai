@@ -98,12 +98,19 @@ export default function LoginScreen() {
         } catch (error: any) {
             console.error("[Login Error]", error);
 
-            // Tratamento de mensagens comuns do servidor/auth
-            let erroTratado = 'Erro ao conectar com o servidor. Tente novamente mais tarde.';
-            if (error?.message?.includes('invalid credentials') || error?.message?.includes('inválido')) {
-                erroTratado = 'Credenciais inválidas. Verifique seu e-mail e senha.';
+            // Tratamento de mensagens granulares do Auth
+            let erroTratado = 'Erro ao conectar com o servidor. Verifique sua internet.';
+            const errString = String(error?.message || error).toLowerCase();
+
+            if (errString.includes('user-not-found') || errString.includes('não encontrado')) {
+                erroTratado = 'E-mail não cadastrado. Verifique se você digitou corretamente.';
+            } else if (errString.includes('wrong-password') || errString.includes('senha incorreta') || errString.includes('invalid credentials')) {
+                erroTratado = 'Senha incorreta. Tente novamente.';
+            } else if (errString.includes('too-many-requests')) {
+                erroTratado = 'Muitas tentativas falhas. Aguarde alguns minutos e tente novamente.';
             } else if (error?.message) {
-                erroTratado = error.message;
+                // Remove prefixos técnicos do Firebase/Supabase caso vazem
+                erroTratado = error.message.replace(/firebase|auth\//gi, '').trim();
             }
 
             showAlert('Falha na Autenticação', erroTratado, 'error');
