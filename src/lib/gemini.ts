@@ -25,14 +25,14 @@ O array deve seguir exatamente este formato TypeScript:
 
 interface RouteDraft {
   driverName: string;       // Nome completo do motorista (Capitalize). Ex: "João Silva"
-  driverPlate: string;      // Placa do veículo, SEMPRE UPPERCASE sem hífens. Ex: "ABC1D23"
+  driverPlate: string;      // ⚠️ Placa do veículo, SEMPRE UPPERCASE sem hífens. Ex: "ABC1D23". IMPORTANTE: Se a placa contiver o prefixo "SDD-" (ex: "SDD-FOI4B05"), REMOVA o prefixo e retorne APENAS a placa ("FOI4B05").
   dock: string;             // ⚠️ SOMENTE O NÚMERO DA DOCA/BALCÃO. É sempre NUMÉRICO. Ex: "1", "2", "10", "30", "45". NUNCA coloque código de rota aqui.
   sacas?: number;           // ⚠️ QUANTIDADE DE SACAS. É sempre NUMÉRICO. Se a coluna se chamar "Sacas", "Saca", "Qtd Sacas", "Volumes". Se não houver, não envie o campo ou envie 0.
   routeLabel: string;       // ⚠️ CÓDIGO ALFANUMÉRICO DA ROTA. Ex: "B5_AM", "SP_01", "RJ-ZONA-SUL", "R12". Este é o identificador comercial/operacional da rota.
-  waveLabel: string;        // Turno do dia: "Manhã", "Tarde" ou "Noite". Baseie-se no horário se disponível.
+  waveLabel: string;        // Turno do dia: Sempre retorne "Manhã" independente do horário.
   waveNumber: string;       // Número/Sigla da Onda. Ex: "Onda 1", "01", "W2". Se não houver, use "".
   city: string;             // ⚠️ NOME DA CIDADE/REGIÃO DE ENTREGA. Ex: "São Paulo", "Campinas", "Avaré". NÃO confunda com código de rota ou nome de transportadora.
-  isSdd: boolean;           // true se houver indicador laranja, "SDD", "Same Day", "Priority", "Entrega no mesmo dia".
+  isSdd: boolean;           // true se houver indicador laranja, "SDD", placa começar com "SDD-", "Same Day", "Priority", "Entrega no mesmo dia".
   transportCompany: string; // Nome da transportadora/empresa. Se não houver, use "".
 }
 
