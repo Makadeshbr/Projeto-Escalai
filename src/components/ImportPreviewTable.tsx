@@ -27,19 +27,21 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
             </View>
 
             {/* Plate */}
-            <TextInput
-                className={`w-24 px-2 py-0 my-0 text-[14px] font-spaceGrotesk bg-transparent rounded`}
-                style={{ color: isMatched ? '#ffffff' : '#f87171', fontWeight: isMatched ? 'normal' : 'bold' }}
-                value={route.driverPlate}
-                onChangeText={(val) => onChangeRoute(idx, 'driverPlate', val.toUpperCase())}
-                autoCapitalize="characters"
-            />
+            <View className={`w-24 px-2 py-1 justify-center rounded ${route.isSdd ? 'bg-[#fb923c]/20 border border-[#fb923c]/50' : 'bg-transparent'}`}>
+                <TextInput
+                    className={`p-0 m-0 text-[14px] font-spaceGrotesk`}
+                    style={{ color: route.isSdd ? '#fb923c' : (isMatched ? '#ffffff' : '#f87171'), fontWeight: isMatched || route.isSdd ? 'bold' : 'normal' }}
+                    value={route.driverPlate}
+                    onChangeText={(val) => onChangeRoute(idx, 'driverPlate', val.toUpperCase())}
+                    autoCapitalize="characters"
+                />
+            </View>
 
             {/* Driver Name & Missing Alert */}
-            <View className="w-52 px-2 justify-center">
+            <View className={`w-52 px-2 py-1 justify-center rounded ${route.isSdd ? 'bg-[#fb923c]/10' : ''}`}>
                 <TextInput
-                    className={`py-1 text-[13px] font-spaceGrotesk bg-transparent rounded`}
-                    style={{ color: isMatched ? '#cbd5e1' : '#fca5a5' }}
+                    className={`py-0 m-0 text-[13px] font-spaceGrotesk`}
+                    style={{ color: route.isSdd ? '#fdba74' : (isMatched ? '#cbd5e1' : '#fca5a5') }}
                     value={route.driverName}
                     onChangeText={(val) => onChangeRoute(idx, 'driverName', val)}
                 />
