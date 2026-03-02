@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { notifyAdmins, ensureDriverPushToken } from '~/src/lib/push';
 import { NotificationCenter } from '~/src/components/NotificationCenter';
+import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 
 export default function DashboardScreen() {
     const { user } = useAuthStore();
@@ -86,8 +87,8 @@ export default function DashboardScreen() {
             const { aetherFetchAll } = require('~/src/lib/aether');
             const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as Assignment[];
 
-            // Filtra as atribuições deste motorista
-            const allAssigned = allAssignmentsRaw.filter(a => a.driverId === user.id);
+            // Filtra as atribuições deste motorista e ignora as rotas que sofreram limpeza pelo admin (archived)
+            const allAssigned = allAssignmentsRaw.filter(a => a.driverId === user.id && a.archived !== true);
 
             if (__DEV__) {
                 console.log(`[Driver Dashboard] ID local: ${user.id}`);
@@ -107,8 +108,9 @@ export default function DashboardScreen() {
             }
 
             if (allAssigned) {
-                const pendingOrConfirmed = allAssigned.filter(a => a.status === 'pending' || a.status === 'confirmed');
-                __DEV__ && console.log(`[Driver Dashboard] Destes, pending/confirmed: ${pendingOrConfirmed.length}`);
+                // [HOTFIX] Inclusão de "in_progress" para não colocar rotas que liberaram doca num Limbo visual 
+                const pendingOrConfirmed = allAssigned.filter(a => a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress');
+                __DEV__ && console.log(`[Driver Dashboard] Destes, pending/confirmed/in_progress: ${pendingOrConfirmed.length}`);
 
                 // Sort to show the earliest created first
                 pendingOrConfirmed.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -164,6 +166,15 @@ export default function DashboardScreen() {
                     // já sabe que é dele (armazenado no Ref), então ele refetch.
                     const isCurrentlyAssigned = assignmentsRef.current.some(a => a.id === updateId);
 
+                    // [SENIOR FIX - AUTO CLEAN] Se a mudança foi um arquivamento (Faxina do Admin) de uma rota atual, repuxa dados
+                    if (payload.archived === true && isCurrentlyAssigned) {
+                        __DEV__ && console.log('[Realtime DriverDash] Faxina detectada (Archived: true). Expulsando da tela.');
+                        // Delete Instantâneo da Tela (Evita pisca-pisca de Load)
+                        setAssignments(prev => prev.filter(a => a.id !== updateId));
+                        fetchAssignments(); // Refaz pra atualizar contadores
+                        return;
+                    }
+
                     // Só refetch se a mudança for relacionada a ESTE motorista
                     if (explicitlyOwned || isCurrentlyAssigned) {
                         __DEV__ && console.log('[Realtime DriverDash] Mudança detectada para este motorista (Update ID):', updateId);
@@ -184,6 +195,9 @@ export default function DashboardScreen() {
             clearInterval(interval);
         };
     }, [user, fetchAssignments]);
+
+    // [SENIOR FIX] Recupera os dados instantaneamente quando o celular volta para foreground
+    useForegroundRefresh(fetchAssignments);
 
     /**
      * [SENIOR UX] Controla a Animação do Sino Baseado no Conto de Não Lidas
@@ -365,8 +379,8 @@ export default function DashboardScreen() {
                                         </View>
                                         <View className="items-end">
                                             <Text className="text-[#94a3b8] text-[10px] uppercase tracking-widest font-spaceGrotesk">Status</Text>
-                                            <Text className={`text-[13px] font-spaceGroteskBold uppercase tracking-wide mt-0.5 ${assignment.status === 'confirmed' ? 'text-green-400' : 'text-yellow-400'}`}>
-                                                {assignment.status === 'confirmed' ? 'Confirmado' : 'Aguardando'}
+                                            <Text className={`text-[13px] font-spaceGroteskBold uppercase tracking-wide mt-0.5 ${assignment.status === 'in_progress' ? 'text-blue-400' : assignment.status === 'confirmed' ? 'text-green-400' : 'text-yellow-400'}`}>
+                                                {assignment.status === 'in_progress' ? 'Em Trânsito' : assignment.status === 'confirmed' ? 'Confirmado' : 'Aguardando'}
                                             </Text>
                                         </View>
                                     </View>

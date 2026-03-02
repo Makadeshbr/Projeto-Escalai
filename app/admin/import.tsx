@@ -27,14 +27,16 @@ export default function ImportRouteScreen() {
     const [availableDrivers, setAvailableDrivers] = useState<DriverAvailability[]>([]);
     const [knownDatabaseCities, setKnownDatabaseCities] = useState<City[]>([]);
     const [validationMap, setValidationMap] = useState<Record<string, boolean>>({});
-    const [isSameDay, setIsSameDay] = useState(false); // Default to D+1
 
-    // Modal de seleção de data (Hoje vs Amanhã) — exibido ANTES de abrir o file picker
-    const [showDateChoiceModal, setShowDateChoiceModal] = useState(false);
+    // [ENTERPRISE FIX] Remoção da opção D+1. O processo agora é determinístico para Today.
+    const isSameDay = true;
 
     // Action Modal
     const [modalVisible, setModalVisible] = useState(false);
     const [isDispatching, setIsDispatching] = useState(false);
+
+    // [ENTERPRISE FIX] Tracking exato de lote para o usuário não se sentir cego
+    const [dispatchProgress, setDispatchProgress] = useState({ current: 0, total: 0 });
 
     // Execution Result Modal
     const [resultModalVisible, setResultModalVisible] = useState(false);
@@ -72,7 +74,7 @@ export default function ImportRouteScreen() {
                     windowId: p.windowId || raw.windowId || '',
                     targetDate: p.targetDate || raw.targetDate || '',
                     isAvailable: p.isAvailable ?? raw.isAvailable ?? true,
-                    shifts: p.shifts || raw.shifts || { morning: true, afternoon: true, night: true },
+                    shifts: p.shifts || raw.shifts || { morning: true },
                     lockedAt: p.lockedAt || raw.lockedAt || '',
                     createdAt: p.createdAt || raw.createdAt || '',
                 };
@@ -105,7 +107,7 @@ export default function ImportRouteScreen() {
                         windowId: '',
                         targetDate: targetDateStr,
                         isAvailable: true,
-                        shifts: { morning: true, afternoon: true, night: true },
+                        shifts: { morning: true },
                         lockedAt: '',
                         createdAt: p.createdAt || '',
                     } as DriverAvailability;
@@ -143,20 +145,10 @@ export default function ImportRouteScreen() {
         setValidationMap(map);
     };
 
-    // [SENIOR DEV] Intercepta o clique de upload para perguntar a data primeiro
-    const handleUploadPress = () => {
-        setShowDateChoiceModal(true);
-    };
-
-    // Callback após o admin escolher a data no modal
-    const handleDateChoice = async (sameDay: boolean) => {
-        setShowDateChoiceModal(false);
-        setIsSameDay(sameDay);
-
-        // Aguarda o motor de drivers recarregar com a data correta antes de abrir o picker
-        // O useEffect em [isSameDay] vai recarregar, mas precisamos garantir que rode primeiro
+    // [ENTERPRISE FIX] Intercepta clique de upload para garantir pré-carregamento dos drivers de HOJE 
+    const handleUploadPress = async () => {
         try {
-            const targetDateStr = sameDay ? getTodayDateStr() : getTomorrowDateStr();
+            const targetDateStr = getTodayDateStr();
             const [availabilityRecords, statusRecords] = await Promise.all([
                 aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY),
                 aetherFetchAll(COLLECTIONS.DRIVER_STATUS),
@@ -172,7 +164,7 @@ export default function ImportRouteScreen() {
                     windowId: p.windowId || raw.windowId || '',
                     targetDate: p.targetDate || raw.targetDate || '',
                     isAvailable: p.isAvailable ?? raw.isAvailable ?? true,
-                    shifts: p.shifts || raw.shifts || { morning: true, afternoon: true, night: true },
+                    shifts: p.shifts || raw.shifts || { morning: true },
                     lockedAt: p.lockedAt || raw.lockedAt || '',
                     createdAt: p.createdAt || raw.createdAt || '',
                 };
@@ -196,7 +188,7 @@ export default function ImportRouteScreen() {
                         driverName: p.driverName || 'Motorista',
                         driverPlate: (p.driverPlate || '').toUpperCase(),
                         windowId: '', targetDate: targetDateStr, isAvailable: true,
-                        shifts: { morning: true, afternoon: true, night: true },
+                        shifts: { morning: true },
                         lockedAt: '', createdAt: p.createdAt || '',
                     } as DriverAvailability;
                 });
@@ -204,10 +196,9 @@ export default function ImportRouteScreen() {
             const mergedDrivers = [...dateFiltered, ...statusFallback];
             setAvailableDrivers(mergedDrivers);
         } catch (e) {
-            console.error('[DateChoice] Falha ao pré-carregar drivers:', e);
+            console.error('[ImportEngine] Falha ao pré-carregar drivers para Hoje:', e);
         }
 
-        // Agora abre o picker de arquivo
         handlePickDocument();
     };
 
@@ -425,6 +416,9 @@ export default function ImportRouteScreen() {
                 return validationMap[cleanPlate] === true;
             });
 
+            // Inicia tracking de progresso visual (Enterprise UX)
+            setDispatchProgress({ current: 0, total: validRoutes.length });
+
             // [ENTERPRISE FIX] Batch Throttle & Transacional: processa em lotes de 10
             // Evita burst de 100+ requests, mas agora usa Retry e Push Bloqueante para precisão
             const BATCH_SIZE = 10;
@@ -498,7 +492,7 @@ export default function ImportRouteScreen() {
 
                 const batchResults = await Promise.allSettled(batchPromises);
 
-                // Contabiliza sucessos absolutos e parciais
+                // Contabiliza sucessos absolutos e parciais e avança o contador
                 batchResults.forEach(r => {
                     if (r.status === 'fulfilled' && r.value) {
                         successCount++;
@@ -510,6 +504,9 @@ export default function ImportRouteScreen() {
                         console.warn('[Dispatch] Falha sistêmica no Batch:', r.reason);
                     }
                 });
+
+                // Atualiza a barra de carregamento pro admin ver em tempo real
+                setDispatchProgress(prev => ({ ...prev, current: prev.current + batch.length }));
 
                 // Delay entre batches do banco
                 if (i + BATCH_SIZE < validRoutes.length) {
@@ -568,6 +565,7 @@ export default function ImportRouteScreen() {
             setResultModalVisible(true);
         } finally {
             setIsDispatching(false);
+            setDispatchProgress({ current: 0, total: 0 });
         }
     };
 
@@ -601,13 +599,13 @@ export default function ImportRouteScreen() {
                                     ? `${filesCount} arquivo(s) processado(s) • ${routes.length} rotas na tabela`
                                     : 'PDF, JPEG ou PNG (Permite Múltiplos)'}
                             </Text>
-                            {isSameDay !== undefined && (
-                                <View className={`mt-3 px-3 py-1 rounded-full border ${isSameDay ? 'bg-primary/10 border-primary/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
-                                    <Text className={`text-[10px] font-spaceGroteskBold uppercase tracking-wider ${isSameDay ? 'text-primary' : 'text-blue-400'}`}>
-                                        {isSameDay ? '⚡ Same Day (Hoje)' : '📅 D+1 (Amanhã)'}
-                                    </Text>
-                                </View>
-                            )}
+                            {/* [ENTERPRISE FIX] Hoje é fixo, logo mostramos Badge de certeza para o Operador */}
+                            <View className="mt-3 px-4 py-1.5 rounded-full border bg-primary/10 border-primary/30 flex-row gap-1 items-center">
+                                <Zap color={THEME.colors.primary} size={14} />
+                                <Text className="text-[11px] font-spaceGroteskBold uppercase tracking-wider text-primary">
+                                    ESCALA HOJE ({getTodayDateStr()})
+                                </Text>
+                            </View>
                         </View>
                     </TouchableOpacity>
                 )}
@@ -676,9 +674,9 @@ export default function ImportRouteScreen() {
                 {/* Matchmaker Info Badge */}
                 <View className="flex-row items-center justify-between mb-2">
                     <Text className="text-[14px] font-spaceGroteskBold text-text-light">Engine de Reconciliação</Text>
-                    <View className={`px-3 py-1 rounded-full border ${isSameDay ? 'bg-primary/10 border-primary/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
-                        <Text className={`text-[11px] font-spaceGroteskBold uppercase tracking-wider ${isSameDay ? 'text-primary' : 'text-blue-400'}`}>
-                            {isSameDay ? 'Hoje (SD)' : 'Amanhã (D+1)'}
+                    <View className="px-3 py-1 rounded-full border bg-primary/10 border-primary/20">
+                        <Text className="text-[11px] font-spaceGroteskBold uppercase tracking-wider text-primary">
+                            Alocação: Hoje
                         </Text>
                     </View>
                 </View>
@@ -704,7 +702,7 @@ export default function ImportRouteScreen() {
                             <TouchableOpacity
                                 onPress={() => { setRoutes([]); setFilesCount(0); setValidationMap({}); }}
                                 disabled={isDispatching}
-                                className="bg-surface border border-border rounded-xl h-14 px-4 items-center justify-center"
+                                className={`bg-surface border border-border rounded-xl h-14 px-4 items-center justify-center ${isDispatching ? 'opacity-50' : ''}`}
                             >
                                 <X color="#f87171" size={20} />
                             </TouchableOpacity>
@@ -712,16 +710,21 @@ export default function ImportRouteScreen() {
                             <TouchableOpacity
                                 onPress={triggerDispatch}
                                 disabled={isDispatching}
-                                className="flex-1 bg-primary rounded-xl h-14 flex-row items-center justify-center"
-                                style={{ elevation: 4 }}
+                                className={`flex-1 rounded-xl h-14 flex-row items-center justify-center ${isDispatching ? 'bg-primary/50' : 'bg-primary'}`}
+                                style={isDispatching ? {} : { elevation: 4 }}
                             >
                                 {isDispatching ? (
-                                    <ActivityIndicator color="#000" />
+                                    <>
+                                        <ActivityIndicator color="#000" size="small" className="mr-3" />
+                                        <Text className="text-black font-spaceGroteskBold text-[15px] uppercase tracking-wider">
+                                            {`Processando ${dispatchProgress.current} de ${dispatchProgress.total}...`}
+                                        </Text>
+                                    </>
                                 ) : (
                                     <>
                                         <Play color="#000" size={20} className="mr-2" />
                                         <Text className="text-black font-spaceGroteskBold text-[16px] uppercase tracking-wider">
-                                            Despachar ({routes.length})
+                                            Despachar Frota ({routes.length})
                                         </Text>
                                     </>
                                 )}
@@ -820,60 +823,9 @@ export default function ImportRouteScreen() {
                 </View>
             </Modal>
 
-            {/* Modal — Seleção de Data (Hoje vs Amanhã) */}
-            <Modal visible={showDateChoiceModal} transparent animationType="fade">
-                <View className="flex-1 bg-black/80 items-center justify-center px-6">
-                    <View className="bg-surface border border-border w-full rounded-3xl p-6 items-center shadow-2xl">
-                        <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-5 border border-primary/20">
-                            <CalendarClock color={THEME.colors.primary} size={28} />
-                        </View>
+            {/* O Modal de D+1 foi destruído seguindo a arquitetura Sênior */}
 
-                        <Text className="text-white font-spaceGroteskBold text-xl text-center mb-2">
-                            Para qual dia é essa escala?
-                        </Text>
-                        <Text className="text-[#94a3b8] font-spaceGrotesk text-[13px] text-center mb-6 leading-relaxed">
-                            O sistema vai cruzar os motoristas disponíveis para o dia selecionado.
-                        </Text>
-
-                        <View className="w-full gap-3">
-                            {/* Same Day (Hoje) */}
-                            <TouchableOpacity
-                                onPress={() => handleDateChoice(true)}
-                                className="w-full bg-primary/10 border-2 border-primary/30 h-16 rounded-xl items-center justify-center flex-row gap-3"
-                                style={{ shadowColor: THEME.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3 }}
-                            >
-                                <Zap color={THEME.colors.primary} size={22} />
-                                <View>
-                                    <Text className="text-primary font-spaceGroteskBold text-[15px] tracking-wide">HOJE — Same Day</Text>
-                                    <Text className="text-primary/70 font-spaceGrotesk text-[10px] uppercase tracking-wider">{getTodayDateStr()}</Text>
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* D+1 (Amanhã) */}
-                            <TouchableOpacity
-                                onPress={() => handleDateChoice(false)}
-                                className="w-full bg-blue-500/10 border-2 border-blue-500/30 h-16 rounded-xl items-center justify-center flex-row gap-3"
-                            >
-                                <Calendar color="#60a5fa" size={22} />
-                                <View>
-                                    <Text className="text-blue-400 font-spaceGroteskBold text-[15px] tracking-wide">AMANHÃ — D+1</Text>
-                                    <Text className="text-blue-400/70 font-spaceGrotesk text-[10px] uppercase tracking-wider">{getTomorrowDateStr()}</Text>
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Cancelar */}
-                            <TouchableOpacity
-                                onPress={() => setShowDateChoiceModal(false)}
-                                className="w-full bg-background border border-border h-12 rounded-xl items-center justify-center mt-1"
-                            >
-                                <Text className="text-[#94a3b8] font-spaceGrotesk text-[13px] uppercase tracking-wider">Cancelar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Generic Result Modal */}
+            {/* Generic Result Modal (Mantido para exibir "Despacho Perfeito") */}
             <Modal visible={resultModalVisible} transparent animationType="fade">
                 <View className="flex-1 bg-black/60 items-center justify-center p-4">
                     <View className="bg-surface w-full max-w-sm rounded-[24px] p-6 border border-border shadow-2xl items-center">

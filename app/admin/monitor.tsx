@@ -11,8 +11,9 @@ import { DashboardActionModal } from '~/src/components/dashboard/DashboardAction
 import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
 import { aetherFetchAll } from '~/src/lib/aether';
 import { SkeletonList } from '~/src/components/ui/Skeleton';
+import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 
-type FilterType = 'all' | 'wave_1' | 'wave_2' | 'transit';
+type FilterType = 'all' | 'wave_1' | 'wave_2' | 'wave_3' | 'transit';
 
 /**
  * Componente atomizado para card de motorista com animação de pulso.
@@ -131,24 +132,24 @@ const DriverCard = React.memo(function DriverCard({
                 ) : (
                     <>
                         <View className="flex-row justify-between items-start">
-                            <View className="flex-row gap-3 items-center flex-1 mr-3">
+                            <View className="flex-row gap-3 items-center flex-1 pr-2 overflow-hidden">
                                 <DriverAvatar avatarUrl={avatarUrl} size={48} />
-                                <View className="flex-1">
+                                <View className="flex-1 overflow-hidden pr-1">
                                     <Text className="text-lg font-bold text-white" numberOfLines={1}>{assignment.driverName}</Text>
                                     <View className="flex-row items-center gap-2 mt-0.5">
-                                        <View className="px-2 py-0.5 rounded bg-[#f2db0d]/20 border border-[#f2db0d]/20">
+                                        <View className="px-2 py-0.5 rounded bg-[#f2db0d]/20 border border-[#f2db0d]/20 shrink-0">
                                             <Text className="text-[#f2db0d] text-xs font-bold uppercase">
                                                 {assignment.waveNumber || 'Onda'}
                                             </Text>
                                         </View>
-                                        <Text className="text-slate-400 text-xs" numberOfLines={1}>• {assignment.driverPlate || '--'}</Text>
+                                        <Text className="text-slate-400 text-xs flex-1" numberOfLines={1}>• {assignment.driverPlate || '--'}</Text>
                                     </View>
                                 </View>
                             </View>
 
-                            <View className="items-end" style={{ minWidth: 50 }}>
+                            <View className="items-end shrink-0" style={{ minWidth: 65 }}>
                                 <Text className="text-xs text-slate-400 uppercase tracking-wider font-bold">Doca</Text>
-                                <Text className="text-2xl font-bold text-primary leading-none">
+                                <Text className="text-2xl font-bold text-primary leading-none" numberOfLines={1}>
                                     {assignment.dock || '--'}
                                 </Text>
                             </View>
@@ -208,6 +209,9 @@ export default function AdminMonitorScreen() {
     const [filter, setFilter] = useState<FilterType>('all');
     const [driverAvatars, setDriverAvatars] = useState<Record<string, string>>({});
 
+    // [SENIOR FIX] Recupera os dados instantaneamente quando o celular volta para foreground
+    useForegroundRefresh(refreshMonitor);
+
     // Fetch avatar map from driver_status on mount + when assignments refresh
     useEffect(() => {
         (async () => {
@@ -245,6 +249,7 @@ export default function AdminMonitorScreen() {
             if (filter === 'all') return true;
             if (filter === 'wave_1') return a.waveNumber?.toLowerCase().includes('1');
             if (filter === 'wave_2') return a.waveNumber?.toLowerCase().includes('2');
+            if (filter === 'wave_3') return a.waveNumber?.toLowerCase().includes('3');
             if (filter === 'transit') return a.dockStatus === 'liberated' || a.status === 'in_progress';
             return true;
         });
@@ -333,7 +338,7 @@ export default function AdminMonitorScreen() {
     // Derived counts for filter chips
     const wave1Count = assignments.filter(a => a.waveNumber?.toLowerCase().includes('1')).length;
     const wave2Count = assignments.filter(a => a.waveNumber?.toLowerCase().includes('2')).length;
-
+    const wave3Count = assignments.filter(a => a.waveNumber?.toLowerCase().includes('3')).length;
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
             <LinearGradient
@@ -381,6 +386,7 @@ export default function AdminMonitorScreen() {
                     <FilterChip title="Todos" value="all" count={kpis.totalDispatched} />
                     <FilterChip title="Onda 1" value="wave_1" count={wave1Count} />
                     <FilterChip title="Onda 2" value="wave_2" count={wave2Count} />
+                    <FilterChip title="Onda 3" value="wave_3" count={wave3Count} />
                     <FilterChip title="Na Rua" value="transit" count={kpis.totalDeparted} />
                 </ScrollView>
             </View>

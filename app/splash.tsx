@@ -11,11 +11,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native';
+import { useAuthStore } from '~/src/store/auth';
+import { isAetherClientReady, getAetherClient } from '@aether-baas/react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
     const router = useRouter();
+    // Recupera dados já hidratados do persist middleware do Zustand
+    const { user, role } = useAuthStore();
 
     const pulseAnim = useSharedValue(0.2);
     const floatAnim = useSharedValue(0);
@@ -45,12 +49,38 @@ export default function SplashScreen() {
         // Barra de loading
         progressAnim.value = withTiming(100, { duration: 2800 });
 
-        const timer = setTimeout(() => {
-            router.replace('/login');
-        }, 3000);
+        const timer = setInterval(() => {
+            // Aguarda o SDK Aether montar do AsyncStorage
+            if (!isAetherClientReady()) return;
 
-        return () => clearTimeout(timer);
-    }, []);
+            clearInterval(timer);
+
+            const client = getAetherClient();
+            // Verifica a Verdade Universal (O SDK Aether tem Token válido?)
+            const trueToken = typeof client.getToken === 'function' ? client.getToken() : null;
+
+            // Se o Zustand acha que tá logado, mas NÃO HÁ TOKEN na Database (Expirou ou Limpou)
+            if (user && role && !trueToken) {
+                __DEV__ && console.warn('[Splash] Zustand Cache Inutilizado - Token Aether Ausente. Expulsando para Login.');
+                useAuthStore.getState().logout(); // Reseta estado fantasma.
+                router.replace('/login');
+                return;
+            }
+
+            // Fluxo Feliz: Tem cache de Zustand E auth viva na SDK.
+            if (user && role && trueToken) {
+                if (role === 'admin') {
+                    router.replace('/admin/dashboard');
+                } else {
+                    router.replace('/driver/dashboard');
+                }
+            } else {
+                router.replace('/login');
+            }
+        }, 500); // Checa a cada meio segundo (ao invés de salto cego aos 3s)
+
+        return () => clearInterval(timer);
+    }, [user, role, router]);
 
     const animatedPulseStyle = useAnimatedStyle(() => ({
         opacity: pulseAnim.value,

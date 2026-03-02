@@ -44,8 +44,6 @@ export interface DriverAvailability {
     isAvailable: boolean;
     shifts: {
         morning: boolean;
-        afternoon: boolean;
-        night: boolean;
     };
     lockedAt: string;
     createdAt: string;
@@ -56,8 +54,8 @@ export interface Assignment {
     id: string;
     cityId: string;
     cityName: string;
-    wave: 'morning' | 'afternoon' | 'night';
-    waveLabel: string;          // "Manhã", "Tarde", "Noite"
+    wave: 'morning';
+    waveLabel: string;          // "Manhã"
     waveTime: string;           // "06:00 - 11:00"
     waveNumber?: string;        // "Onda 1", "Onda 2"
     dock: string;               // Número da Doca (ex: "1", "10", "30") — NUMÉRICO
@@ -72,6 +70,7 @@ export interface Assignment {
     driverDidReadNotification?: boolean; // Tracking de leitura (UX do Sino pulsante)
     createdByAdminId: string;
     createdAt: string;
+    archived?: boolean; // Tracking de soft-delete longo
 }
 
 // ---- Driver Status (block/delete by admin) ----
@@ -137,8 +136,6 @@ export interface AdminNotification {
 // ---- Helper: wave metadata ----
 export const WAVE_META = {
     morning: { label: 'Manhã', time: '06:00 - 11:00' },
-    afternoon: { label: 'Tarde', time: '12:00 - 17:00' },
-    night: { label: 'Noite', time: '18:00 - 23:00' },
 } as const;
 
 /**

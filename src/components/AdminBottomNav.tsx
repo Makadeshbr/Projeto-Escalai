@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
-import { Grid, Navigation, Users, Zap, MoreHorizontal, ScanLine, Settings, X } from 'lucide-react-native';
+import { Grid, Navigation, Users, Zap, MoreHorizontal, ScanLine, Settings, X, Edit3, CalendarDays } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
 
@@ -8,7 +8,7 @@ import { THEME } from '~/src/constants/theme';
  * Tipo das tabs disponíveis no painel administrativo.
  * Inclui tabs primárias (visíveis) e secundárias (dentro do menu "Mais").
  */
-type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings' | 'reports';
+type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings' | 'reports' | 'editor' | 'windows';
 
 interface AdminBottomNavProps {
     activeTab: AdminTab;
@@ -19,26 +19,24 @@ const PRIMARY_TABS = [
     { key: 'overview' as const, label: 'Geral', href: '/admin/overview', Icon: Grid },
     { key: 'dashboard' as const, label: 'Despacho', href: '/admin/dashboard', Icon: Navigation },
     { key: 'monitor' as const, label: 'Docas', href: '/admin/monitor', Icon: Zap },
-    { key: 'drivers' as const, label: 'Motoristas', href: '/admin/drivers', Icon: Users },
+    { key: 'windows' as const, label: 'Escalas', href: '/admin/windows', Icon: CalendarDays },
 ];
 
 /** Tabs exibidas no menu "Mais" (bottom sheet) */
 const SECONDARY_TABS = [
     { key: 'reports' as const, label: 'Histórico RH', href: '/admin/reports', Icon: Users, description: 'Estatísticas de motoristas e produção' },
+    { key: 'editor' as const, label: 'Editor de Escalas', href: '/admin/editor', Icon: Edit3, description: 'Editar placas, rotas e destinos' },
     { key: 'import' as const, label: 'Scanner IA (PDF)', href: '/admin/import', Icon: ScanLine, description: 'Importar rotas via OCR Gemini' },
     { key: 'settings' as const, label: 'Ajustes', href: '/admin/settings', Icon: Settings, description: 'Configurações do sistema' },
 ];
 
 /**
  * Componente de navegação inferior do administrador.
- * Exibe 4 tabs primárias + botão "Mais" que abre um bottom sheet
- * com as opções secundárias (Scanner, Ajustes).
- * Padrão visual inspirado em apps enterprise (YouTube, Instagram, banking apps).
  */
 export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
     const [showMore, setShowMore] = useState(false);
 
-    /** Verifica se a tab ativa pertence ao menu secundário (pra destacar o botão "Mais") */
+    /** Verifica se a tab ativa pertence ao menu secundário */
     const isSecondaryActive = SECONDARY_TABS.some(t => t.key === activeTab);
 
     return (
@@ -127,3 +125,4 @@ export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
         </>
     );
 }
+

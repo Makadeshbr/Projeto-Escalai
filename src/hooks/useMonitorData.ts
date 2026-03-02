@@ -67,6 +67,9 @@ export function useMonitorData() {
             // e `status=completed` que removia rotas finalizadas — ambos causavam
             // motoristas desaparecendo da lista do admin.
             const todayActive = allAssignments.filter(a => {
+                // [SENIOR FIX - HISTORY PERSISTENCE] Ocultar itens arquivados
+                if ((a as any).archived === true) return false;
+
                 if (!a.createdAt) return false;
 
                 // Converte timestamp UTC do banco para data local
@@ -102,9 +105,18 @@ export function useMonitorData() {
                 const aPriority = dockPriority[aStatus] ?? 0;
                 const bPriority = dockPriority[bStatus] ?? 0;
 
+                // [1] Prioridade Primária: Estado Operacional da Doca
                 if (aPriority !== bPriority) return aPriority - bPriority;
 
-                // Prioridade secundária: quem foi criado antes (First in, First out da fila)
+                // [2] Prioridade Secundária (Enterprise FIX): Ordem Alfanumérica/Numérica da Doca realística 
+                // Evita que 42 venha antes de 9. "9" < "42" humanamente.
+                const docA = a.dock || '';
+                const docB = b.dock || '';
+                if (docA && docB && docA !== docB) {
+                    return docA.localeCompare(docB, undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                // [3] Fallback FIFO (Ordem de chegada no sistema)
                 return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
             });
 
@@ -203,13 +215,30 @@ export function useMonitorData() {
                     // Atualiza o assignment específico na lista local (merge in-place)
                     setAssignments(prev => {
                         const exists = prev.some(a => a.id === updateId);
+
+                        // [SENIOR FIX - AUTO CLEAN] Se admin limpou (archived), destrói a doca da tela ao vivo
+                        if (payload.archived === true) {
+                            if (exists) {
+                                __DEV__ && console.log('[Realtime Admin] Rota limpa/arquivada, explodindo da tela:', updateId);
+                                const nextList = prev.filter(a => a.id !== updateId);
+                                setKpis({
+                                    totalDispatched: nextList.length,
+                                    totalWaiting: nextList.filter(a => a.dockStatus === 'waiting' || !a.dockStatus).length,
+                                    totalLoading: nextList.filter(a => a.dockStatus === 'liberated').length,
+                                    totalDeparted: nextList.filter(a => a.dockStatus === 'departed' || a.status === 'in_progress').length,
+                                });
+                                return nextList;
+                            }
+                            return prev;
+                        }
+
                         if (exists) {
                             __DEV__ && console.log('[Realtime Admin] Atualizando doca na UI para:', updateId);
                             // Merge and resort inline
                             const nextList = prev.map(a =>
                                 a.id === updateId ? { ...a, ...payload, id: a.id } as Assignment : a
                             );
-                            // Recalcula ordenacao para jogar loading/departed p/ tras
+                            // Recalcula ordenacao para jogar loading/departed p/ tras e ordernar numérico
                             const dockPriority: Record<string, number> = { waiting: 0, liberated: 1, departed: 2 };
                             nextList.sort((a, b) => {
                                 const aStatus = a.dockStatus || 'waiting';
@@ -217,6 +246,13 @@ export function useMonitorData() {
                                 const aPriority = dockPriority[aStatus] ?? 0;
                                 const bPriority = dockPriority[bStatus] ?? 0;
                                 if (aPriority !== bPriority) return aPriority - bPriority;
+
+                                const docA = a.dock || '';
+                                const docB = b.dock || '';
+                                if (docA && docB && docA !== docB) {
+                                    return docA.localeCompare(docB, undefined, { numeric: true, sensitivity: 'base' });
+                                }
+
                                 return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
                             });
 

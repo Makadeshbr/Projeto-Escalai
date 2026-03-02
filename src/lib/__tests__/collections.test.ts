@@ -21,14 +21,12 @@ describe('COLLECTIONS', () => {
 });
 
 describe('WAVE_META', () => {
-    it('deve definir metadata para os 3 turnos', () => {
+    it('deve definir metadata para o turno da manhã', () => {
         expect(WAVE_META.morning).toBeDefined();
-        expect(WAVE_META.afternoon).toBeDefined();
-        expect(WAVE_META.night).toBeDefined();
     });
 
     it('cada turno deve ter label e time', () => {
-        (['morning', 'afternoon', 'night'] as const).forEach((wave) => {
+        (['morning'] as const).forEach((wave) => {
             expect(WAVE_META[wave].label).toBeDefined();
             expect(typeof WAVE_META[wave].label).toBe('string');
             expect(WAVE_META[wave].time).toBeDefined();

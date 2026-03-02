@@ -20,6 +20,7 @@ import { useAuthStore } from '~/src/store/auth';
 import { useActionModal } from '~/src/hooks/useActionModal';
 import { useDashboardData } from '~/src/hooks/useDashboardData';
 import { useAssignmentActions } from '~/src/hooks/useAssignmentActions';
+import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 
 // Subcomponentes extraídos (AUDIT FIX — CLEAN-001)
 import { CityPickerModal } from '~/src/components/dashboard/CityPickerModal';
@@ -80,6 +81,13 @@ export default function AdminRouteManagement() {
         fetchRecentAssignments: data.fetchRecentAssignments,
         fetchStats: data.fetchStats,
         showModal,
+    });
+
+    // [SENIOR FIX] Resgata os dados instantaneamente quando o celular sai do bolso/minimize
+    useForegroundRefresh(() => {
+        data.fetchStats();
+        data.fetchRecentAssignments();
+        data.fetchAvailableDrivers();
     });
 
     // Realtime Notifications Hook

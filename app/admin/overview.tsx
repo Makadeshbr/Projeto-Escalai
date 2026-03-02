@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, RefreshControl, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, FlatList, RefreshControl, Dimensions, StyleSheet } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
@@ -12,6 +12,7 @@ import { COLLECTIONS, getTodayDateStr } from '~/src/lib/collections';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { router } from 'expo-router';
 import { SkeletonList } from '~/src/components/ui/Skeleton';
+import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 
 export default function AdminOverviewScreen() {
     const { role } = useAuthStore();
@@ -58,6 +59,8 @@ export default function AdminOverviewScreen() {
             // Anteriormente .slice(0,5) truncava para 5 itens, omitindo motoristas despachados.
             const recent = [...allAssignments]
                 .filter((a: any) => {
+                    // [SENIOR FIX - HISTORY PERSISTENCE] Oculta rotas que o Admin marcou como "Limpar" no Dashboard Principal
+                    if (a.archived === true) return false;
                     if (!a.createdAt) return false;
                     const createdDate = new Date(a.createdAt);
                     const year = createdDate.getFullYear();
@@ -131,6 +134,9 @@ export default function AdminOverviewScreen() {
         };
     }, [fetchOverviewData]);
 
+    // [SENIOR FIX] Resgata os dados instantaneamente quando o celular sai do bolso/minimize
+    useForegroundRefresh(fetchOverviewData);
+
     /**
      * [AUDIT FIX — SEC-005] Guard de autorização.
      * Redireciona para login se o usuário não possuir role admin.
@@ -154,109 +160,119 @@ export default function AdminOverviewScreen() {
                 </View>
             </View>
 
-            <ScrollView
+            <FlatList
                 className="flex-1 px-4 z-10"
+                contentContainerStyle={{ paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
+                data={recentActivies}
+                keyExtractor={(item, index) => item.id || String(index)}
                 refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchOverviewData} tintColor={THEME.colors.primary} />}
-            >
-                {/* Main KPIs */}
-                <View className="flex-row flex-wrap gap-3 mb-6 px-1 mt-2">
-                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
-                        <View className="w-8 h-8 rounded-full bg-background items-center justify-center mb-3 border border-border">
-                            <Users color="#e2e8f0" size={16} />
-                        </View>
-                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Tot. Motoristas</Text>
-                        <Text className="text-2xl font-spaceGroteskBold text-white">{stats.totalDrivers}</Text>
-                    </View>
+                initialNumToRender={8}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={true}
+                ListHeaderComponent={
+                    <View>
+                        {/* Main KPIs */}
+                        <View className="flex-row flex-wrap gap-3 mb-6 px-1 mt-2">
+                            <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
+                                <View className="w-8 h-8 rounded-full bg-background items-center justify-center mb-3 border border-border">
+                                    <Users color="#e2e8f0" size={16} />
+                                </View>
+                                <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Tot. Motoristas</Text>
+                                <Text className="text-2xl font-spaceGroteskBold text-white">{stats.totalDrivers}</Text>
+                            </View>
 
-                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl relative overflow-hidden">
-                        <View className="absolute -right-4 -top-4 w-16 h-16 bg-primary/10 rounded-full" />
-                        <View className="w-8 h-8 rounded-full bg-primary/10 items-center justify-center mb-3 border border-primary/20">
-                            <Activity color={THEME.colors.primary} size={16} />
-                        </View>
-                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Ativos Hoje</Text>
-                        <Text className="text-2xl font-spaceGroteskBold text-primary">{stats.activeToday}</Text>
-                    </View>
+                            <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl relative overflow-hidden">
+                                <View className="absolute -right-4 -top-4 w-16 h-16 bg-primary/10 rounded-full" />
+                                <View className="w-8 h-8 rounded-full bg-primary/10 items-center justify-center mb-3 border border-primary/20">
+                                    <Activity color={THEME.colors.primary} size={16} />
+                                </View>
+                                <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Ativos Hoje</Text>
+                                <Text className="text-2xl font-spaceGroteskBold text-primary">{stats.activeToday}</Text>
+                            </View>
 
-                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
-                        <View className="w-8 h-8 rounded-full bg-background items-center justify-center mb-3 border border-border">
-                            <Truck color="#e2e8f0" size={16} />
-                        </View>
-                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Rotas Concluídas</Text>
-                        <Text className="text-2xl font-spaceGroteskBold text-white">{stats.completedRuns}</Text>
-                    </View>
+                            <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
+                                <View className="w-8 h-8 rounded-full bg-background items-center justify-center mb-3 border border-border">
+                                    <Truck color="#e2e8f0" size={16} />
+                                </View>
+                                <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Rotas Concluídas</Text>
+                                <Text className="text-2xl font-spaceGroteskBold text-white">{stats.completedRuns}</Text>
+                            </View>
 
-                    <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
-                        <View className="w-8 h-8 rounded-full bg-orange-500/10 items-center justify-center mb-3 border border-orange-500/20">
-                            <Package color="#f97316" size={16} />
+                            <View className="w-[47%] bg-surface border border-border p-5 rounded-2xl">
+                                <View className="w-8 h-8 rounded-full bg-orange-500/10 items-center justify-center mb-3 border border-orange-500/20">
+                                    <Package color="#f97316" size={16} />
+                                </View>
+                                <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Total Sacas</Text>
+                                <Text className="text-2xl font-spaceGroteskBold text-white">{totalSacas.toLocaleString('pt-BR')}</Text>
+                            </View>
                         </View>
-                        <Text className="text-text-muted text-[11px] font-spaceGrotesk uppercase tracking-wider mb-1">Total Sacas</Text>
-                        <Text className="text-2xl font-spaceGroteskBold text-white">{totalSacas.toLocaleString('pt-BR')}</Text>
-                    </View>
-                </View>
 
-                {/* Chart — Rotas últimos 7 dias */}
-                {weeklyData.labels.length > 0 && (
-                    <View className="mb-6 px-1">
-                        <Text className="text-white text-[15px] font-spaceGroteskBold mb-3">Rotas / 7 Dias</Text>
-                        <View className="bg-surface border border-border rounded-2xl overflow-hidden py-3">
-                            <BarChart
-                                data={{
-                                    labels: weeklyData.labels,
-                                    datasets: [{ data: weeklyData.data.every(v => v === 0) ? [0.1] : weeklyData.data }],
-                                }}
-                                width={Dimensions.get('window').width - 48}
-                                height={180}
-                                yAxisLabel=""
-                                yAxisSuffix=""
-                                fromZero
-                                showValuesOnTopOfBars
-                                withInnerLines={false}
-                                chartConfig={{
-                                    backgroundColor: 'transparent',
-                                    backgroundGradientFrom: '#1a1d2e',
-                                    backgroundGradientTo: '#1a1d2e',
-                                    decimalPlaces: 0,
-                                    color: (opacity = 1) => `rgba(96, 165, 250, ${opacity})`,
-                                    labelColor: () => '#94a3b8',
-                                    barPercentage: 0.5,
-                                    propsForLabels: { fontSize: 10, fontFamily: 'SpaceGrotesk_400Regular' },
-                                    propsForBackgroundLines: { stroke: '#2d3345' },
-                                }}
-                                style={{ borderRadius: 16, marginLeft: -6 }}
-                            />
+                        {/* Chart — Rotas últimos 7 dias */}
+                        {weeklyData.labels.length > 0 && (
+                            <View className="mb-6 px-1">
+                                <Text className="text-white text-[15px] font-spaceGroteskBold mb-3">Rotas / 7 Dias</Text>
+                                <View className="bg-surface border border-border rounded-2xl overflow-hidden py-3">
+                                    <BarChart
+                                        data={{
+                                            labels: weeklyData.labels,
+                                            datasets: [{ data: weeklyData.data.every(v => v === 0) ? [0.1] : weeklyData.data }],
+                                        }}
+                                        width={Dimensions.get('window').width - 48}
+                                        height={180}
+                                        yAxisLabel=""
+                                        yAxisSuffix=""
+                                        fromZero
+                                        showValuesOnTopOfBars
+                                        withInnerLines={false}
+                                        chartConfig={{
+                                            backgroundColor: 'transparent',
+                                            backgroundGradientFrom: '#1a1d2e',
+                                            backgroundGradientTo: '#1a1d2e',
+                                            decimalPlaces: 0,
+                                            color: (opacity = 1) => `rgba(96, 165, 250, ${opacity})`,
+                                            labelColor: () => '#94a3b8',
+                                            barPercentage: 0.5,
+                                            propsForLabels: { fontSize: 10, fontFamily: 'SpaceGrotesk_400Regular' },
+                                            propsForBackgroundLines: { stroke: '#2d3345' },
+                                        }}
+                                        style={{ borderRadius: 16, marginLeft: -6 }}
+                                    />
+                                </View>
+                            </View>
+                        )}
+
+                        <Text className="text-white text-[15px] font-spaceGroteskBold mb-4 px-1 mt-2">Últimas Movimentações</Text>
+                    </View>
+                }
+                ListEmptyComponent={
+                    <View className="px-1">
+                        {isLoading ? (
+                            <SkeletonList count={3} />
+                        ) : (
+                            <View className="bg-surface/50 border border-border border-dashed rounded-xl p-6 items-center flex-row justify-center gap-3">
+                                <Activity color={THEME.colors.textMuted} size={16} />
+                                <Text className="text-text-muted font-spaceGrotesk text-sm">Nenhuma atividade recente.</Text>
+                            </View>
+                        )}
+                    </View>
+                }
+                renderItem={({ item: activity }) => (
+                    <View className="flex-row items-center p-4 bg-surface border border-border rounded-xl mb-3 mx-1">
+                        <DriverAvatar avatarUrl={driverAvatars[activity.driverId]} size={40} />
+                        <View className="ml-4 flex-1">
+                            <Text className="text-white font-spaceGroteskBold text-[15px]" numberOfLines={1}>{activity.driverName}</Text>
+                            <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-1" numberOfLines={1}>
+                                {activity.cityName} - {activity.waveLabel} (Doca {activity.dock})
+                            </Text>
                         </View>
+                        <Text className="text-text-muted text-[11px] font-mono">
+                            {activity.createdAt ? new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </Text>
                     </View>
                 )}
-
-                {/* Recent Activity Mini-Feed */}
-                <View className="mb-28 px-1">
-                    <Text className="text-white text-[15px] font-spaceGroteskBold mb-4">Últimas Movimentações</Text>
-                    {isLoading && recentActivies.length === 0 ? (
-                        <SkeletonList count={3} />
-                    ) : recentActivies.length === 0 && !isLoading ? (
-                        <View className="bg-surface/50 border border-border border-dashed rounded-xl p-6 items-center flex-row justify-center gap-3">
-                            <Activity color={THEME.colors.textMuted} size={16} />
-                            <Text className="text-text-muted font-spaceGrotesk text-sm">Nenhuma atividade recente.</Text>
-                        </View>
-                    ) : (
-                        recentActivies.map((activity, idx) => (
-                            <View key={activity.id || idx} className="flex-row items-center p-4 bg-surface border border-border rounded-xl mb-3">
-                                <DriverAvatar avatarUrl={driverAvatars[activity.driverId]} size={40} />
-                                <View className="ml-4 flex-1">
-                                    <Text className="text-white font-spaceGroteskBold text-[15px]" numberOfLines={1}>{activity.driverName}</Text>
-                                    <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-1" numberOfLines={1}>
-                                        {activity.cityName} - {activity.waveLabel} (Doca {activity.dock})
-                                    </Text>
-                                </View>
-                                <Text className="text-text-muted text-[11px] font-mono">
-                                    {activity.createdAt ? new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                </Text>
-                            </View>
-                        ))
-                    )}
-                </View>
-            </ScrollView>
+            />
 
             <AdminBottomNav activeTab="overview" />
         </SafeAreaView>

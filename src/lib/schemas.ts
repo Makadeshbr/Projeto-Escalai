@@ -17,7 +17,7 @@ export const AssignmentSchema = z.object({
     id: safeString,
     cityId: safeString,
     cityName: safeString,
-    wave: z.enum(['morning', 'afternoon', 'night']).catch('morning'),
+    wave: z.enum(['morning']).catch('morning'),
     waveLabel: safeString,
     waveTime: safeString,
     waveNumber: z.string().optional().catch(undefined),
@@ -32,6 +32,7 @@ export const AssignmentSchema = z.object({
     status: z.enum(['pending', 'confirmed', 'in_progress', 'completed']).catch('pending'),
     createdByAdminId: safeString,
     createdAt: safeString,
+    archived: z.boolean().optional().catch(undefined),
 });
 
 // ---- Driver Availability ----
@@ -45,9 +46,7 @@ export const DriverAvailabilitySchema = z.object({
     isAvailable: safeBoolean,
     shifts: z.object({
         morning: safeBoolean,
-        afternoon: safeBoolean,
-        night: safeBoolean,
-    }).catch({ morning: false, afternoon: false, night: false }),
+    }).catch({ morning: false }),
     lockedAt: safeString,
     createdAt: safeString,
 });

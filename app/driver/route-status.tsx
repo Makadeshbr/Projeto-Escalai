@@ -96,6 +96,7 @@ export default function RouteStatusScreen() {
             // [TIMEZONE FIX] Converte a data UTC do banco para local 
             // e garante que docas em andamento não despareçam na virada de meia-noite
             const active = allRaw.find(a => {
+                if ((a as any).archived === true) return false; // [SENIOR FIX - AUTO CLEAN] Oculta rotas expiradas/limpas pelo admin
                 if (a.driverId !== user.id) return false;
                 if (a.status === 'completed' || !a.dock) return false;
                 if (!a.createdAt) return false;
@@ -107,7 +108,7 @@ export default function RouteStatusScreen() {
                 const localCreatedStr = `${year}-${month}-${day}`;
 
                 const isToday = localCreatedStr === todayStr;
-                const isStillActive = (a.status === 'pending' || a.dockStatus === 'waiting' || a.dockStatus === 'liberated');
+                const isStillActive = (a.status === 'pending' || a.status === 'in_progress' || a.dockStatus === 'waiting' || a.dockStatus === 'liberated' || a.dockStatus === 'departed');
 
                 return isToday || isStillActive;
             });
@@ -149,6 +150,15 @@ export default function RouteStatusScreen() {
 
                         if (updateId === activeIdRef.current) {
                             console.log('[Realtime Driver] Recebido update:', JSON.stringify(payload));
+
+                            // [SENIOR FIX - AUTO CLEAN] Se a doca foi limpa do sistema, quebra a tela de doca na hora p/ o motorista
+                            if (payload.archived === true) {
+                                console.log('[Realtime Driver] Faxina detectada. Ocultando tela de rota ativa.');
+                                setAssignment(null);
+                                activeIdRef.current = null;
+                                return;
+                            }
+
                             setAssignment(prev => {
                                 if (!prev) return prev;
                                 // Merge seguro: mantém todos os campos e sobrescreve apenas os atualizados

@@ -10,18 +10,12 @@ import { COLLECTIONS, getTomorrowDateStr, getTodayDateStr } from '~/src/lib/coll
 import { notifyAllDrivers, diagnosePushError } from '~/src/lib/push';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
-import DateSelectionModal from '~/src/components/DateSelectionModal';
 import { router } from 'expo-router';
 import { exportToCSV, ExportColumn } from '~/src/lib/export';
 import { logAudit } from '~/src/lib/audit';
 
 export default function AdminSettingsScreen() {
     const { logout, role } = useAuthStore();
-
-    // Windows logic
-    const [generatingWindow, setGeneratingWindow] = useState(false);
-    const [activeWindows, setActiveWindows] = useState<any[]>([]);
-    const [showDatePicker, setShowDatePicker] = useState(false);
 
     // Bulk Notifications
     const [notificationTitle, setNotificationTitle] = useState('');
@@ -227,67 +221,7 @@ export default function AdminSettingsScreen() {
         setActionModal({ visible: true, title, message, type, onConfirm: onConfirm || (() => setActionModal(prev => ({ ...prev, visible: false }))) });
     };
 
-    const checkWindowStatus = async () => {
-        try {
-            const allWindowsRaw = await aether.db.collection(COLLECTIONS.AVAILABILITY_WINDOWS).query().eq('isOpen', true).get() as any[];
-            let active: any[] = [];
-
-            if (allWindowsRaw && allWindowsRaw.length > 0) {
-                // Obtenha hoje e amanhã para taguear no título se coincidir
-                const todStr = getTodayDateStr();
-                const tomStr = getTomorrowDateStr();
-
-                active = allWindowsRaw.map(win => {
-                    let typeLabel = '';
-                    if (win.targetDate === todStr) typeLabel = 'SDD (Hoje)';
-                    else if (win.targetDate === tomStr) typeLabel = 'D+1 (Amanhã)';
-                    else typeLabel = 'Programada';
-
-                    return {
-                        ...win,
-                        label: `${typeLabel}: ${win.targetDate.split('-').reverse().join('/')}`
-                    };
-                });
-
-                // Ordenar da mais recente/futura para a mais antiga
-                active.sort((a, b) => a.targetDate.localeCompare(b.targetDate));
-            }
-
-            setActiveWindows(active);
-        } catch (e) {
-            console.error('[Settings] Erro verificação janela:', e);
-        }
-    };
-
-    const handleDeleteWindow = async (windowId: string, label: string) => {
-        showModal('Cancelar Operação', `Tem certeza que deseja DELETAR a janela aberta para ${label}? Isso removerá a escala ativa do sistema.`, 'confirm', async () => {
-            setActionModal(prev => ({ ...prev, visible: false }));
-            setGeneratingWindow(true);
-            try {
-                // [SENIOR DEV] Cascade delete: Also delete all driver responses for this window
-                const existingResponses = await aether.db.collection(COLLECTIONS.DRIVER_AVAILABILITY)
-                    .query().eq('windowId', windowId).get();
-
-                if (existingResponses && (existingResponses as any[]).length > 0) {
-                    await Promise.all((existingResponses as any[]).map(res =>
-                        aether.db.collection(COLLECTIONS.DRIVER_AVAILABILITY).delete(res.id)
-                    ));
-                    console.log(`Cascade deleted ${(existingResponses as any[]).length} responses for window ${windowId}`);
-                }
-
-                await aether.db.collection(COLLECTIONS.AVAILABILITY_WINDOWS).delete(windowId);
-                showModal('Escala Deletada', `A janela de ${label} foi removida com sucesso. Todas as respostas vinculadas a ela foram excluídas.`, 'success');
-                checkWindowStatus();
-            } catch (e: any) {
-                showModal('Falha na Exclusão', e?.message || 'Erro ao deletar janela.', 'error');
-            } finally {
-                setGeneratingWindow(false);
-            }
-        });
-    };
-
     useEffect(() => {
-        checkWindowStatus();
         fetchCities();
     }, []);
 
@@ -298,56 +232,6 @@ export default function AdminSettingsScreen() {
     useEffect(() => {
         if (role !== 'admin') router.replace('/login');
     }, [role]);
-
-    const handleGenerateWindowFromDate = async (targetStr: string) => {
-        const [year, month, day] = targetStr.split('-');
-        const labelStr = `${day}/${month}/${year}`;
-
-        showModal(
-            `Abrir Disponibilidade`,
-            `Deseja abrir a janela para os motoristas enviarem a escala para a data ${labelStr}? O sistema enviará um Push Notifications para a base.`,
-            'confirm',
-            async () => {
-                setActionModal(prev => ({ ...prev, visible: false }));
-                setGeneratingWindow(true);
-                try {
-                    const existing = await aether.db.collection(COLLECTIONS.AVAILABILITY_WINDOWS).query().eq('targetDate', targetStr).get();
-
-                    if (existing && existing.length > 0) {
-                        showModal('Ação Recusada', `Já existe uma janela aberta para a data ${labelStr}.`, 'error');
-                    } else {
-                        await aether.db.collection(COLLECTIONS.AVAILABILITY_WINDOWS).create({
-                            targetDate: targetStr,
-                            openedAt: new Date().toISOString(),
-                            isOpen: true
-                        });
-
-                        try {
-                            const result = await notifyAllDrivers(
-                                'NOVA ESCALA LIBERADA 🚀',
-                                `A janela de disponibilidade para o dia ${labelStr} foi aberta. Acesse o app para preencher e garantir sua vaga!`
-                            );
-                            let msg = `A disponibilidade para ${labelStr} foi liberada. Push entregue para ${result.sent}/${result.total} motoristas.`;
-                            if (result.skipped > 0) {
-                                msg += `\n\n⚠️ Sem push token: ${result.missingTokenDrivers.join(', ')}`;
-                            }
-                            showModal('Janela Aberta!', msg, result.skipped > 0 ? 'warning' : 'success');
-                        } catch (pushErr: any) {
-                            const reason = diagnosePushError(pushErr);
-                            console.warn('[Defesa] Push em lote falhou:', reason);
-                            showModal('Janela Aberta (Sem Push)', `A janela para ${labelStr} foi aberta com sucesso no sistema.\n\nMotivo do push não enviado: ${reason}`, 'warning');
-                        }
-
-                        checkWindowStatus();
-                    }
-                } catch (e: any) {
-                    showModal('Falha na Operação', e?.message || 'Erro inesperado ao gerar janela.', 'error');
-                } finally {
-                    setGeneratingWindow(false);
-                }
-            }
-        );
-    };
 
     const handleSendNotification = async () => {
         const safeTitle = notificationTitle.trim().substring(0, 100);
@@ -455,52 +339,6 @@ export default function AdminSettingsScreen() {
             </View>
 
             <ScrollView className="flex-1 px-4 z-10" showsVerticalScrollIndicator={false}>
-
-                {/* Section: Janela de Disponibilidade */}
-                <View className="mb-6">
-                    <Text className="text-[13px] font-spaceGroteskBold text-text-light uppercase tracking-wider mb-3 ml-1">Fluxo de Escala</Text>
-                    <View className="bg-surface border border-border rounded-2xl p-5">
-                        <View className="flex-row items-center gap-3 mb-4">
-                            <View className="w-10 h-10 rounded-full bg-background items-center justify-center border border-border">
-                                <Clock color={THEME.colors.primary} size={18} />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-white font-spaceGroteskBold text-[15px]">Janelas Ativas</Text>
-                                <Text className="text-text-muted font-spaceGrotesk text-[11px] mt-1">Gerencie aberturas de turnos.</Text>
-                            </View>
-                        </View>
-
-                        {/* List rendering */}
-                        {activeWindows.length === 0 ? (
-                            <Text className="text-text-muted font-spaceGrotesk text-[12px] mb-4 text-center">Nenhuma janela aberta no momento.</Text>
-                        ) : (
-                            <View className="mb-4 gap-2">
-                                {activeWindows.map((win, idx) => (
-                                    <View key={idx} className="flex-row items-center justify-between bg-background border border-border p-3 rounded-xl">
-                                        <Text className="text-text-light font-spaceGroteskBold text-[13px]">{win.label}</Text>
-                                        <TouchableOpacity
-                                            onPress={() => handleDeleteWindow(win.id, win.label)}
-                                            className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 items-center justify-center"
-                                        >
-                                            <X color="#f87171" size={14} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
-                        <View className="flex-col gap-3">
-                            <TouchableOpacity
-                                onPress={() => setShowDatePicker(true)}
-                                disabled={generatingWindow}
-                                className={`w-full bg-background border border-border py-4 rounded-xl items-center flex-row justify-center gap-3 shadow-lg ${generatingWindow ? 'opacity-50' : ''}`}
-                            >
-                                <CalendarClock color="#e2e8f0" size={18} />
-                                <Text className="text-text-light font-spaceGrotesk tracking-wider uppercase text-[13px]">Nova Janela de Escala</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
 
                 {/* Section: Bloqueio de Motoristas */}
                 <View className="mb-6">
@@ -946,12 +784,6 @@ export default function AdminSettingsScreen() {
                     </View>
                 </View>
             </EnterpriseModal>
-
-            <DateSelectionModal
-                visible={showDatePicker}
-                onClose={() => setShowDatePicker(false)}
-                onSelectDate={handleGenerateWindowFromDate}
-            />
         </SafeAreaView >
     );
 }

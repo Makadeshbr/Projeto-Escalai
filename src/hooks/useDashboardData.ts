@@ -10,7 +10,7 @@ import { router } from 'expo-router';
 import { validateArray, AssignmentSchema, DriverAvailabilitySchema } from '~/src/lib/schemas';
 
 /** Chave de turno usado nas ondas de saída */
-export type WaveKey = 'morning' | 'afternoon' | 'night';
+export type WaveKey = 'morning';
 
 /**
  * Hook que centraliza toda a busca de dados do dashboard admin.
@@ -131,8 +131,12 @@ export function useDashboardData(
             const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
             const allAssignments = validateArray(allAssignmentsRaw, AssignmentSchema, 'assignments');
 
-            // Filtra apenas assignments criados HOJE (timezone local)
+            // Filtra apenas assignments criados HOJE (timezone local) e NÃO arquivados
             const todayAssignments = allAssignments.filter(a => {
+                // [SENIOR FIX - HISTORY PERSISTENCE] Se foi arquivado via limpar lixeira, omite daqui
+                // mas continua existindo pra Relatório de RH e Perfil Motorista
+                if ((a as any).archived === true) return false;
+
                 if (!a.createdAt) return false;
                 const createdDate = new Date(a.createdAt);
                 const year = createdDate.getFullYear();
@@ -168,7 +172,7 @@ export function useDashboardData(
 
         showModal(
             'ATENÇÃO: Limpar Banco de Dados',
-            'Deseja excluir DE FORMA IRREVERSÍVEL todas as movimentações recentes?',
+            'Deseja arquivar todas as movimentações recentes? Elas sairão desta tela, mas permanecerão salvas no Relatório de RH e no Histórico do Motorista.',
             'confirm',
             async () => {
                 setIsLoading(true);
@@ -179,7 +183,7 @@ export function useDashboardData(
                     for (let i = 0; i < recentAssignments.length; i += BATCH_SIZE) {
                         const chunk = recentAssignments.slice(i, i + BATCH_SIZE);
                         await Promise.allSettled(chunk.map(assignment =>
-                            aether.db.collection(COLLECTIONS.ASSIGNMENTS).delete(assignment.id!)
+                            aether.db.collection(COLLECTIONS.ASSIGNMENTS).update(assignment.id!, { archived: true })
                         ));
 
                         // Espera antes do próximo lote se houver mais itens

@@ -14,6 +14,7 @@ import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { dispatchAdminAlert, ensureDriverPushToken } from '~/src/lib/push';
+import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 
 type ScreenState = 'loading' | 'blocked' | 'no_window' | 'already_filled' | 'form';
 
@@ -29,9 +30,7 @@ export default function AvailabilityScreen() {
     const [targetTitle, setTargetTitle] = useState('');
     const [windowDoc, setWindowDoc] = useState<AvailabilityWindow | null>(null);
     const [selectedShifts, setSelectedShifts] = useState({
-        morning: true,
-        afternoon: false,
-        night: false,
+        morning: false,
     });
     const toggleShift = (shift: keyof typeof selectedShifts) => {
         setSelectedShifts(prev => ({ ...prev, [shift]: !prev[shift] }));
@@ -225,6 +224,9 @@ export default function AvailabilityScreen() {
         }
     };
 
+    // [SENIOR FIX] Resgata o status atual da tela quando o app voltar para o foreground
+    useForegroundRefresh(checkState);
+
     const handleConfirm = async () => {
         if (!user?.id) {
             showModal('Erro', 'Motorista não identificado. Faça login novamente.', 'error');
@@ -258,7 +260,7 @@ export default function AvailabilityScreen() {
                 windowId: windowDoc.id,
                 targetDate: targetDateStr,
                 isAvailable,
-                shifts: isAvailable ? selectedShifts : { morning: false, afternoon: false, night: false },
+                shifts: isAvailable ? selectedShifts : { morning: false },
                 lockedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
             });
@@ -404,18 +406,6 @@ export default function AvailabilityScreen() {
                                                             <Text className="text-white font-spaceGroteskBold text-[11px] uppercase">Manhã</Text>
                                                         </View>
                                                     )}
-                                                    {response.shifts.afternoon && (
-                                                        <View className="flex-1 items-center gap-1.5 bg-background border border-border py-2.5 rounded-xl">
-                                                            <Sunset color={THEME.colors.primary} size={16} />
-                                                            <Text className="text-white font-spaceGroteskBold text-[11px] uppercase">Tarde</Text>
-                                                        </View>
-                                                    )}
-                                                    {response.shifts.night && (
-                                                        <View className="flex-1 items-center gap-1.5 bg-background border border-border py-2.5 rounded-xl">
-                                                            <Moon color={THEME.colors.primary} size={16} />
-                                                            <Text className="text-white font-spaceGroteskBold text-[11px] uppercase">Noite</Text>
-                                                        </View>
-                                                    )}
                                                 </View>
                                             </View>
                                         ) : (
@@ -540,52 +530,6 @@ export default function AvailabilityScreen() {
                                     <Text className="text-xs text-text-muted font-spaceGrotesk">Alta demanda para entregas</Text>
                                 </View>
                                 {selectedShifts.morning && (
-                                    <CheckCircle2 color={THEME.colors.primary} size={20} className="ml-3" />
-                                )}
-                            </TouchableOpacity>
-
-                            {/* Afternoon */}
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={() => toggleShift('afternoon')}
-                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.afternoon ? 'border-primary bg-surface' : 'border-border bg-background'}`}
-                            >
-                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.afternoon ? 'bg-primary' : 'bg-surface'}`}>
-                                    <Truck color={selectedShifts.afternoon ? THEME.colors.background : '#94a3b8'} size={20} />
-                                </View>
-                                <View className="flex-1">
-                                    <View className="flex-row justify-between items-center mb-1">
-                                        <Text className="text-base font-spaceGroteskBold text-white">Tarde</Text>
-                                        <View className="bg-background px-2 py-1 rounded-md border border-border">
-                                            <Text className="text-[11px] text-[#94a3b8] font-mono">12:00 - 18:00</Text>
-                                        </View>
-                                    </View>
-                                    <Text className="text-xs text-text-muted font-spaceGrotesk">Tráfego de rota padrão</Text>
-                                </View>
-                                {selectedShifts.afternoon && (
-                                    <CheckCircle2 color={THEME.colors.primary} size={20} className="ml-3" />
-                                )}
-                            </TouchableOpacity>
-
-                            {/* Night */}
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={() => toggleShift('night')}
-                                className={`flex-row items-center p-4 rounded-2xl border ${selectedShifts.night ? 'border-primary bg-surface' : 'border-border bg-background'}`}
-                            >
-                                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${selectedShifts.night ? 'bg-primary' : 'bg-surface'}`}>
-                                    <Moon color={selectedShifts.night ? THEME.colors.background : '#94a3b8'} size={20} />
-                                </View>
-                                <View className="flex-1">
-                                    <View className="flex-row justify-between items-center mb-1">
-                                        <Text className="text-base font-spaceGroteskBold text-white">Noite</Text>
-                                        <View className="bg-background px-2 py-1 rounded-md border border-border">
-                                            <Text className="text-[11px] text-[#94a3b8] font-mono">18:00 - 00:00</Text>
-                                        </View>
-                                    </View>
-                                    <Text className="text-xs text-[#4ade80] font-spaceGroteskBold">+15% bônus de ganhos</Text>
-                                </View>
-                                {selectedShifts.night && (
                                     <CheckCircle2 color={THEME.colors.primary} size={20} className="ml-3" />
                                 )}
                             </TouchableOpacity>

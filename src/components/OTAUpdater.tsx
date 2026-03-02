@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, Modal, TouchableOpacity, ActivityIndicator, AppState, AppStateStatus } from 'react-native';
 import * as Updates from 'expo-updates';
 import { DownloadCloud, CheckCircle } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
@@ -19,6 +19,8 @@ export default function OTAUpdater() {
     const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isDownloaded, setIsDownloaded] = useState(false);
+
+    const appState = useRef(AppState.currentState);
 
     useEffect(() => {
         /**
@@ -50,8 +52,26 @@ export default function OTAUpdater() {
             }
         }
 
+        // Checa ao ligar o app
         checkUpdates();
-    }, []);
+
+        // Checa toda vez que o app for acordado do background (minimizado)
+        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+            if (
+                appState.current.match(/inactive|background/) &&
+                nextAppState === 'active'
+            ) {
+                if (!isUpdateAvailable && !isDownloading) {
+                    checkUpdates();
+                }
+            }
+            appState.current = nextAppState;
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [isUpdateAvailable, isDownloading]);
 
     /**
      * Baixa o pacote OTA do servidor EAS e aplica a atualização,

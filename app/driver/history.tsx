@@ -11,6 +11,7 @@ import { COLLECTIONS, Assignment, DriverAvailability } from '~/src/lib/collectio
 import { validateArray, AssignmentSchema, DriverAvailabilitySchema } from '~/src/lib/schemas';
 import { SkeletonList } from '~/src/components/ui/Skeleton';
 import { AssignmentDetailModal } from '~/src/components/AssignmentDetailModal';
+import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 
 interface TimelineItem {
     type: 'route' | 'off';
@@ -132,6 +133,12 @@ const TimelineCard = React.memo(function TimelineCard({ item, isLast, onPress }:
                                             <Text className="text-orange-500 text-[10px] uppercase font-spaceGroteskBold tracking-widest">+ {(item.data as Assignment).sacas} SACAS</Text>
                                         </View>
                                     ) : null}
+                                    {(item.data as Assignment).status === 'in_progress' && (
+                                        <View className="flex-row items-center gap-1 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                                            <Navigation color="#3b82f6" size={10} />
+                                            <Text className="text-blue-500 text-[10px] uppercase font-spaceGroteskBold tracking-widest">EM TRÂNSITO</Text>
+                                        </View>
+                                    )}
                                     {item.isSameDay && (
                                         <View className="flex-row items-center gap-1 bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
                                             <Zap color={THEME.colors.primary} size={10} />
@@ -214,7 +221,12 @@ export default function DriverHistoryScreen() {
             const validatedAvailability = validateArray(allRawAvailability, DriverAvailabilitySchema, 'driver_availability');
 
             const allAssignments = validatedAssignments.filter(item =>
-                item.driverId === user.id && (item.status === 'completed' || item.status === 'confirmed')
+                // No extrato do Motorista, a Rota precisa aparecer caso "ele rodou com ela e entregou" (completed/confirmed)
+                // OU 
+                // Se a rota está "Em trânsito" atualmente
+                // OU
+                // Caso o admin tenha feito o encerramento do dia (Limpar -> archived: true), de modo que o motorista tenha os comprovantes no App a vida inteira.
+                item.driverId === user.id && (item.status === 'completed' || item.status === 'confirmed' || item.status === 'in_progress' || item.archived === true)
             );
 
             const allAvailability = validatedAvailability.filter(item =>
@@ -292,6 +304,9 @@ export default function DriverHistoryScreen() {
     useEffect(() => {
         fetchHistory();
     }, [fetchHistory]);
+
+    // [SENIOR FIX] Recupera os dados instantaneamente quando o celular volta para foreground
+    useForegroundRefresh(fetchHistory);
 
     // Métricas Calculadas In-Memory
     const stats = useMemo(() => {

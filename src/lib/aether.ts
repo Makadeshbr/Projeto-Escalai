@@ -86,6 +86,23 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
 
                 const resp = await fetch(url, { headers });
                 if (!resp.ok) {
+                    // [SENIOR FIX - SILENT FAIL PREVENT] Se token expirou, desloga na força bruta.
+                    // Evita que o fallback do SDK rode (que também vai falhar) e avise lista vazia para o UI.
+                    // [HOTFIX CRÍTICO] - 403 Forbidden OCORRE QUANDO O MOTORISTA TENTA DISPARAR NOTIFICAÇÃO AOS ADMINS
+                    // e barra no RLS ao tentar ler ADMIN_STATUS. Nunca deslongue no 403! Apenas 401!!!
+                    if (resp.status === 401) {
+                        __DEV__ && console.error(`[aetherFetchAll] Token Expirado (${resp.status})! Executando logout de emergência.`);
+                        const { useAuthStore } = require('~/src/store/auth');
+                        const { router } = require('expo-router');
+                        useAuthStore.getState().logout();
+
+                        // Envia pra fora usando router (se montado)
+                        setTimeout(() => {
+                            try { router.replace('/login'); } catch (e) { }
+                        }, 100);
+                        throw new Error('AUTH_EXPIRED'); // Interrompe imediatamente toda a stack
+                    }
+
                     __DEV__ && console.warn(`[aetherFetchAll] REST falhou (${resp.status}), usando SDK como fallback.`);
                     break;
                 }
@@ -109,8 +126,26 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
                 return allItems;
             }
         }
-    } catch (restErr) {
+    } catch (restErr: any) {
+        if (restErr.message === 'AUTH_EXPIRED') throw restErr; // Repassa erro fatal
         __DEV__ && console.warn('[aetherFetchAll] REST indisponível, usando SDK:', restErr);
+    }
+
+    // Segurança: Se chegou aqui e REALMENTE não tem token na SDK instanciada (seja por expiração local ou limpeza).
+    // Vamos intervir e não deixar o SDK explodir exceptions sujas vazando pros componentes.
+    try {
+        const client = getAetherClient();
+        const tk = typeof client.getToken === 'function' ? client.getToken() : null;
+        if (!tk) {
+            __DEV__ && console.error(`[aetherFetchAll] Fallback preventivo bloqueado: Token Ausente! Expirando sessão na marra.`);
+            const { useAuthStore } = require('~/src/store/auth');
+            const { router } = require('expo-router');
+            useAuthStore.getState().logout();
+            setTimeout(() => { try { router.replace('/login'); } catch (e) { } }, 100);
+            throw new Error('AUTH_MISSING');
+        }
+    } catch (e: any) {
+        if (e.message === 'AUTH_MISSING') throw e;
     }
 
     // Fallback: usa SDK padrão (com try/catch para não quebrar silenciosamente)
