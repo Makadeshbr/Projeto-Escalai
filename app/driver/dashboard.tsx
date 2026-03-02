@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Modal, Animated } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Modal, Animated, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '~/src/constants/theme';
 import { Bell, Zap, CheckCircle, Navigation, History, AlertTriangle, TrendingUp, User, MapPin, CheckCircle2, Package, QrCode } from 'lucide-react-native';
@@ -270,7 +269,7 @@ export default function DashboardScreen() {
                                 <View className="relative">
                                     <View className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary bg-surface items-center justify-center">
                                         {user?.metadata?.avatarUrl ? (
-                                            <Image source={{ uri: user.metadata.avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="disk" />
+                                            <Image source={{ uri: user.metadata.avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                                         ) : (
                                             <User color="#94a3b8" size={20} />
                                         )}
