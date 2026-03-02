@@ -13,6 +13,7 @@ import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { router } from 'expo-router';
 import { exportToCSV, ExportColumn } from '~/src/lib/export';
 import { logAudit } from '~/src/lib/audit';
+import { logger } from '~/src/lib/logger';
 
 export default function AdminSettingsScreen() {
     const { logout, role } = useAuthStore();
@@ -111,7 +112,7 @@ export default function AdminSettingsScreen() {
             setDriverTimeline(timeline.slice(0, 30)); // Mostra os últimos 30 registros
 
         } catch (error: any) {
-            console.error('[AdminRH] Falha ao extrair relatorio de motorista:', error);
+            logger.error('[AdminRH] Falha ao extrair relatorio de motorista:', error);
             showModal('Erro', 'Não foi possível compilar o histórico do motorista.', 'error');
             setSelectedDriverHistory(null);
         } finally {
@@ -149,7 +150,7 @@ export default function AdminSettingsScreen() {
                 setCities(sorted);
             }
         } catch (e) {
-            console.error('Error fetching cities:', e);
+            logger.error('Error fetching cities:', e);
         } finally {
             setCitiesLoading(false);
         }
@@ -298,7 +299,7 @@ export default function AdminSettingsScreen() {
                 setShowDriversModal(false);
             }
         } catch (e: any) {
-            console.error('[Settings] Error fetching driver statuses:', e);
+            logger.error('[Settings] Error fetching driver statuses:', e);
             showModal('Acesso Recusado', 'Erro ao ler banco de motoristas. Verifique Regras RLS.', 'error');
         } finally {
             setDriversLoading(false);
@@ -597,7 +598,7 @@ export default function AdminSettingsScreen() {
                                 logout();
                                 router.replace('/');
                             } catch (error) {
-                                console.error('Error logging out:', error);
+                                logger.error('Error logging out:', error);
                             }
                         })}
                         className="bg-surface border border-border rounded-2xl p-5 flex-row items-center justify-between shadow-sm"

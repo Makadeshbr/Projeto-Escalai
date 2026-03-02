@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native';
 import { useAuthStore } from '~/src/store/auth';
 import { isAetherClientReady, getAetherClient } from '@aether-baas/react-native';
+import { logger } from '~/src/lib/logger';
 
 const { width, height } = Dimensions.get('window');
 
@@ -61,7 +62,7 @@ export default function SplashScreen() {
 
             // Se o Zustand acha que tá logado, mas NÃO HÁ TOKEN na Database (Expirou ou Limpou)
             if (user && role && !trueToken) {
-                __DEV__ && console.warn('[Splash] Zustand Cache Inutilizado - Token Aether Ausente. Expulsando para Login.');
+                logger.warn('[Splash]', 'Zustand Cache Inutilizado - Token Aether Ausente. Expulsando para Login.');
                 useAuthStore.getState().logout(); // Reseta estado fantasma.
                 router.replace('/login');
                 return;

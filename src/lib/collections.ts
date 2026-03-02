@@ -12,6 +12,7 @@ export const COLLECTIONS = {
     SUPPORT_TICKETS: 'support_tickets',
     AUDIT_LOG: 'audit_log',
     ADMIN_NOTIFICATIONS: 'admin_notifications',
+    SACK_QR_CODES: 'sack_qr_codes',
 } as const;
 
 // ---- Cities ----
@@ -131,6 +132,20 @@ export interface AdminNotification {
     relatedDriverId?: string;
     relatedAssignmentId?: string;
     createdAt: string;
+}
+
+// ---- Sack QR Codes (admin uploads, motorista consulta) ----
+export interface SackQRCode {
+    id: string;
+    label: string;              // Nome identificador (ex: "Saca 001 - Lote A")
+    storageFileId: string;      // ID do arquivo no Aether Storage (para delete)
+    downloadUrl: string;        // URL pública S3 (para exibir no Image)
+    fileName: string;           // Nome original do arquivo enviado
+    mimeType: string;           // "image/png" | "image/jpeg" | "application/pdf"
+    fileSize: number;           // Tamanho em bytes
+    uploadedByAdminId: string;  // ID do admin que fez o upload
+    createdAt: string;
+    archived?: boolean;         // Soft-delete (nunca remove fisicamente para auditabilidade)
 }
 
 // ---- Helper: wave metadata ----

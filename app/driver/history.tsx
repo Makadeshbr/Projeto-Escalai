@@ -12,6 +12,7 @@ import { validateArray, AssignmentSchema, DriverAvailabilitySchema } from '~/src
 import { SkeletonList } from '~/src/components/ui/Skeleton';
 import { AssignmentDetailModal } from '~/src/components/AssignmentDetailModal';
 import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
+import { logger } from '~/src/lib/logger';
 
 interface TimelineItem {
     type: 'route' | 'off';
@@ -294,7 +295,7 @@ export default function DriverHistoryScreen() {
             setHistoryItems(timeline);
 
         } catch (error) {
-            console.error('[History] Falha ao compilar métricas RH:', error);
+            logger.error('[History]', 'Falha ao compilar métricas RH:', error);
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);

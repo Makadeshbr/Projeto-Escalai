@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
-import { Grid, Navigation, Users, Zap, MoreHorizontal, ScanLine, Settings, X, Edit3, CalendarDays } from 'lucide-react-native';
+import { Grid, Navigation, Users, Zap, MoreHorizontal, ScanLine, Settings, X, Edit3, CalendarDays, QrCode } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
 
@@ -8,7 +8,7 @@ import { THEME } from '~/src/constants/theme';
  * Tipo das tabs disponíveis no painel administrativo.
  * Inclui tabs primárias (visíveis) e secundárias (dentro do menu "Mais").
  */
-type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings' | 'reports' | 'editor' | 'windows';
+type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings' | 'reports' | 'editor' | 'windows' | 'sack-qrcodes';
 
 interface AdminBottomNavProps {
     activeTab: AdminTab;
@@ -24,6 +24,7 @@ const PRIMARY_TABS = [
 
 /** Tabs exibidas no menu "Mais" (bottom sheet) */
 const SECONDARY_TABS = [
+    { key: 'sack-qrcodes' as const, label: 'QR Sacas', href: '/admin/sack-qrcodes', Icon: QrCode, description: 'Gerenciar QR Codes das sacas' },
     { key: 'reports' as const, label: 'Histórico RH', href: '/admin/reports', Icon: Users, description: 'Estatísticas de motoristas e produção' },
     { key: 'editor' as const, label: 'Editor de Escalas', href: '/admin/editor', Icon: Edit3, description: 'Editar placas, rotas e destinos' },
     { key: 'import' as const, label: 'Scanner IA (PDF)', href: '/admin/import', Icon: ScanLine, description: 'Importar rotas via OCR Gemini' },

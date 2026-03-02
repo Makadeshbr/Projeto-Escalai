@@ -1,17 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 
 /**
  * CrashReporter — abstração enterprise para crash reporting.
  *
- * Atualmente implementa logging local (console + AsyncStorage).
- * Pronto para swap direto com Sentry quando houver DSN configurado:
- *
- *   import * as Sentry from '@sentry/react-native';
- *   Sentry.init({ dsn: 'https://...' });
- *   // Substituir captureException por Sentry.captureException, etc.
+ * Usa Sentry em produção (quando DSN configurado via env).
+ * Mantém fallback local (AsyncStorage) para dev e quando Sentry não está disponível.
  *
  * Segue Dependency Inversion — o app depende da interface, não da implementação.
  */
+
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
 
 interface BreadcrumbData {
     category?: string;
@@ -36,6 +35,21 @@ const CRASH_LOG_KEY = '@escalai_crash_log';
 const MAX_STORED_CRASHES = 50;
 
 /**
+ * Inicializa o Sentry se o DSN estiver configurado.
+ * Deve ser chamada UMA vez no _layout.tsx antes de qualquer render.
+ */
+export function initCrashReporting(): void {
+    if (SENTRY_DSN) {
+        Sentry.init({
+            dsn: SENTRY_DSN,
+            tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+            enabled: !__DEV__,
+            environment: __DEV__ ? 'development' : 'production',
+        });
+    }
+}
+
+/**
  * Armazena crash no AsyncStorage para análise posterior.
  * Mantém os últimos 50 crashes para não consumir storage infinito.
  */
@@ -56,7 +70,7 @@ async function persistCrash(entry: CrashEntry): Promise<void> {
 export const crashReporter = {
     /**
      * Captura e loga uma exceção com contexto opcional.
-     * Equivalente a Sentry.captureException().
+     * Envia para Sentry em produção + persiste localmente.
      */
     captureException(error: Error, context?: CrashContext): void {
         const entry: CrashEntry = {
@@ -66,15 +80,33 @@ export const crashReporter = {
             context,
         };
 
-        console.error('[CrashReporter]', error.message, context || '');
+        // Sentry em produção
+        if (SENTRY_DSN) {
+            Sentry.captureException(error, {
+                extra: context,
+            });
+        }
+
+        if (__DEV__) {
+            console.error('[CrashReporter]', error.message, context || '');
+        }
+
         persistCrash(entry);
     },
 
     /**
      * Registra breadcrumb para rastreio de navegação/ações.
-     * Equivalente a Sentry.addBreadcrumb().
      */
     addBreadcrumb(breadcrumb: BreadcrumbData): void {
+        if (SENTRY_DSN) {
+            Sentry.addBreadcrumb({
+                category: breadcrumb.category || 'default',
+                message: breadcrumb.message,
+                level: breadcrumb.level || 'info',
+                data: breadcrumb.data,
+            });
+        }
+
         if (__DEV__) {
             console.log(`[Breadcrumb] [${breadcrumb.category || 'default'}] ${breadcrumb.message}`);
         }
@@ -82,9 +114,16 @@ export const crashReporter = {
 
     /**
      * Define o usuário ativo para contexto de crash.
-     * Equivalente a Sentry.setUser().
      */
     setUser(user: { id: string; name?: string; role?: string } | null): void {
+        if (SENTRY_DSN) {
+            if (user) {
+                Sentry.setUser({ id: user.id, username: user.name, segment: user.role });
+            } else {
+                Sentry.setUser(null);
+            }
+        }
+
         if (__DEV__ && user) {
             console.log(`[CrashReporter] User set: ${user.id} (${user.role || 'unknown'})`);
         }

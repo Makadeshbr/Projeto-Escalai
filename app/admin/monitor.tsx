@@ -12,6 +12,7 @@ import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
 import { aetherFetchAll } from '~/src/lib/aether';
 import { SkeletonList } from '~/src/components/ui/Skeleton';
 import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
+import { logger } from '~/src/lib/logger';
 
 type FilterType = 'all' | 'wave_1' | 'wave_2' | 'wave_3' | 'transit';
 
@@ -223,7 +224,7 @@ export default function AdminMonitorScreen() {
                 });
                 setDriverAvatars(map);
             } catch (e) {
-                console.warn('[Monitor] Erro ao buscar avatars:', e);
+                logger.warn('[Monitor] Erro ao buscar avatars:', e);
             }
         })();
     }, [assignments]);

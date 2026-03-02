@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { aether } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
 import { useAuthStore } from '~/src/store/auth';
 import { notifyDriver, diagnosePushError } from '~/src/lib/push';
 import { useActionModal } from './useActionModal';
-import { validateArray, AssignmentSchema } from '~/src/lib/schemas';
+import { useRequireAuth } from './useRequireAuth';
+import { useAssignmentsQuery, queryKeys } from './queries/useAetherQueries';
+import { logger } from '~/src/lib/logger';
 
 export interface RouteGroup {
     cityId: string;
@@ -21,185 +24,131 @@ export interface MonitorKPIs {
     totalDeparted: number;
 }
 
+/** Prioridade de ordenacao: quem precisa da baia VEM PRIMEIRO */
+const DOCK_PRIORITY: Record<string, number> = { waiting: 0, liberated: 1, departed: 2 };
+
+/** Intervalo de polling como safety net do realtime (ms) */
+const POLLING_INTERVAL = 10_000;
+
+/**
+ * Ordena assignments por prioridade tatica da doca.
+ * [1] Estado operacional (waiting > liberated > departed)
+ * [2] Numero da doca (ordem alfanumerica realista — 9 antes de 42)
+ * [3] Fallback FIFO (ordem de chegada)
+ */
+function sortByDockPriority(list: Assignment[]): Assignment[] {
+    return [...list].sort((a, b) => {
+        const aPriority = DOCK_PRIORITY[a.dockStatus || 'waiting'] ?? 0;
+        const bPriority = DOCK_PRIORITY[b.dockStatus || 'waiting'] ?? 0;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+
+        const docA = a.dock || '';
+        const docB = b.dock || '';
+        if (docA && docB && docA !== docB) {
+            return docA.localeCompare(docB, undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+}
+
+/** Calcula KPIs a partir da lista de assignments filtrada */
+function computeKPIs(list: Assignment[]): MonitorKPIs {
+    return {
+        totalDispatched: list.length,
+        totalWaiting: list.filter(a => a.dockStatus === 'waiting' || !a.dockStatus).length,
+        totalLoading: list.filter(a => a.dockStatus === 'liberated').length,
+        totalDeparted: list.filter(a => a.dockStatus === 'departed' || a.status === 'in_progress').length,
+    };
+}
+
 /**
  * Hook de dados do Monitor de Docas do admin.
- * Implementa realtime via Aether subscribe + fallback polling de 10s.
- * Quando um motorista muda dockStatus para 'departed', o admin vê instantaneamente.
+ * [PHASE 2] Migrado para React Query — cache + dedup + retry automatico.
+ *
+ * Ganho: elimina polling manual (setInterval), dedup com Dashboard (mesma query),
+ * e deriva KPIs/sort/groups via useMemo (zero logica duplicada).
+ *
+ * Realtime subscribe mantido com queryClient.setQueryData para latencia sub-segundo
+ * em mudancas de dockStatus (motorista confirmou embarque, admin liberou doca, etc.).
  */
 export function useMonitorData() {
     const { user, role } = useAuthStore();
     const { actionModal, showModal, dismissModal } = useActionModal();
-    const [isLoading, setIsLoading] = useState(true);
-    const [assignments, setAssignments] = useState<Assignment[]>([]);
-    const [kpis, setKpis] = useState<MonitorKPIs>({
-        totalDispatched: 0,
-        totalWaiting: 0,
-        totalLoading: 0,
-        totalDeparted: 0
+    const queryClient = useQueryClient();
+
+    // [PHASE 2] Auth guard centralizado
+    useRequireAuth('admin');
+
+    // Estado local para loading de mutacoes (releaseDock)
+    const [mutationLoading, setMutationLoading] = useState(false);
+
+    // React Query: cache + dedup + retry + polling automatico
+    // Compartilha o cache com useDashboardData — zero fetch extra
+    const { data: allAssignments = [], isLoading: queryLoading, isFetching } = useAssignmentsQuery({
+        refetchInterval: POLLING_INTERVAL,
+        enabled: !!user && role === 'admin',
     });
 
-    // Ref para manter a lista de assignments atualizada dentro do subscribe callback
-    const assignmentsRef = useRef<Assignment[]>([]);
-    assignmentsRef.current = assignments;
+    const isLoading = queryLoading || mutationLoading || isFetching;
 
-    /**
-     * Busca todos os assignments ativos de hoje do banco.
-     * Usado no mount inicial e como fallback do realtime.
-     */
-    const fetchMonitorAssignments = useCallback(async () => {
-        if (!user || role !== 'admin') return;
-        setIsLoading(true);
-        try {
-            // [SENIOR DEV FIX] Usar aetherFetchAll importado em vez de .list() do SDK
-            // Importar aetherFetchAll no topo do arquivo se não houver
-            const { aetherFetchAll } = require('~/src/lib/aether');
-            const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
-            const allAssignments = validateArray(allAssignmentsRaw, AssignmentSchema, 'assignments') as Assignment[];
+    // === Assignments filtrados + ordenados (derivado do cache) ===
+    const assignments = useMemo(() => {
+        const todayStr = getTodayDateStr();
 
-            // [TIMEZONE FIX] Em vez de a.createdAt.startsWith(hoje_local),
-            // verificamos se a data_local(createdAt) === hoje_local
-            // ou se o assignment está ativo (pending/confirmed/in_progress).
-            // Doca ativa não deve sumir da tela apenas porque a hora virou.
-            const todayStr = getTodayDateStr();
+        const todayActive = allAssignments.filter(a => {
+            // [SENIOR FIX - HISTORY PERSISTENCE] Ocultar itens arquivados
+            if ((a as any).archived === true) return false;
+            if (!a.createdAt) return false;
 
-            // [FIX] Mostra TODOS os assignments de hoje, sem filtrar por !dock ou status.
-            // Anteriormente filtrava `!a.dock` que excluía rotas sem doca definida,
-            // e `status=completed` que removia rotas finalizadas — ambos causavam
-            // motoristas desaparecendo da lista do admin.
-            const todayActive = allAssignments.filter(a => {
-                // [SENIOR FIX - HISTORY PERSISTENCE] Ocultar itens arquivados
-                if ((a as any).archived === true) return false;
+            // Converte timestamp UTC do banco para data local
+            const createdDate = new Date(a.createdAt);
+            const year = createdDate.getFullYear();
+            const month = String(createdDate.getMonth() + 1).padStart(2, '0');
+            const day = String(createdDate.getDate()).padStart(2, '0');
+            const localCreatedStr = `${year}-${month}-${day}`;
 
-                if (!a.createdAt) return false;
+            // Valido se criado hoje OU se ainda esta ativo (nao-completado)
+            const isToday = localCreatedStr === todayStr;
+            const isStillActive = (
+                a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress'
+                || a.dockStatus === 'waiting' || a.dockStatus === 'liberated'
+            );
 
-                // Converte timestamp UTC do banco para data local
-                const createdDate = new Date(a.createdAt);
-                const year = createdDate.getFullYear();
-                const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-                const day = String(createdDate.getDate()).padStart(2, '0');
-                const localCreatedStr = `${year}-${month}-${day}`;
+            return isToday || isStillActive;
+        });
 
-                // Considera válido se foi criado hoje OU se ainda está ativo (qualquer status não-completado)
-                const isToday = localCreatedStr === todayStr;
-                const isStillActive = (a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress'
-                    || a.dockStatus === 'waiting' || a.dockStatus === 'liberated');
+        return sortByDockPriority(todayActive);
+    }, [allAssignments]);
 
-                return isToday || isStillActive;
-            });
+    // === KPIs derivados (recomputa automaticamente quando assignments mudam) ===
+    const kpis = useMemo(() => computeKPIs(assignments), [assignments]);
 
-            // Calcula KPIs Totais
-            const newKpis = {
-                totalDispatched: todayActive.length,
-                totalWaiting: todayActive.filter(a => a.dockStatus === 'waiting' || !a.dockStatus).length,
-                totalLoading: todayActive.filter(a => a.dockStatus === 'liberated').length,
-                totalDeparted: todayActive.filter(a => a.dockStatus === 'departed' || a.status === 'in_progress').length,
-            };
-            setKpis(newKpis);
-
-            // Ordena por prioridade Tática Rigorosa (Quem precisa da baia VEM PRIMEIRO)
-            // waiting (0) > liberated (1) > departed (2)
-            const dockPriority: Record<string, number> = { waiting: 0, liberated: 1, departed: 2 };
-            todayActive.sort((a, b) => {
-                const aStatus = a.dockStatus || 'waiting';
-                const bStatus = b.dockStatus || 'waiting';
-                const aPriority = dockPriority[aStatus] ?? 0;
-                const bPriority = dockPriority[bStatus] ?? 0;
-
-                // [1] Prioridade Primária: Estado Operacional da Doca
-                if (aPriority !== bPriority) return aPriority - bPriority;
-
-                // [2] Prioridade Secundária (Enterprise FIX): Ordem Alfanumérica/Numérica da Doca realística 
-                // Evita que 42 venha antes de 9. "9" < "42" humanamente.
-                const docA = a.dock || '';
-                const docB = b.dock || '';
-                if (docA && docB && docA !== docB) {
-                    return docA.localeCompare(docB, undefined, { numeric: true, sensitivity: 'base' });
-                }
-
-                // [3] Fallback FIFO (Ordem de chegada no sistema)
-                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-            });
-
-            setAssignments([...todayActive]); // Força refresh de ponteiro
-        } catch (error) {
-            __DEV__ && console.error('[useMonitorData] Erro ao buscar dados:', error);
-            showModal('Erro', 'Não foi possível carregar as rotas ativas.', 'error');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [user, role, showModal]);
-
-    // Agrupa assignments por cidade + onda
-    const groupedAssignments = assignments.reduce((acc, curr) => {
-        const key = `${curr.cityId}-${curr.waveLabel}`;
-        if (!acc[key]) {
-            acc[key] = {
-                cityId: curr.cityId,
-                cityName: curr.cityName,
-                waveLabel: curr.waveLabel,
-                assignments: []
-            };
-        }
-        acc[key].assignments.push(curr);
-        return acc;
-    }, {} as Record<string, RouteGroup>);
-
-    const groups = Object.values(groupedAssignments);
-
-    /**
-     * Libera uma doca para o motorista.
-     * Atualiza dockStatus para 'liberated' no BaaS e envia push notification.
-     */
-    const releaseDock = useCallback(async (assignment: Assignment) => {
-        showModal(
-            'Liberar Doca',
-            `Chamar motorista ${assignment.driverName} (Placa: ${assignment.driverPlate || '--'}) para a doca ${assignment.dock}?`,
-            'confirm',
-            async () => {
-                setIsLoading(true);
-                try {
-                    await aether.db.collection(COLLECTIONS.ASSIGNMENTS).update(assignment.id, {
-                        dockStatus: 'liberated'
-                    });
-
-                    // Update local imediato
-                    setAssignments(prev => prev.map(a =>
-                        a.id === assignment.id ? { ...a, dockStatus: 'liberated' } : a
-                    ));
-
-                    // Push Notification com tolerância a falha
-                    try {
-                        const messageTitle = 'DOCA LIBERADA! 🟢';
-                        const messageBody = `Atenção ${assignment.driverName}, a doca ${assignment.dock} está liberada para você entrar agora.`;
-                        await notifyDriver(assignment.driverId, messageTitle, messageBody);
-                        showModal('Sucesso', 'Doca liberada. O motorista foi notificado.', 'success');
-                    } catch (pushErr) {
-                        const reason = diagnosePushError(pushErr);
-                        __DEV__ && console.warn('[Fault Tolerance] Push Falhou:', reason);
-                        showModal('Doca Liberada (Sem Push)', `A doca foi liberada no sistema com sucesso.\n\nMotivo do push não enviado: ${reason}`, 'warning');
-                    }
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : 'Erro genérico ao liberar doca';
-                    showModal('Erro', `Falha ao liberar doca: ${msg}`, 'error');
-                } finally {
-                    setIsLoading(false);
-                }
+    // === Grupos por cidade + onda (derivado) ===
+    const groups = useMemo(() => {
+        const grouped = assignments.reduce((acc, curr) => {
+            const key = `${curr.cityId}-${curr.waveLabel}`;
+            if (!acc[key]) {
+                acc[key] = {
+                    cityId: curr.cityId,
+                    cityName: curr.cityName,
+                    waveLabel: curr.waveLabel,
+                    assignments: [],
+                };
             }
-        );
-    }, [showModal]);
+            acc[key].assignments.push(curr);
+            return acc;
+        }, {} as Record<string, RouteGroup>);
 
-    /**
-     * Setup do ciclo de vida: realtime subscribe + fallback polling.
-     * O subscribe detecta mudanças de qualquer assignment (ex: motorista clicou 'Liberar Doca').
-     * O polling de 10s garante sincronização mesmo se o WebSocket cair.
-     */
+        return Object.values(grouped);
+    }, [assignments]);
+
+    // === Realtime subscribe (atualiza cache in-place para latencia sub-segundo) ===
+    // O polling do React Query (refetchInterval) garante consistencia.
+    // O subscribe adiciona responsividade instantanea para mudancas de dockStatus.
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
 
-        // Fetch inicial
-        fetchMonitorAssignments();
-
-        // Subscribe realtime na coleção de assignments
         try {
             unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
                 .subscribe((updatedData: any) => {
@@ -210,81 +159,106 @@ export function useMonitorData() {
 
                     if (!updateId) return;
 
-                    __DEV__ && console.log('[Realtime Admin] Recebido update:', updateId, payload.dockStatus || payload.status);
+                    logger.debug('[Realtime Monitor]', 'Recebido update:', updateId, payload.dockStatus || payload.status);
 
-                    // Atualiza o assignment específico na lista local (merge in-place)
-                    setAssignments(prev => {
-                        const exists = prev.some(a => a.id === updateId);
+                    // Atualiza o cache do React Query in-place (dispara re-render via useMemo)
+                    queryClient.setQueryData(
+                        queryKeys.assignments,
+                        (old: Assignment[] | undefined) => {
+                            if (!old) return old;
 
-                        // [SENIOR FIX - AUTO CLEAN] Se admin limpou (archived), destrói a doca da tela ao vivo
-                        if (payload.archived === true) {
-                            if (exists) {
-                                __DEV__ && console.log('[Realtime Admin] Rota limpa/arquivada, explodindo da tela:', updateId);
-                                const nextList = prev.filter(a => a.id !== updateId);
-                                setKpis({
-                                    totalDispatched: nextList.length,
-                                    totalWaiting: nextList.filter(a => a.dockStatus === 'waiting' || !a.dockStatus).length,
-                                    totalLoading: nextList.filter(a => a.dockStatus === 'liberated').length,
-                                    totalDeparted: nextList.filter(a => a.dockStatus === 'departed' || a.status === 'in_progress').length,
-                                });
-                                return nextList;
-                            }
-                            return prev;
-                        }
-
-                        if (exists) {
-                            __DEV__ && console.log('[Realtime Admin] Atualizando doca na UI para:', updateId);
-                            // Merge and resort inline
-                            const nextList = prev.map(a =>
-                                a.id === updateId ? { ...a, ...payload, id: a.id } as Assignment : a
-                            );
-                            // Recalcula ordenacao para jogar loading/departed p/ tras e ordernar numérico
-                            const dockPriority: Record<string, number> = { waiting: 0, liberated: 1, departed: 2 };
-                            nextList.sort((a, b) => {
-                                const aStatus = a.dockStatus || 'waiting';
-                                const bStatus = b.dockStatus || 'waiting';
-                                const aPriority = dockPriority[aStatus] ?? 0;
-                                const bPriority = dockPriority[bStatus] ?? 0;
-                                if (aPriority !== bPriority) return aPriority - bPriority;
-
-                                const docA = a.dock || '';
-                                const docB = b.dock || '';
-                                if (docA && docB && docA !== docB) {
-                                    return docA.localeCompare(docB, undefined, { numeric: true, sensitivity: 'base' });
+                            // Archived: remove do cache imediatamente
+                            if (payload.archived === true) {
+                                const exists = old.some(a => a.id === updateId);
+                                if (exists) {
+                                    logger.debug('[Realtime Monitor]', 'Rota arquivada, removendo do cache:', updateId);
+                                    return old.filter(a => a.id !== updateId);
                                 }
+                                return old;
+                            }
 
-                                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-                            });
+                            // Existente: merge payload (useMemo re-ordena automaticamente)
+                            const exists = old.some(a => a.id === updateId);
+                            if (exists) {
+                                logger.debug('[Realtime Monitor]', 'Atualizando assignment no cache:', updateId);
+                                return old.map(a =>
+                                    a.id === updateId ? { ...a, ...payload, id: a.id } as Assignment : a
+                                );
+                            }
 
-                            // Live KPI update
-                            setKpis({
-                                totalDispatched: nextList.length,
-                                totalWaiting: nextList.filter(a => a.dockStatus === 'waiting' || !a.dockStatus).length,
-                                totalLoading: nextList.filter(a => a.dockStatus === 'liberated').length,
-                                totalDeparted: nextList.filter(a => a.dockStatus === 'departed' || a.status === 'in_progress').length,
-                            });
-
-                            return nextList;
+                            // Novo item: invalidar para refetch completo
+                            queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+                            return old;
                         }
-                        // Se não existia na tela MAS a data é de hoje, pode ser um novo assignment rápido
-                        fetchMonitorAssignments();
-                        return prev;
-                    });
+                    );
                 });
         } catch (subErr) {
-            __DEV__ && console.warn('[Realtime Admin] Subscribe não disponível, usando apenas polling:', subErr);
+            logger.warn('[Realtime Monitor]', 'Subscribe indisponivel, polling React Query ativo como fallback:', subErr);
         }
-
-        // Polling de 10s como fallback e garantia de consistência
-        const interval = setInterval(() => {
-            fetchMonitorAssignments();
-        }, 10000);
 
         return () => {
             if (unsubscribe) unsubscribe();
-            clearInterval(interval);
         };
-    }, [fetchMonitorAssignments]);
+    }, [queryClient]);
+
+    // === Mutacoes ===
+
+    /**
+     * Libera uma doca para o motorista.
+     * Atualiza dockStatus para 'liberated' no BaaS e envia push notification.
+     * Usa queryClient.setQueryData para update confirmado no cache (useMemo re-ordena).
+     */
+    const releaseDock = useCallback(async (assignment: Assignment) => {
+        showModal(
+            'Liberar Doca',
+            `Chamar motorista ${assignment.driverName} (Placa: ${assignment.driverPlate || '--'}) para a doca ${assignment.dock}?`,
+            'confirm',
+            async () => {
+                setMutationLoading(true);
+                try {
+                    await aether.db.collection(COLLECTIONS.ASSIGNMENTS).update(assignment.id, {
+                        dockStatus: 'liberated'
+                    });
+
+                    // Update confirmado no cache (useMemo re-ordena automaticamente)
+                    queryClient.setQueryData(
+                        queryKeys.assignments,
+                        (old: Assignment[] | undefined) => {
+                            if (!old) return old;
+                            return old.map(a =>
+                                a.id === assignment.id ? { ...a, dockStatus: 'liberated' as const } : a
+                            );
+                        }
+                    );
+
+                    // Push Notification com tolerancia a falha
+                    try {
+                        const messageTitle = 'DOCA LIBERADA! 🟢';
+                        const messageBody = `Atenção ${assignment.driverName}, a doca ${assignment.dock} está liberada para você entrar agora.`;
+                        await notifyDriver(assignment.driverId, messageTitle, messageBody);
+                        showModal('Sucesso', 'Doca liberada. O motorista foi notificado.', 'success');
+                    } catch (pushErr) {
+                        const reason = diagnosePushError(pushErr);
+                        logger.warn('[Fault Tolerance]', 'Push Falhou:', reason);
+                        showModal('Doca Liberada (Sem Push)', `A doca foi liberada no sistema com sucesso.\n\nMotivo do push não enviado: ${reason}`, 'warning');
+                    }
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : 'Erro genérico ao liberar doca';
+                    showModal('Erro', `Falha ao liberar doca: ${msg}`, 'error');
+                } finally {
+                    setMutationLoading(false);
+                }
+            }
+        );
+    }, [showModal, queryClient]);
+
+    /**
+     * Forca refresh dos dados via invalidacao do cache React Query.
+     * Usado pelo botao de refresh e useForegroundRefresh.
+     */
+    const refreshMonitor = useCallback(async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+    }, [queryClient]);
 
     return {
         assignments,
@@ -292,8 +266,8 @@ export function useMonitorData() {
         groups,
         isLoading,
         releaseDock,
-        refreshMonitor: fetchMonitorAssignments,
+        refreshMonitor,
         actionModal,
-        dismissModal
+        dismissModal,
     };
 }

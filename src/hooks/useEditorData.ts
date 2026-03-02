@@ -3,6 +3,7 @@ import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
 import { notifyDriver, diagnosePushError } from '~/src/lib/push';
 import { useActionModal } from './useActionModal';
+import { logger } from '~/src/lib/logger';
 
 export function useEditorData() {
     const { actionModal, showModal, dismissModal } = useActionModal();
@@ -50,7 +51,7 @@ export function useEditorData() {
 
             setAssignments(editable);
         } catch (error) {
-            __DEV__ && console.error('[useEditorData] Erro ao buscar rotas:', error);
+            logger.error('[useEditorData] Erro ao buscar rotas:', error);
             showModal('Erro na Sincronização', 'Não foi possível carregar as rotas para edição.', 'error');
         } finally {
             setIsLoading(false);
@@ -155,7 +156,7 @@ export function useEditorData() {
                     await notifyDriver(selectedAssignment.driverId, 'ATUALIZAÇÃO DE DESPACHO 🔄', msg);
                 }
             } catch (pushErr) {
-                __DEV__ && console.warn('[Editor] Falha ao despachar Push:', diagnosePushError(pushErr));
+                logger.warn('[Editor] Falha ao despachar Push:', diagnosePushError(pushErr));
             }
 
             dismissModal();

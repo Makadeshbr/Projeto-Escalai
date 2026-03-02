@@ -5,6 +5,7 @@ import { THEME } from '~/src/constants/theme';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { COLLECTIONS } from '~/src/lib/collections';
 import { notifyAllDrivers, diagnosePushError } from '~/src/lib/push';
+import { logger } from '~/src/lib/logger';
 
 interface WindowCreatorModalProps {
     visible: boolean;
@@ -39,7 +40,7 @@ export default function WindowCreatorModal({ visible, onClose, onSuccess }: Wind
             const drivers = await aetherFetchAll(COLLECTIONS.DRIVER_STATUS) as any[];
             setDriverCount(drivers.length);
         } catch (error) {
-            console.error('Failed to fetch drivers', error);
+            logger.error('Failed to fetch drivers', error);
         }
     };
 
@@ -193,13 +194,13 @@ export default function WindowCreatorModal({ visible, onClose, onSuccess }: Wind
                     `Responda até as ${timeLimitFormatted} se você estará disponível dia ${labelStr}. Vagas limitadas, garanta sua escala!`
                 );
             } catch (pushErr) {
-                console.warn('Push notification failed, but window was created:', pushErr);
+                logger.warn('Push notification failed, but window was created:', pushErr);
             }
 
             onSuccess();
             onClose();
         } catch (error: any) {
-            console.error('Erro ao criar janela:', error);
+            logger.error('Erro ao criar janela:', error);
             alert('Falha ao criar janela. Tente novamente.');
         } finally {
             setIsSubmitting(false);

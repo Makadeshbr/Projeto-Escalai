@@ -10,6 +10,7 @@ import { COLLECTIONS } from '~/src/lib/collections';
 import AlertModal from '~/src/components/AlertModal';
 import { Input } from '~/src/components/ui/Input';
 import { Button } from '~/src/components/ui/Button';
+import { validatePassword } from '~/src/lib/passwordValidation';
 
 export default function RegisterScreen() {
     const [name, setName] = useState('');
@@ -22,7 +23,7 @@ export default function RegisterScreen() {
 
     // Validações inline
     const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
-    const isValidPassword = (p: string) => p.length >= 6;
+    const isValidPassword = (p: string) => validatePassword(p).isValid;
     const isValidPlate = (p: string) => /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(p.replace(/[^A-Z0-9]/gi, '').toUpperCase());
     const isValidPhone = (p: string) => /^\d{10,11}$/.test(p.replace(/\D/g, ''));
 
@@ -76,7 +77,8 @@ export default function RegisterScreen() {
         }
 
         if (!isValidPassword(password)) {
-            showAlert('Senha Fraca', 'A senha deve ter no mínimo 6 caracteres.', 'warning');
+            const result = validatePassword(password);
+            showAlert('Senha Fraca', result.message, 'warning');
             return;
         }
 

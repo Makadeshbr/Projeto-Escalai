@@ -9,6 +9,7 @@ import { Bell, CalendarCheck, AlertTriangle, MessageCircle, Info, Ticket, X } fr
 import { THEME } from '~/src/constants/theme';
 import { aether } from '~/src/lib/aether';
 import { COLLECTIONS, AdminNotification } from '~/src/lib/collections';
+import { logger } from '~/src/lib/logger';
 
 /** Mapa de tipo para configuração visual no painel do Admin */
 const TYPE_CONFIG = {
@@ -50,7 +51,7 @@ export function AdminNotificationCenter({ visible, onClose }: AdminNotificationC
 
             setNotifications(items);
         } catch (err) {
-            console.error('[AdminNotificationCenter] Erro ao buscar notificações:', err);
+            logger.error('[AdminNotificationCenter] Erro ao buscar notificações:', err);
         } finally {
             setIsLoading(false);
         }
@@ -77,7 +78,7 @@ export function AdminNotificationCenter({ visible, onClose }: AdminNotificationC
                 // Atualiza UI
                 setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
             } catch (err) {
-                console.error('[AdminNotificationCenter] Erro ao marcar como lida:', err);
+                logger.error('[AdminNotificationCenter] Erro ao marcar como lida:', err);
             }
         };
 
@@ -123,7 +124,7 @@ export function AdminNotificationCenter({ visible, onClose }: AdminNotificationC
             );
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
         } catch (err) {
-            console.error('[AdminNotificationCenter] Erro ao limpar notificações:', err);
+            logger.error('[AdminNotificationCenter] Erro ao limpar notificações:', err);
         }
     };
 

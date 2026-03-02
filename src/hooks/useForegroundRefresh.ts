@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { logger } from '~/src/lib/logger';
 
 /**
  * Hook customizado para disparar um callback quando o aplicativo volta
@@ -18,7 +19,7 @@ export function useForegroundRefresh(onRefresh: () => void | Promise<void>) {
                 appState.current.match(/inactive|background/) &&
                 nextAppState === 'active'
             ) {
-                __DEV__ && console.log('[useForegroundRefresh] App voltou ao primeiro plano. Disparando Refresh da Tela!');
+                logger.info('[useForegroundRefresh]', 'App voltou ao primeiro plano. Disparando Refresh da Tela!');
                 onRefresh();
             }
 

@@ -1,5 +1,6 @@
 import type { PlataformaClient } from '@aether-baas/core';
 import { getAetherClient, isAetherClientReady } from '@aether-baas/react-native';
+import { logger } from './logger';
 
 /**
  * Configuração de conexão com o Aether BaaS.
@@ -19,7 +20,7 @@ function createAetherProxy(): PlataformaClient {
     return new Proxy({} as PlataformaClient, {
         get(_target: PlataformaClient, prop: string | symbol) {
             if (!isAetherClientReady()) {
-                __DEV__ && console.warn(`[Aether] Client não pronto. Aguardando para: ${String(prop)}`);
+                logger.warn('[Aether]', `Client não pronto. Aguardando para: ${String(prop)}`);
             }
             const client = getAetherClient();
             const value = (client as unknown as Record<string | symbol, unknown>)[prop];
@@ -52,7 +53,7 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
 
     // Se mesmo após aguardar, o client não estiver pronto, retorna vazio
     if (!isAetherClientReady()) {
-        __DEV__ && console.warn(`[aetherFetchAll] Client não pronto após timeout. Coleção: ${collectionName}`);
+        logger.warn('[aetherFetchAll]', `Client não pronto após timeout. Coleção: ${collectionName}`);
         return [];
     }
 
@@ -91,7 +92,7 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
                     // [HOTFIX CRÍTICO] - 403 Forbidden OCORRE QUANDO O MOTORISTA TENTA DISPARAR NOTIFICAÇÃO AOS ADMINS
                     // e barra no RLS ao tentar ler ADMIN_STATUS. Nunca deslongue no 403! Apenas 401!!!
                     if (resp.status === 401) {
-                        __DEV__ && console.error(`[aetherFetchAll] Token Expirado (${resp.status})! Executando logout de emergência.`);
+                        logger.error('[aetherFetchAll]', `Token Expirado (${resp.status})! Executando logout de emergência.`);
                         const { useAuthStore } = require('~/src/store/auth');
                         const { router } = require('expo-router');
                         useAuthStore.getState().logout();
@@ -103,7 +104,7 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
                         throw new Error('AUTH_EXPIRED'); // Interrompe imediatamente toda a stack
                     }
 
-                    __DEV__ && console.warn(`[aetherFetchAll] REST falhou (${resp.status}), usando SDK como fallback.`);
+                    logger.warn('[aetherFetchAll]', `REST falhou (${resp.status}), usando SDK como fallback.`);
                     break;
                 }
 
@@ -116,19 +117,19 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
                 const hasMore = json.hasMore === true;
                 pageCount++;
 
-                __DEV__ && console.log(`[aetherFetchAll] ${collectionName} página ${pageCount}: ${items.length} registros (total acumulado: ${allItems.length}, hasMore: ${hasMore})`);
+                logger.debug('[aetherFetchAll]', `${collectionName} página ${pageCount}: ${items.length} registros (total acumulado: ${allItems.length}, hasMore: ${hasMore})`);
 
                 if (!hasMore || !cursor) break;
             } while (pageCount < MAX_PAGES);
 
             if (allItems.length > 0) {
-                __DEV__ && console.log(`[aetherFetchAll] REST OK: ${collectionName} → ${allItems.length} registros TOTAL em ${pageCount} página(s)`);
+                logger.info('[aetherFetchAll]', `REST OK: ${collectionName} → ${allItems.length} registros TOTAL em ${pageCount} página(s)`);
                 return allItems;
             }
         }
     } catch (restErr: any) {
         if (restErr.message === 'AUTH_EXPIRED') throw restErr; // Repassa erro fatal
-        __DEV__ && console.warn('[aetherFetchAll] REST indisponível, usando SDK:', restErr);
+        logger.warn('[aetherFetchAll]', 'REST indisponível, usando SDK:', restErr);
     }
 
     // Segurança: Se chegou aqui e REALMENTE não tem token na SDK instanciada (seja por expiração local ou limpeza).
@@ -137,7 +138,7 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
         const client = getAetherClient();
         const tk = typeof client.getToken === 'function' ? client.getToken() : null;
         if (!tk) {
-            __DEV__ && console.error(`[aetherFetchAll] Fallback preventivo bloqueado: Token Ausente! Expirando sessão na marra.`);
+            logger.error('[aetherFetchAll]', 'Fallback preventivo bloqueado: Token Ausente! Expirando sessão.');
             const { useAuthStore } = require('~/src/store/auth');
             const { router } = require('expo-router');
             useAuthStore.getState().logout();
@@ -151,10 +152,10 @@ export async function aetherFetchAll(collectionName: string): Promise<Record<str
     // Fallback: usa SDK padrão (com try/catch para não quebrar silenciosamente)
     try {
         const result = await aether.db.collection(collectionName).query().get();
-        __DEV__ && console.log(`[aetherFetchAll] SDK fallback: ${collectionName} → ${(result || []).length} registros`);
+        logger.info('[aetherFetchAll]', `SDK fallback: ${collectionName} → ${(result || []).length} registros`);
         return (result || []) as Record<string, unknown>[];
     } catch (sdkErr) {
-        __DEV__ && console.error(`[aetherFetchAll] Fallback SDK falhou para ${collectionName}:`, sdkErr);
+        logger.error('[aetherFetchAll]', `Fallback SDK falhou para ${collectionName}:`, sdkErr);
         return [];
     }
 }

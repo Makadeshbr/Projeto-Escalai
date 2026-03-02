@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 import WindowCreatorModal from '~/src/components/dashboard/WindowCreatorModal';
+import { logger } from '~/src/lib/logger';
 
 export default function AvailabilityWindowsScreen() {
     const [windows, setWindows] = useState<any[]>([]);
@@ -105,7 +106,7 @@ export default function AvailabilityWindowsScreen() {
 
             setWindows(formattedWindows);
         } catch (error) {
-            console.error('[Windows] Erro ao carregar dados:', error);
+            logger.error('[Windows]', 'Erro ao carregar dados:', error);
         } finally {
             setIsLoading(false);
         }

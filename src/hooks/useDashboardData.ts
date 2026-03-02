@@ -1,184 +1,187 @@
-import { useState, useEffect, useCallback } from 'react';
-import { aether, aetherFetchAll } from '~/src/lib/aether';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { aether } from '~/src/lib/aether';
 import {
     COLLECTIONS, City, DriverAvailability, Assignment,
     getTodayDateStr, getTomorrowDateStr
 } from '~/src/lib/collections';
-import { useAuthStore } from '~/src/store/auth';
 import type { ModalType } from './useActionModal';
-import { router } from 'expo-router';
-import { validateArray, AssignmentSchema, DriverAvailabilitySchema } from '~/src/lib/schemas';
+import { useRequireAuth } from './useRequireAuth';
+import {
+    useAssignmentsQuery, useDriverAvailabilityQuery, useCitiesQuery, queryKeys
+} from './queries/useAetherQueries';
+import { logger } from '~/src/lib/logger';
 
-/** Chave de turno usado nas ondas de saída */
+/** Chave de turno usado nas ondas de saida */
 export type WaveKey = 'morning';
+
+/** Intervalo de polling como safety net do realtime (ms) */
+const POLLING_INTERVAL = 15_000;
 
 /**
  * Hook que centraliza toda a busca de dados do dashboard admin.
- * [FIX] Parâmetro selectedWave removido — operação não segmenta por turno.
+ * [PHASE 2] Migrado para React Query — elimina polling manual, dedup de requests,
+ * e deriva KPIs/filtros via useMemo em vez de fetches separados.
  *
- * @param isSameDay - Se busca motoristas para hoje (SD) ou amanhã (D+1)
- * @returns Dados carregados, estados de loading, e ações de fetch
+ * Ganho: de ~5 API calls por ciclo para 2 (assignments + availability) com cache 30s.
+ *
+ * @param isSameDay - Se busca motoristas para hoje (SD) ou amanha (D+1)
+ * @returns Dados carregados, estados de loading, e acoes de fetch (interface identica)
  */
 export function useDashboardData(
     isSameDay: boolean,
     showModal: (title: string, message: string, type?: ModalType, onConfirm?: () => void) => void
 ) {
-    const { role } = useAuthStore();
+    const queryClient = useQueryClient();
 
-    // Cidades
-    const [cities, setCities] = useState<City[]>([]);
+    // [PHASE 2] Auth guard centralizado (substitui useEffect manual com router.replace)
+    useRequireAuth('admin');
+
+    // === React Query: cache + dedup + retry + polling automatico ===
+    // Antes: 3x aetherFetchAll(ASSIGNMENTS) por ciclo. Agora: 1 query cacheada.
+    const { data: allAssignments = [] } = useAssignmentsQuery({
+        refetchInterval: POLLING_INTERVAL,
+    });
+
+    // Antes: 2x aetherFetchAll(DRIVER_AVAILABILITY) por ciclo. Agora: 1 query cacheada.
+    const { data: allAvailabilities = [], isFetching: driversLoading } = useDriverAvailabilityQuery({
+        refetchInterval: POLLING_INTERVAL,
+    });
+
+    // Cidades (sem polling — mudam raramente)
+    const { data: citiesRaw = [] } = useCitiesQuery();
+
+    // === Cidades ativas (derivado do cache) ===
+    const cities = useMemo(
+        () => (citiesRaw as City[]).filter(c => c.isActive !== false),
+        [citiesRaw]
+    );
+
+    // Selecao de cidade (estado local — preferencia do usuario, nao server state)
     const [selectedCity, setSelectedCity] = useState<City | null>(null);
 
-    // Motoristas disponíveis para a data selecionada (TODOS os turnos)
-    const [availableDrivers, setAvailableDrivers] = useState<DriverAvailability[]>([]);
-    const [driversLoading, setDriversLoading] = useState(false);
-
-    // KPIs rápidos
-    const [pendingCount, setPendingCount] = useState(0);
-    const [activeDriverCount, setActiveDriverCount] = useState(0);
-
-    // Despachos recentes (todos de hoje)
-    const [recentAssignments, setRecentAssignments] = useState<Assignment[]>([]);
-
-    /**
-     * [AUDIT FIX — SEC-005] Guard de autorização.
-     * Redireciona para login se o usuário não possuir role admin.
-     */
+    // Auto-seleciona Avare quando cidades carregam pela primeira vez
     useEffect(() => {
-        if (role !== 'admin') router.replace('/login');
-    }, [role]);
-
-    /**
-     * Busca todas as cidades ativas do banco de dados.
-     * Seleciona automaticamente Avaré como padrão se disponível.
-     */
-    const fetchCities = useCallback(async () => {
-        try {
-            const data = await aether.db.collection(COLLECTIONS.CITIES).list();
-            if (data) {
-                const citiesList = (data as unknown as City[]).filter(c => c.isActive !== false);
-                setCities(citiesList);
-                if (!selectedCity && citiesList.length > 0) {
-                    const avare = citiesList.find(c =>
-                        c.name.toLowerCase().includes('avaré') || c.name.toLowerCase().includes('avare')
-                    );
-                    setSelectedCity(avare || citiesList[0]);
-                }
-            }
-        } catch (e) {
-            __DEV__ && console.error('[Dashboard] Erro ao buscar cidades:', e);
-        }
-    }, [selectedCity]);
-
-    /**
-     * Busca KPIs rápidos: rotas pendentes e motoristas disponíveis hoje.
-     */
-    const fetchStats = useCallback(async () => {
-        try {
-            const todayStr = getTodayDateStr();
-
-            const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
-            const allAssignments = validateArray(allAssignmentsRaw, AssignmentSchema, 'assignments');
-            const pendingAssignments = allAssignments.filter(a => a.status === 'pending');
-            setPendingCount(pendingAssignments.length);
-
-            const allAvailabilitiesRaw = await aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY);
-            const allAvailabilities = validateArray(allAvailabilitiesRaw, DriverAvailabilitySchema, 'driver_availability');
-            const todayAvailabilities = allAvailabilities.filter(
-                a => a.targetDate === todayStr && a.isAvailable === true
+        if (!selectedCity && cities.length > 0) {
+            const avare = cities.find(c =>
+                c.name.toLowerCase().includes('avaré') || c.name.toLowerCase().includes('avare')
             );
-            setActiveDriverCount(todayAvailabilities.length);
-        } catch (e) {
-            __DEV__ && console.error('[Dashboard] Erro ao buscar stats:', e);
+            setSelectedCity(avare || cities[0]);
         }
-    }, []);
+    }, [cities, selectedCity]);
 
-    /**
-     * Busca motoristas disponíveis para a data selecionada.
-     * [FIX] Não filtra mais por turno — mostra TODOS os motoristas
-     * que se declararam disponíveis para o dia, independente do shift.
-     */
-    const fetchAvailableDrivers = useCallback(async () => {
-        setDriversLoading(true);
-        try {
-            const targetDateStr = isSameDay ? getTodayDateStr() : getTomorrowDateStr();
-            const allRecordsRaw = await aetherFetchAll(COLLECTIONS.DRIVER_AVAILABILITY);
-            const allRecords = validateArray(allRecordsRaw, DriverAvailabilitySchema, 'driver_availability');
+    // === KPIs derivados (zero re-fetch extra — dedup do React Query) ===
+    const pendingCount = useMemo(
+        () => allAssignments.filter(a => a.status === 'pending').length,
+        [allAssignments]
+    );
 
-            const filtered = allRecords.filter(r => {
-                if (r.targetDate !== targetDateStr) return false;
-                if (r.isAvailable !== true) return false;
-                // [FIX] Sem filtro de turno — mostra todos os disponíveis
-                return true;
-            });
+    const activeDriverCount = useMemo(() => {
+        const todayStr = getTodayDateStr();
+        return allAvailabilities.filter(
+            a => a.targetDate === todayStr && a.isAvailable === true
+        ).length;
+    }, [allAvailabilities]);
 
-            setAvailableDrivers(filtered);
-        } catch (e) {
-            __DEV__ && console.error('[Dashboard] Erro ao buscar motoristas:', e);
-            setAvailableDrivers([]);
-        } finally {
-            setDriversLoading(false);
-        }
-    }, [isSameDay]);
+    // === Assignments recentes de hoje (derivado do cache, sem fetch extra) ===
+    const recentAssignments = useMemo(() => {
+        const todayStr = getTodayDateStr();
 
-    /**
-     * Busca TODOS os despachos de hoje, ordenados por data de criação (mais recente primeiro).
-     * [FIX] Remove limite artificial de .slice(0,20) que omitia motoristas despachados.
-     */
+        const todayAssignments = allAssignments.filter(a => {
+            // [SENIOR FIX - HISTORY PERSISTENCE] Arquivados omitidos daqui,
+            // mas continuam existindo pra Relatorio de RH e Perfil Motorista
+            if ((a as any).archived === true) return false;
+            if (!a.createdAt) return false;
+
+            const createdDate = new Date(a.createdAt);
+            const year = createdDate.getFullYear();
+            const month = String(createdDate.getMonth() + 1).padStart(2, '0');
+            const day = String(createdDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}` === todayStr;
+        });
+
+        // Ordena do mais recente primeiro — SEM limite de quantidade
+        return [...todayAssignments].sort((a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    }, [allAssignments]);
+
+    // === Motoristas disponiveis (derivado do cache — filtra por data alvo) ===
+    const availableDrivers = useMemo(() => {
+        const targetDateStr = isSameDay ? getTodayDateStr() : getTomorrowDateStr();
+        return allAvailabilities.filter(r =>
+            r.targetDate === targetDateStr && r.isAvailable === true
+        );
+    }, [allAvailabilities, isSameDay]);
+
+    // === Invalidation wrappers (mantem interface publica compativel) ===
+    // useAssignmentActions e dashboard.tsx chamam estas funcoes apos mutacoes.
+    // Em vez de re-fetch manual, invalidam o cache React Query (dedup automatico).
     const fetchRecentAssignments = useCallback(async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+    }, [queryClient]);
+
+    const fetchStats = useCallback(async () => {
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: queryKeys.assignments }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.driverAvailability }),
+        ]);
+    }, [queryClient]);
+
+    const fetchAvailableDrivers = useCallback(async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.driverAvailability });
+    }, [queryClient]);
+
+    // === Realtime subscribe (invalida cache em vez de fetch manual) ===
+    // O polling do React Query (refetchInterval) ja garante consistencia.
+    // O subscribe adiciona latencia sub-segundo para mudancas em tempo real.
+    useEffect(() => {
+        let unsubscribe: (() => void) | undefined;
+        let debounceTimer: ReturnType<typeof setTimeout>;
+
         try {
-            const todayStr = getTodayDateStr();
-            const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
-            const allAssignments = validateArray(allAssignmentsRaw, AssignmentSchema, 'assignments');
-
-            // Filtra apenas assignments criados HOJE (timezone local) e NÃO arquivados
-            const todayAssignments = allAssignments.filter(a => {
-                // [SENIOR FIX - HISTORY PERSISTENCE] Se foi arquivado via limpar lixeira, omite daqui
-                // mas continua existindo pra Relatório de RH e Perfil Motorista
-                if ((a as any).archived === true) return false;
-
-                if (!a.createdAt) return false;
-                const createdDate = new Date(a.createdAt);
-                const year = createdDate.getFullYear();
-                const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-                const day = String(createdDate.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}` === todayStr;
-            });
-
-            // Ordena do mais recente primeiro — SEM limite de quantidade
-            const sorted = todayAssignments.sort((a, b) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-
-            setRecentAssignments(sorted);
-        } catch (e) {
-            __DEV__ && console.error('[Dashboard] Erro ao buscar assignments:', e);
+            unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
+                .subscribe(() => {
+                    // [SENIOR FIX] Debounce no Realtime para evitar N+1 invalidacoes
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        logger.debug('[Realtime Dashboard]', 'Mudanca detectada, invalidando cache React Query...');
+                        queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+                    }, 1500);
+                });
+        } catch (subErr) {
+            logger.warn('[Realtime Dashboard]', 'Subscribe indisponivel, polling React Query ativo como fallback:', subErr);
         }
-    }, []);
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+            clearTimeout(debounceTimer);
+        };
+    }, [queryClient]);
+
+    // === Mutacoes (logica de negocio preservada, invalidacao via React Query) ===
 
     /**
-     * Remove todas as movimentações recentes do banco de dados.
-     * [AUDIT FIX — SCALE-002] Usa batch chunking de 10 para evitar
-     * sobrecarga do backend com centenas de requests simultâneas.
-     * [SENIOR FIX] Adicionado delay entre batches para evitar Rate Limit (429).
+     * Arquiva todas as movimentacoes recentes.
+     * [AUDIT FIX — SCALE-002] Batch chunking de 10 + delay entre batches.
      */
     const clearRecentAssignments = useCallback(async (
         setIsLoading: (v: boolean) => void
     ) => {
         if (recentAssignments.length === 0) {
-            showModal('Lista Vazia', 'Não há movimentações recentes para limpar.', 'info');
+            showModal('Lista Vazia', 'Nao ha movimentacoes recentes para limpar.', 'info');
             return;
         }
 
         showModal(
-            'ATENÇÃO: Limpar Banco de Dados',
-            'Deseja arquivar todas as movimentações recentes? Elas sairão desta tela, mas permanecerão salvas no Relatório de RH e no Histórico do Motorista.',
+            'ATENCAO: Limpar Banco de Dados',
+            'Deseja arquivar todas as movimentacoes recentes? Elas sairao desta tela, mas permanecerao salvas no Relatorio de RH e no Historico do Motorista.',
             'confirm',
             async () => {
                 setIsLoading(true);
                 try {
                     const BATCH_SIZE = 10;
-                    const DELAY_MS = 600; // Tempo de respiro para o rate limit (429)
+                    const DELAY_MS = 600;
 
                     for (let i = 0; i < recentAssignments.length; i += BATCH_SIZE) {
                         const chunk = recentAssignments.slice(i, i + BATCH_SIZE);
@@ -186,22 +189,23 @@ export function useDashboardData(
                             aether.db.collection(COLLECTIONS.ASSIGNMENTS).update(assignment.id!, { archived: true })
                         ));
 
-                        // Espera antes do próximo lote se houver mais itens
                         if (i + BATCH_SIZE < recentAssignments.length) {
                             await new Promise(resolve => setTimeout(resolve, DELAY_MS));
                         }
                     }
-                    setRecentAssignments([]);
-                    showModal('Limpeza Concluída', 'As movimentações foram apagadas.', 'success');
+
+                    // Invalida cache → refetch → useMemo filtra archived automaticamente
+                    await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+                    showModal('Limpeza Concluida', 'As movimentacoes foram apagadas.', 'success');
                 } catch (e: unknown) {
-                    const message = e instanceof Error ? e.message : 'Erro crítico ao limpar rotas.';
-                    showModal('Falha na Exclusão', message, 'error');
+                    const message = e instanceof Error ? e.message : 'Erro critico ao limpar rotas.';
+                    showModal('Falha na Exclusao', message, 'error');
                 } finally {
                     setIsLoading(false);
                 }
             }
         );
-    }, [recentAssignments, showModal]);
+    }, [recentAssignments, showModal, queryClient]);
 
     /**
      * Adiciona uma nova cidade ao banco de dados.
@@ -224,65 +228,17 @@ export function useDashboardData(
                 isActive: true,
                 createdAt: new Date().toISOString(),
             });
-            await fetchCities();
-            showModal('Cidade Adicionada', `A praça ${name} foi incluída com sucesso.`, 'success');
+            // Invalida cache de cidades → refetch automatico via React Query
+            await queryClient.invalidateQueries({ queryKey: queryKeys.cities });
+            showModal('Cidade Adicionada', `A praca ${name} foi incluida com sucesso.`, 'success');
             onSuccess();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Erro ao adicionar cidade.';
-            showModal('Permissão Negada', msg, 'error');
+            showModal('Permissao Negada', msg, 'error');
         } finally {
             setAddingCity(false);
         }
-    }, [fetchCities, showModal]);
-
-    /**
-     * Setup do ciclo de vida: subscribe realtime + polling fallback de 15s.
-     * Mantém despachos recentes, KPIs e motoristas atualizados em tempo real.
-     * Quando motorista confirma rota ou libera doca, o admin vê instantaneamente.
-     */
-    useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-        let debounceTimer: ReturnType<typeof setTimeout>;
-
-        // Fetch inicial de tudo
-        fetchCities();
-        fetchStats();
-        fetchRecentAssignments();
-
-        // Subscribe realtime: detecta qualquer mudança em assignments
-        try {
-            unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
-                .subscribe(() => {
-                    // [SENIOR FIX] Debounce no Realtime para evitar N+1 fetches em massa
-                    // O subscribe não deve bater nos endpoints para cada registro apagado
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(() => {
-                        __DEV__ && console.log('[Realtime Dashboard] Mudança processada, atualizando em batch...');
-                        fetchStats();
-                        fetchRecentAssignments();
-                    }, 1500);
-                });
-        } catch (subErr) {
-            __DEV__ && console.warn('[Realtime Dashboard] Subscribe indisponível, usando apenas polling:', subErr);
-        }
-
-        // Polling de 15s como fallback e garantia de consistência
-        const interval = setInterval(() => {
-            fetchStats();
-            fetchRecentAssignments();
-        }, 15000);
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-            clearTimeout(debounceTimer);
-            clearInterval(interval);
-        };
-    }, [fetchCities, fetchStats, fetchRecentAssignments]);
-
-    // Refetch motoristas quando turno ou data mudam
-    useEffect(() => {
-        fetchAvailableDrivers();
-    }, [fetchAvailableDrivers]);
+    }, [showModal, queryClient]);
 
     return {
         // Cidades
@@ -304,7 +260,7 @@ export function useDashboardData(
         fetchRecentAssignments,
         clearRecentAssignments,
 
-        // Ações
+        // Acoes
         handleAddCity,
         fetchStats,
     };

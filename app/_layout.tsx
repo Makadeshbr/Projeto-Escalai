@@ -8,17 +8,25 @@ import { AetherProvider } from '@aether-baas/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { ThemeProvider, DarkTheme } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { aetherConfig } from '../src/lib/aether';
 import { initializeNotificationHandler } from '../src/lib/push';
 import OTAUpdater from '../src/components/OTAUpdater';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { OfflineBanner } from '../src/components/OfflineBanner';
-import { crashReporter } from '../src/lib/crashReporter';
+import { crashReporter, initCrashReporting } from '../src/lib/crashReporter';
+import { logger } from '../src/lib/logger';
 
 /** Timeout máximo para carregamento de fontes (ms). Evita splash infinita em Android low-end. */
 const FONT_LOAD_TIMEOUT = 5000;
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+/**
+ * Inicializa Sentry (se DSN configurado) antes de qualquer render.
+ * Em dev, usa apenas crash log local. Em prod, envia para Sentry.
+ */
+initCrashReporting();
 
 /**
  * [AUDIT FIX — CLEAN-003] Handler de notificações centralizado em push.ts.
@@ -39,6 +47,22 @@ ErrorUtils.setGlobalHandler((error, isFatal) => {
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * QueryClient global — gerencia cache, retry e deduplicação de requests.
+ * staleTime: 30s — dados ficam "frescos" por 30s, evitando refetch desnecessário
+ * retry: 2 — tenta 2x antes de falhar (resiliência em rede instável)
+ * refetchOnWindowFocus: false — não refetch ao voltar pra aba (mobile = background)
+ */
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: 30 * 1000,
+            retry: 2,
+            refetchOnWindowFocus: false,
+        },
+    },
+});
 
 // Tema escuro customizado — elimina flash branco entre telas
 const AppDarkTheme = {
@@ -97,7 +121,7 @@ export default function RootLayout() {
             const Notifications = require('expo-notifications');
             responseListener.current = Notifications.addNotificationResponseReceivedListener((response: { notification: { request: { content: { data: Record<string, unknown> } } } }) => {
                 const data = response.notification.request.content.data;
-                if (__DEV__) console.log('[Push] Usuário tocou na notificação, redirecionando...', data);
+                logger.debug('[Push] Usuário tocou na notificação, redirecionando...', data);
 
                 setTimeout(() => {
                     router.push('/driver/dashboard');
@@ -120,22 +144,24 @@ export default function RootLayout() {
                 <StatusBar barStyle="light-content" backgroundColor={THEME.colors.background} translucent={false} />
                 <OTAUpdater />
                 <OfflineBanner />
-                <AetherProvider config={aetherConfig} storage={AsyncStorage as any}>
-                    <ThemeProvider value={AppDarkTheme}>
-                        <Stack screenOptions={{
-                            headerShown: false,
-                            contentStyle: { backgroundColor: THEME.colors.background },
-                            animation: 'fade',
-                        }}>
-                            <Stack.Screen name="index" />
-                            <Stack.Screen name="splash" />
-                            <Stack.Screen name="login" />
-                            <Stack.Screen name="driver/availability" />
-                            <Stack.Screen name="driver/dashboard" />
-                            <Stack.Screen name="admin/dashboard" />
-                        </Stack>
-                    </ThemeProvider>
-                </AetherProvider>
+                <QueryClientProvider client={queryClient}>
+                    <AetherProvider config={aetherConfig} storage={AsyncStorage as any}>
+                        <ThemeProvider value={AppDarkTheme}>
+                            <Stack screenOptions={{
+                                headerShown: false,
+                                contentStyle: { backgroundColor: THEME.colors.background },
+                                animation: 'fade',
+                            }}>
+                                <Stack.Screen name="index" />
+                                <Stack.Screen name="splash" />
+                                <Stack.Screen name="login" />
+                                <Stack.Screen name="driver/availability" />
+                                <Stack.Screen name="driver/dashboard" />
+                                <Stack.Screen name="admin/dashboard" />
+                            </Stack>
+                        </ThemeProvider>
+                    </AetherProvider>
+                </QueryClientProvider>
             </View>
         </ErrorBoundary>
     );

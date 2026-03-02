@@ -7,6 +7,7 @@ import {
 import { notifyDriver, diagnosePushError, isExpoGo } from '~/src/lib/push';
 import type { ModalType } from './useActionModal';
 import { useAuthStore, AuthUser } from '~/src/store/auth';
+import { logger } from '~/src/lib/logger';
 
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -130,7 +131,7 @@ export function useAssignmentActions(callbacks: {
                             dbCreated = true;
                             break; // Sai do loop de retry
                         } catch (dbErr: any) {
-                            __DEV__ && console.warn(`[Fault Tolerance] Erro BD (Tentativa ${attempt}/${maxRetries}) p/ motorista ${driver.driverPlate}:`, dbErr.message);
+                            logger.warn(`[Fault Tolerance] Erro BD (Tentativa ${attempt}/${maxRetries}) p/ motorista ${driver.driverPlate}:`, dbErr.message);
                             if (attempt === maxRetries) throw dbErr; // No último erro, repassa pro Try-Catch pai
                             await new Promise(r => setTimeout(r, 600 * attempt)); // Exponential backoff (600ms, 1200ms...)
                         }
@@ -146,7 +147,7 @@ export function useAssignmentActions(callbacks: {
                     try {
                         await notifyDriver(driverActualId, title, message);
                     } catch (pushErr) {
-                        __DEV__ && console.warn(`[Fault Tolerance] Push nativo bloqueado/indisponível p/ ${driver.driverPlate}.`);
+                        logger.warn(`[Fault Tolerance] Push nativo bloqueado/indisponível p/ ${driver.driverPlate}.`);
                         failedPushes++;
                     }
 
@@ -201,7 +202,7 @@ export function useAssignmentActions(callbacks: {
                 try {
                     await notifyDriver(assignment.driverId, 'ROTA CANCELADA ❌', 'Sua movimentação foi cancelada.');
                 } catch (pushErr) {
-                    console.warn('[Fault Tolerance] Push cancelamento falhou:', diagnosePushError(pushErr));
+                    logger.warn('[Fault Tolerance] Push cancelamento falhou:', diagnosePushError(pushErr));
                 }
                 showModal('Rota Cancelada', 'A atribuição foi removida.', 'success');
                 onSuccess();
@@ -238,7 +239,7 @@ export function useAssignmentActions(callbacks: {
                 await notifyDriver(newDriverId, 'ROTA REATRIBUÍDA 📦', 'Nova rota alocada para você.');
                 await notifyDriver(reassignTarget.driverId, 'ROTA REMOVIDA ❌', 'Sua rota foi reatribuída.');
             } catch (pushErr) {
-                console.warn('[Fault Tolerance] Push reatribuição falhou:', diagnosePushError(pushErr));
+                logger.warn('[Fault Tolerance] Push reatribuição falhou:', diagnosePushError(pushErr));
             }
 
             showModal('Sucesso', 'Rota reatribuída com sucesso.', 'success');

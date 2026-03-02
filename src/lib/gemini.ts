@@ -1,6 +1,8 @@
 // Serviço Reescrito: Usando REST puro (Fetch) para evitar crashes do Node/React Native Worklets no Expo Go.
 // Injeta com segurança se houver. Em produção, isso vira ENV nativo.
-const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'AIzaSyAsnjpIuGuhtV4OaYdv9KWYEEIzZHMtLfM'; // Fallback to user key for testing
+import { logger } from '~/src/lib/logger';
+
+const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 export interface RouteDraft {
     driverName: string;
@@ -122,7 +124,7 @@ export async function parseLogisticsSheet(base64String: string, mimeType: string
         return sanitizedData;
 
     } catch (e: any) {
-        console.error('[Gemini AI] Erro no OCR ou Parse JSON:', e);
+        logger.error('[Gemini AI]', 'Erro no OCR ou Parse JSON:', e);
         throw new Error(`Falha ao extrair rotas nativamente: ${e.message}`);
     }
 }

@@ -13,6 +13,7 @@ import { COLLECTIONS } from '~/src/lib/collections';
 import { THEME } from '~/src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
+import { validatePassword } from '~/src/lib/passwordValidation';
 
 export default function DriverProfileScreen() {
     const { user, logout, login } = useAuthStore();
@@ -101,8 +102,9 @@ export default function DriverProfileScreen() {
             showModal('Atenção', 'Preencha todos os campos.', 'warning');
             return;
         }
-        if (newPass.length < 6) {
-            showModal('Atenção', 'A nova senha deve ter no mínimo 6 caracteres.', 'warning');
+        const passResult = validatePassword(newPass);
+        if (!passResult.isValid) {
+            showModal('Senha Fraca', passResult.message, 'warning');
             return;
         }
         if (newPass !== confirm) {
@@ -574,7 +576,7 @@ export default function DriverProfileScreen() {
                             value={passwordForm.newPass}
                             onChangeText={(t) => setPasswordForm(prev => ({ ...prev, newPass: t }))}
                             secureTextEntry
-                            placeholder="Mínimo 6 caracteres"
+                            placeholder="Mín. 8 chars, maiúscula + número"
                             placeholderTextColor={THEME.colors.textMuted}
                             className="bg-background border border-border rounded-xl px-4 h-14 text-white font-spaceGrotesk text-base"
                         />

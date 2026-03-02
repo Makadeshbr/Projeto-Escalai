@@ -67,6 +67,20 @@ export const DriverStatusSchema = z.object({
     updatedAt: z.string().optional().catch(undefined),
 });
 
+// ---- Sack QR Codes ----
+export const SackQRCodeSchema = z.object({
+    id: safeString,
+    label: safeString,
+    storageFileId: safeString,
+    downloadUrl: safeString,
+    fileName: safeString,
+    mimeType: safeString,
+    fileSize: z.number().catch(0),
+    uploadedByAdminId: safeString,
+    createdAt: safeString,
+    archived: z.boolean().optional().catch(undefined),
+});
+
 // ---- Batch validation utilities ----
 
 /**

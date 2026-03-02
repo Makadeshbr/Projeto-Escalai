@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { aether, aetherFetchAll } from './aether';
 import { COLLECTIONS } from './collections';
+import { logger } from './logger';
 
 export const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -56,10 +57,10 @@ if (!isExpoGo) {
     try {
         Notifications = require('expo-notifications');
     } catch (error) {
-        console.warn('[Push] expo-notifications falhou ao carregar:', error);
+        logger.warn('[Push]', 'expo-notifications falhou ao carregar:', error);
     }
 } else {
-    console.warn('[Push] Notificações desabilitadas no Expo Go.');
+    logger.info('[Push]', 'Notificações desabilitadas no Expo Go.');
 }
 
 /**
@@ -103,7 +104,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         finalStatus = status;
     }
     if (finalStatus !== 'granted') {
-        console.log('[Push] Permissão de notificação negada pelo usuário.');
+        logger.info('[Push]', 'Permissão de notificação negada pelo usuário.');
         throw new Error('Permissão de notificação negada pelo seu dispositivo.');
     }
 
@@ -119,7 +120,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         return tokenData.data;
     } catch (e: any) {
-        console.error('[Push] Erro ao gerar token:', e);
+        logger.error('[Push]', 'Erro ao gerar token:', e);
         throw new Error(`Falha nos servidores de Notificação (Expo): ${e.message}`);
     }
 }
@@ -197,7 +198,7 @@ export async function sendPushNotification(
     if (errors.length > 0 && errors.length === Math.ceil(validTokens.length / CHUNK_SIZE)) {
         throw new Error('Falha em todos os disparos: ' + errors[0]);
     } else if (errors.length > 0) {
-        console.warn('[Push] Alguns disparos falharam:', errors);
+        logger.warn('[Push]', 'Alguns disparos falharam:', errors);
     }
 }
 
@@ -261,9 +262,7 @@ export async function notifyAllDrivers(
 
     // Log diagnóstico para depuração
     if (missingTokenDrivers.length > 0) {
-        console.warn(
-            `[Push] ${missingTokenDrivers.length} motorista(s) SEM push token: ${missingTokenDrivers.join(', ')}`
-        );
+        logger.warn('[Push]', `${missingTokenDrivers.length} motorista(s) SEM push token: ${missingTokenDrivers.join(', ')}`);
     }
 
     return {
@@ -302,7 +301,7 @@ export async function ensureDriverPushToken(
     try {
         // Guard 1: Módulo de notificações não disponível (Expo Go)
         if (!Notifications) {
-            console.log('[PushSync] Notificações indisponíveis (Expo Go ou módulo ausente).');
+            logger.info('[PushSync]', 'Notificações indisponíveis (Expo Go ou módulo ausente).');
             return null;
         }
 
@@ -312,7 +311,7 @@ export async function ensureDriverPushToken(
             // Solicita permissão uma vez — se negar, respeita
             const { status: newStatus } = await Notifications.requestPermissionsAsync();
             if (newStatus !== 'granted') {
-                console.log('[PushSync] Permissão de notificação negada pelo usuário.');
+                logger.info('[PushSync]', 'Permissão de notificação negada pelo usuário.');
                 return null;
             }
         }
@@ -326,7 +325,7 @@ export async function ensureDriverPushToken(
         const freshToken = tokenData.data;
 
         if (!freshToken) {
-            console.warn('[PushSync] Token retornado vazio pelo Expo.');
+            logger.warn('[PushSync]', 'Token retornado vazio pelo Expo.');
             return null;
         }
 
@@ -342,7 +341,7 @@ export async function ensureDriverPushToken(
 
             // Só atualiza se o token mudou (evita writes desnecessários no banco)
             if (currentToken === freshToken) {
-                console.log('[PushSync] Token já está atualizado no DRIVER_STATUS ✓');
+                logger.debug('[PushSync]', 'Token já está atualizado no DRIVER_STATUS');
                 return freshToken;
             }
 
@@ -351,7 +350,7 @@ export async function ensureDriverPushToken(
                 expoPushToken: freshToken,
                 updatedAt: new Date().toISOString(),
             });
-            console.log(`[PushSync] Token atualizado no DRIVER_STATUS (${currentToken ? 'renovado' : 'primeiro registro'})`);
+            logger.info('[PushSync]', `Token atualizado no DRIVER_STATUS (${currentToken ? 'renovado' : 'primeiro registro'})`);
         } else {
             // Motorista sem DRIVER_STATUS — cria com token (self-healing + push)
             await aether.db.collection(COLLECTIONS.DRIVER_STATUS).create({
@@ -364,14 +363,14 @@ export async function ensureDriverPushToken(
                 updatedByAdminId: 'system_push_auto_sync',
                 created_at: new Date().toISOString(),
             });
-            console.log('[PushSync] DRIVER_STATUS criado com push token (novo motorista)');
+            logger.info('[PushSync]', 'DRIVER_STATUS criado com push token (novo motorista)');
         }
 
         return freshToken;
     } catch (error: unknown) {
         // Tolerância total: qualquer falha é logada mas não impede o uso do app
         const msg = error instanceof Error ? error.message : String(error);
-        console.warn(`[PushSync] Falha tolerada no auto-sync de push token: ${msg}`);
+        logger.warn('[PushSync]', `Falha tolerada no auto-sync de push token: ${msg}`);
         return null;
     }
 }
@@ -411,9 +410,9 @@ export async function registerAdminPushToken(
                 createdAt: new Date().toISOString(),
             });
         }
-        console.log('[Push] Admin push token registrado com sucesso.');
+        logger.info('[Push]', 'Admin push token registrado com sucesso.');
     } catch (error) {
-        console.warn('[Push] Erro ao registrar admin push token:', error);
+        logger.warn('[Push]', 'Erro ao registrar admin push token:', error);
     }
 }
 
@@ -434,7 +433,7 @@ export async function notifyAdmins(
     try {
         const allAdmins = await aetherFetchAll(COLLECTIONS.ADMIN_STATUS);
         if (!allAdmins || (allAdmins as Record<string, unknown>[]).length === 0) {
-            console.log('[Push] Nenhum admin registrado para receber notificações.');
+            logger.info('[Push]', 'Nenhum admin registrado para receber notificações.');
             return 0;
         }
 
@@ -443,14 +442,14 @@ export async function notifyAdmins(
         }).filter(t => t && t.trim() !== '');
 
         if (tokens.length === 0) {
-            console.log('[Push] Admins encontrados, mas nenhum possui push token.');
+            logger.info('[Push]', 'Admins encontrados, mas nenhum possui push token.');
             return 0;
         }
 
         await sendPushNotification(tokens, title, body, data);
         return tokens.length;
     } catch (error) {
-        console.warn('[Push] Erro ao notificar admins (tolerado):', error);
+        logger.warn('[Push]', 'Erro ao notificar admins (tolerado):', error);
         return 0;
     }
 }
@@ -478,7 +477,7 @@ export async function dispatchAdminAlert(
             createdAt: new Date().toISOString()
         });
     } catch (e) {
-        console.warn('[Push] Erro ao persistir notificação de admin:', e);
+        logger.warn('[Push]', 'Erro ao persistir notificação de admin:', e);
     }
 
     // 2. Dispara Push Notification (padrão nativo do Expo)

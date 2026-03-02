@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureStorage } from '~/src/lib/secureStorage';
 
 /**
  * Metadados tipados do perfil do motorista/admin no EscalAI.
@@ -44,7 +44,7 @@ export interface AuthUser {
  * Estado global de autenticação gerenciado via Zustand.
  * Armazena usuário logado e role (admin/driver).
  *
- * NOTA: Este store agora é persistido via AsyncStorage ([SEC-001] Fix).
+ * [SEC-001] Persistido via expo-secure-store (encriptado no Keychain/Keystore).
  * O token real de sessão é gerenciado pelo AetherProvider, esta store
  * mantém a UI síncrona com os dados do usuário para roteamento.
  */
@@ -68,8 +68,8 @@ export const useAuthStore = create<AuthState>()(
             logout: () => set({ user: null, role: null }),
         }),
         {
-            name: 'escalai-auth-storage', // Nome da chave no AsyncStorage
-            storage: createJSONStorage(() => AsyncStorage),
+            name: 'escalai-auth-secure', // Chave no SecureStore (encriptado)
+            storage: createJSONStorage(() => secureStorage),
         }
     )
 );

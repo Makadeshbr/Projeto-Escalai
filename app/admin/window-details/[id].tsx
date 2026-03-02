@@ -7,6 +7,7 @@ import { aetherFetchAll } from '~/src/lib/aether';
 import { COLLECTIONS } from '~/src/lib/collections';
 import { sendPushNotification } from '~/src/lib/push';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { logger } from '~/src/lib/logger';
 
 type DetailedDriver = {
     id: string;
@@ -103,7 +104,7 @@ export default function WindowDetailsScreen() {
                 else setActiveTab('pending');
             }
         } catch (error) {
-            console.error('[WindowDetails] Erro ao carregar motoristas:', error);
+            logger.error('[WindowDetails]', 'Erro ao carregar motoristas:', error);
             Alert.alert('Erro', 'Não foi possível carregar os dados desta janela.');
         } finally {
             setLoading(false);

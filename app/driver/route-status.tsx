@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, Dimensions, StyleSheet, Linking, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu, Truck, Waves, Hourglass, CheckCircle2, MessageCircle, Bell, Navigation, PartyPopper, Package, AlertTriangle } from 'lucide-react-native';
+import { Menu, Truck, Waves, Hourglass, CheckCircle2, MessageCircle, Bell, Navigation, PartyPopper, Package, AlertTriangle, QrCode } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     useSharedValue,
@@ -18,6 +18,8 @@ import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections'
 import { THEME } from '~/src/constants/theme';
 import { dispatchAdminAlert, ensureDriverPushToken } from '~/src/lib/push';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
+import { SackQRCodeViewerModal } from '~/src/components/SackQRCodeViewerModal';
+import { logger } from '~/src/lib/logger';
 
 /**
  * Tela de status de rota do motorista.
@@ -32,6 +34,7 @@ export default function RouteStatusScreen() {
     const activeIdRef = useRef<string | null>(null);
     activeIdRef.current = assignment?.id || null;
     const [isLoading, setIsLoading] = useState(true);
+    const [showQRCodes, setShowQRCodes] = useState(false);
 
     // Animações para o anel de pulso ("Waiting" state)
     const ring1 = useSharedValue(0);
@@ -116,7 +119,7 @@ export default function RouteStatusScreen() {
             setAssignment(active || null);
             return active || null;
         } catch (error) {
-            console.error('[RouteStatus] Erro ao buscar:', error);
+            logger.error('[RouteStatus]', 'Erro ao buscar:', error);
             return null;
         } finally {
             setIsLoading(false);
@@ -149,11 +152,11 @@ export default function RouteStatusScreen() {
                         const updateId = payload.id || updatedData.id;
 
                         if (updateId === activeIdRef.current) {
-                            console.log('[Realtime Driver] Recebido update:', JSON.stringify(payload));
+                            logger.debug('[Realtime Driver]', 'Recebido update:', JSON.stringify(payload));
 
                             // [SENIOR FIX - AUTO CLEAN] Se a doca foi limpa do sistema, quebra a tela de doca na hora p/ o motorista
                             if (payload.archived === true) {
-                                console.log('[Realtime Driver] Faxina detectada. Ocultando tela de rota ativa.');
+                                logger.info('[Realtime Driver]', 'Faxina detectada. Ocultando tela de rota ativa.');
                                 setAssignment(null);
                                 activeIdRef.current = null;
                                 return;
@@ -171,7 +174,7 @@ export default function RouteStatusScreen() {
                         }
                     });
             } catch (subErr) {
-                console.warn('[Realtime Driver] Subscribe falhou, ativando fallback polling:', subErr);
+                logger.warn('[Realtime Driver]', 'Subscribe falhou, ativando fallback polling:', subErr);
             }
         };
 
@@ -221,10 +224,10 @@ export default function RouteStatusScreen() {
                     assignment.id
                 );
             } catch (pushErr) {
-                console.warn('[Fault Tolerance] Push admin falhou:', pushErr);
+                logger.warn('[Fault Tolerance]', 'Push admin falhou:', pushErr);
             }
         } catch (error) {
-            console.error('[RouteStatus] Erro ao liberar doca e iniciar viagem:', error);
+            logger.error('[RouteStatus]', 'Erro ao liberar doca e iniciar viagem:', error);
         } finally {
             setIsLoading(false);
         }
@@ -323,6 +326,28 @@ export default function RouteStatusScreen() {
                         </View>
                     </View>
                 </View>
+
+                {/* Botão QR Codes das Sacas — aparece somente se a rota tem sacas */}
+                {!!assignment.sacas && assignment.sacas > 0 && (
+                    <TouchableOpacity
+                        onPress={() => setShowQRCodes(true)}
+                        className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex-row items-center justify-between mb-6"
+                        activeOpacity={0.7}
+                    >
+                        <View className="flex-row items-center gap-3">
+                            <View className="w-10 h-10 rounded-full bg-orange-500/20 items-center justify-center">
+                                <QrCode color="#f97316" size={20} />
+                            </View>
+                            <View>
+                                <Text className="text-white font-bold text-sm">Ver QR Codes das Sacas</Text>
+                                <Text className="text-orange-400/70 text-xs">{assignment.sacas} saca{assignment.sacas > 1 ? 's' : ''} na rota</Text>
+                            </View>
+                        </View>
+                        <View className="bg-orange-500/20 px-3 py-1.5 rounded-full">
+                            <Text className="text-orange-400 text-xs font-bold uppercase">Abrir</Text>
+                        </View>
+                    </TouchableOpacity>
+                )}
 
                 {/* ========== MÁQUINA DE ESTADOS VISUAL ========== */}
                 <View className="flex-1 items-center justify-center p-4">
@@ -493,6 +518,9 @@ export default function RouteStatusScreen() {
                     </View>
                 </View>
             </View>
+
+            {/* Modal de QR Codes das Sacas */}
+            <SackQRCodeViewerModal visible={showQRCodes} onClose={() => setShowQRCodes(false)} />
 
             <DriverBottomNav activeTab="status" />
         </SafeAreaView>
