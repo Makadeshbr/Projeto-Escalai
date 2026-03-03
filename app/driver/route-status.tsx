@@ -19,6 +19,8 @@ import { THEME } from '~/src/constants/theme';
 import { dispatchAdminAlert, ensureDriverPushToken } from '~/src/lib/push';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { SackQRCodeViewerModal } from '~/src/components/SackQRCodeViewerModal';
+import { useRealtimeSubscribe } from '~/src/hooks/useRealtimeSubscribe';
+import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 import { logger } from '~/src/lib/logger';
 
 /**
@@ -127,69 +129,67 @@ export default function RouteStatusScreen() {
     }, [user, role]);
 
     /**
-     * Setup realtime via Aether subscribe.
-     * Assina toda a coleção de assignments e filtra pelo ID da atribuição ativa.
-     * Quando o admin muda dockStatus para 'liberated', o motorista vê instantaneamente.
+     * Subscribe realtime centralizado via useRealtimeSubscribe.
+     * Filtra pelo ID do assignment ativo do motorista.
+     * Debounce baixo (300ms) — tela crítica onde motorista vê "DOCA LIBERADA".
+     */
+    useRealtimeSubscribe({
+        collection: COLLECTIONS.ASSIGNMENTS,
+        tag: '[RouteStatus]',
+        debounceMs: 300,
+        enabled: !!user?.id,
+        onEvent: useCallback((updatedData: any) => {
+            if (!updatedData) return;
+
+            // O payload pode vir como objeto direto ou dentro de _payload
+            const payload = updatedData._payload || updatedData;
+            const updateId = payload.id || updatedData.id;
+
+            if (updateId === activeIdRef.current) {
+                logger.debug('[Realtime Driver]', 'Recebido update:', JSON.stringify(payload));
+
+                // [SENIOR FIX - AUTO CLEAN] Se a doca foi limpa do sistema
+                if (payload.archived === true) {
+                    logger.info('[Realtime Driver]', 'Faxina detectada. Ocultando tela de rota ativa.');
+                    setAssignment(null);
+                    activeIdRef.current = null;
+                    return;
+                }
+
+                setAssignment(prev => {
+                    if (!prev) return prev;
+                    // Merge seguro: mantém todos os campos e sobrescreve apenas os atualizados
+                    return {
+                        ...prev,
+                        ...payload,
+                        id: prev.id, // Garante que o ID nunca mude
+                    } as Assignment;
+                });
+            }
+        }, []),
+    });
+
+    /**
+     * Setup inicial + polling de 30s como safety net.
+     * O subscribe realtime garante latência sub-segundo.
+     * Polling é apenas fallback para reconexões.
      */
     useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-        let activeId: string | null = null;
+        if (!user?.id) return;
 
-        const setupRealtime = async () => {
-            const active = await fetchMyActiveAssignment();
-            if (!active?.id) return;
+        fetchMyActiveAssignment();
 
-            activeIdRef.current = active.id;
-
-            // Subscribe na coleção inteira e filtra pelo ID do assignment ativo
-            try {
-                unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
-                    .subscribe((updatedData: any) => {
-                        if (!updatedData) return;
-
-                        // O payload pode vir como objeto direto ou dentro de _payload
-                        const payload = updatedData._payload || updatedData;
-                        const updateId = payload.id || updatedData.id;
-
-                        if (updateId === activeIdRef.current) {
-                            logger.debug('[Realtime Driver]', 'Recebido update:', JSON.stringify(payload));
-
-                            // [SENIOR FIX - AUTO CLEAN] Se a doca foi limpa do sistema, quebra a tela de doca na hora p/ o motorista
-                            if (payload.archived === true) {
-                                logger.info('[Realtime Driver]', 'Faxina detectada. Ocultando tela de rota ativa.');
-                                setAssignment(null);
-                                activeIdRef.current = null;
-                                return;
-                            }
-
-                            setAssignment(prev => {
-                                if (!prev) return prev;
-                                // Merge seguro: mantém todos os campos e sobrescreve apenas os atualizados
-                                return {
-                                    ...prev,
-                                    ...payload,
-                                    id: prev.id, // Garante que o ID nunca mude
-                                } as Assignment;
-                            });
-                        }
-                    });
-            } catch (subErr) {
-                logger.warn('[Realtime Driver]', 'Subscribe falhou, ativando fallback polling:', subErr);
-            }
-        };
-
-        setupRealtime();
-
-        // Fallback: polling de 10s caso o subscribe falhe ou não suporte realtime
         const fallbackInterval = setInterval(() => {
             fetchMyActiveAssignment();
-        }, 10000);
+        }, 30000);
 
         return () => {
-            if (unsubscribe) unsubscribe();
             clearInterval(fallbackInterval);
         };
     }, [user, role, fetchMyActiveAssignment]);
+
+    // [SENIOR FIX] Atualiza dados ao voltar do background
+    useForegroundRefresh(useCallback(() => { fetchMyActiveAssignment(); }, [fetchMyActiveAssignment]));
 
     /**
      * Máquina de estados derivada da atribuição.

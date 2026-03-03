@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { aether } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
@@ -6,6 +6,8 @@ import { useAuthStore } from '~/src/store/auth';
 import { notifyDriver, diagnosePushError } from '~/src/lib/push';
 import { useActionModal } from './useActionModal';
 import { useRequireAuth } from './useRequireAuth';
+import { useRealtimeSubscribe } from './useRealtimeSubscribe';
+import { useForegroundRefresh } from './useForegroundRefresh';
 import { useAssignmentsQuery, queryKeys } from './queries/useAetherQueries';
 import { logger } from '~/src/lib/logger';
 
@@ -143,63 +145,66 @@ export function useMonitorData() {
         return Object.values(grouped);
     }, [assignments]);
 
-    // === Realtime subscribe (atualiza cache in-place para latencia sub-segundo) ===
-    // O polling do React Query (refetchInterval) garante consistencia.
-    // O subscribe adiciona responsividade instantanea para mudancas de dockStatus.
-    useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
+    // === Realtime subscribe centralizado (debounce + cleanup automático) ===
+    // Usa useRealtimeSubscribe com debounce baixo (500ms) para latência sub-segundo.
+    // O callback atualiza o cache do React Query in-place via setQueryData.
+    useRealtimeSubscribe({
+        collection: COLLECTIONS.ASSIGNMENTS,
+        tag: '[Monitor]',
+        debounceMs: 500,
+        onEvent: useCallback((updatedData: any) => {
+            if (!updatedData) return;
 
-        try {
-            unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
-                .subscribe((updatedData: any) => {
-                    if (!updatedData) return;
+            const payload = updatedData._payload || updatedData;
+            const updateId = payload.id || updatedData.id;
 
-                    const payload = updatedData._payload || updatedData;
-                    const updateId = payload.id || updatedData.id;
+            if (!updateId) return;
 
-                    if (!updateId) return;
+            logger.debug('[Realtime Monitor]', 'Recebido update:', updateId, payload.dockStatus || payload.status);
 
-                    logger.debug('[Realtime Monitor]', 'Recebido update:', updateId, payload.dockStatus || payload.status);
+            // Atualiza o cache do React Query in-place (dispara re-render via useMemo)
+            queryClient.setQueryData(
+                queryKeys.assignments,
+                (old: Assignment[] | undefined) => {
+                    if (!old) return old;
 
-                    // Atualiza o cache do React Query in-place (dispara re-render via useMemo)
-                    queryClient.setQueryData(
-                        queryKeys.assignments,
-                        (old: Assignment[] | undefined) => {
-                            if (!old) return old;
-
-                            // Archived: remove do cache imediatamente
-                            if (payload.archived === true) {
-                                const exists = old.some(a => a.id === updateId);
-                                if (exists) {
-                                    logger.debug('[Realtime Monitor]', 'Rota arquivada, removendo do cache:', updateId);
-                                    return old.filter(a => a.id !== updateId);
-                                }
-                                return old;
-                            }
-
-                            // Existente: merge payload (useMemo re-ordena automaticamente)
-                            const exists = old.some(a => a.id === updateId);
-                            if (exists) {
-                                logger.debug('[Realtime Monitor]', 'Atualizando assignment no cache:', updateId);
-                                return old.map(a =>
-                                    a.id === updateId ? { ...a, ...payload, id: a.id } as Assignment : a
-                                );
-                            }
-
-                            // Novo item: invalidar para refetch completo
-                            queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
-                            return old;
+                    // Archived: remove do cache imediatamente
+                    if (payload.archived === true) {
+                        const exists = old.some(a => a.id === updateId);
+                        if (exists) {
+                            logger.debug('[Realtime Monitor]', 'Rota arquivada, removendo do cache:', updateId);
+                            return old.filter(a => a.id !== updateId);
                         }
-                    );
-                });
-        } catch (subErr) {
-            logger.warn('[Realtime Monitor]', 'Subscribe indisponivel, polling React Query ativo como fallback:', subErr);
-        }
+                        return old;
+                    }
 
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
+                    // Existente: merge payload (useMemo re-ordena automaticamente)
+                    const exists = old.some(a => a.id === updateId);
+                    if (exists) {
+                        logger.debug('[Realtime Monitor]', 'Atualizando assignment no cache:', updateId);
+                        return old.map(a =>
+                            a.id === updateId ? { ...a, ...payload, id: a.id } as Assignment : a
+                        );
+                    }
+
+                    // Novo item: invalidar para refetch completo
+                    queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+                    return old;
+                }
+            );
+        }, [queryClient]),
+    });
+
+    /**
+     * Forca refresh dos dados via invalidacao do cache React Query.
+     * Usado pelo botao de refresh e useForegroundRefresh.
+     */
+    const refreshMonitor = useCallback(async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
     }, [queryClient]);
+
+    // === Foreground refresh — atualiza dados ao voltar do background ===
+    useForegroundRefresh(refreshMonitor);
 
     // === Mutacoes ===
 
@@ -251,14 +256,6 @@ export function useMonitorData() {
             }
         );
     }, [showModal, queryClient]);
-
-    /**
-     * Forca refresh dos dados via invalidacao do cache React Query.
-     * Usado pelo botao de refresh e useForegroundRefresh.
-     */
-    const refreshMonitor = useCallback(async () => {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
-    }, [queryClient]);
 
     return {
         assignments,

@@ -7,6 +7,7 @@ import { useAuthStore } from '~/src/store/auth';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { COLLECTIONS, Assignment } from '~/src/lib/collections';
 import DriverBottomNav from '~/src/components/DriverBottomNav';
+import { useRealtimeSubscribe } from '~/src/hooks/useRealtimeSubscribe';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { notifyAdmins, ensureDriverPushToken } from '~/src/lib/push';
@@ -134,66 +135,65 @@ export default function DashboardScreen() {
     }, [user]);
 
     /**
-     * Setup do ciclo de vida: subscribe realtime + polling fallback de 15s.
-     * Detecta novas rotas atribuídas e mudanças de status em tempo real.
-     * O motorista vê novas atribuições aparecerem sem precisar recarregar.
+     * Subscribe realtime centralizado via useRealtimeSubscribe.
+     * Detecta mudanças de assignments filtradas pelo motorista logado.
+     * Debounce de 500ms protege contra burst de eventos.
+     */
+    useRealtimeSubscribe({
+        collection: COLLECTIONS.ASSIGNMENTS,
+        tag: '[DriverDash]',
+        debounceMs: 500,
+        enabled: !!user?.id,
+        onEvent: useCallback((updatedData: any) => {
+            if (!updatedData) return;
+
+            // Tratamento seguro para diferentes formatos de payload
+            let payload = updatedData;
+            if (updatedData.type === 'DELETE') {
+                payload = updatedData.old_record || {};
+            } else if (updatedData._payload) {
+                payload = updatedData._payload;
+            } else if (updatedData.record) {
+                payload = updatedData.record;
+            }
+
+            const updateId = payload.id || updatedData.id;
+            const explicitlyOwned = (payload.driverId || updatedData.driverId) === user?.id;
+
+            // Se a atualização parcial for referente a um ID de rota que o motorista
+            // já sabe que é dele (armazenado no Ref), então ele refetch.
+            const isCurrentlyAssigned = assignmentsRef.current.some(a => a.id === updateId);
+
+            // [SENIOR FIX - AUTO CLEAN] Se a mudança foi um arquivamento
+            if (payload.archived === true && isCurrentlyAssigned) {
+                logger.debug('[Realtime DriverDash] Faxina detectada (Archived: true). Expulsando da tela.');
+                setAssignments(prev => prev.filter(a => a.id !== updateId));
+                fetchAssignments();
+                return;
+            }
+
+            // Só refetch se a mudança for relacionada a ESTE motorista
+            if (explicitlyOwned || isCurrentlyAssigned) {
+                logger.debug('[Realtime DriverDash] Mudança detectada para este motorista (Update ID):', updateId);
+                fetchAssignments();
+            }
+        }, [user?.id, fetchAssignments]),
+    });
+
+    /**
+     * Setup inicial + polling de 30s como safety net.
+     * O subscribe realtime garante latência sub-segundo para novas rotas.
      */
     useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-
         if (!user?.id) return;
 
         fetchAssignments();
 
-        // Subscribe realtime na coleção de assignments
-        try {
-            unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
-                .subscribe((updatedData: any) => {
-                    if (!updatedData) return;
-
-                    // Tratamento seguro para diferentes formatos de payload
-                    let payload = updatedData;
-                    if (updatedData.type === 'DELETE') {
-                        payload = updatedData.old_record || {};
-                    } else if (updatedData._payload) {
-                        payload = updatedData._payload;
-                    } else if (updatedData.record) {
-                        payload = updatedData.record;
-                    }
-
-                    const updateId = payload.id || updatedData.id;
-                    const explicitlyOwned = (payload.driverId || updatedData.driverId) === user.id;
-
-                    // Se a atualização parcial for referente a um ID de rota que o motorista 
-                    // já sabe que é dele (armazenado no Ref), então ele refetch.
-                    const isCurrentlyAssigned = assignmentsRef.current.some(a => a.id === updateId);
-
-                    // [SENIOR FIX - AUTO CLEAN] Se a mudança foi um arquivamento (Faxina do Admin) de uma rota atual, repuxa dados
-                    if (payload.archived === true && isCurrentlyAssigned) {
-                        logger.debug('[Realtime DriverDash] Faxina detectada (Archived: true). Expulsando da tela.');
-                        // Delete Instantâneo da Tela (Evita pisca-pisca de Load)
-                        setAssignments(prev => prev.filter(a => a.id !== updateId));
-                        fetchAssignments(); // Refaz pra atualizar contadores
-                        return;
-                    }
-
-                    // Só refetch se a mudança for relacionada a ESTE motorista
-                    if (explicitlyOwned || isCurrentlyAssigned) {
-                        logger.debug('[Realtime DriverDash] Mudança detectada para este motorista (Update ID):', updateId);
-                        fetchAssignments();
-                    }
-                });
-        } catch (subErr) {
-            logger.warn('[Realtime DriverDash] Subscribe indisponível, usando apenas polling:', subErr);
-        }
-
-        // Polling de 15s como fallback
         const interval = setInterval(() => {
             fetchAssignments();
-        }, 15000);
+        }, 30000);
 
         return () => {
-            if (unsubscribe) unsubscribe();
             clearInterval(interval);
         };
     }, [user, fetchAssignments]);

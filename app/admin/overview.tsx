@@ -13,6 +13,8 @@ import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { router } from 'expo-router';
 import { SkeletonList } from '~/src/components/ui/Skeleton';
 import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
+import { useRealtimeSubscribe } from '~/src/hooks/useRealtimeSubscribe';
+import { logger } from '~/src/lib/logger';
 
 export default function AdminOverviewScreen() {
     const { role } = useAuthStore();
@@ -97,39 +99,37 @@ export default function AdminOverviewScreen() {
             setWeeklyData({ labels: days, data: counts });
             setTotalSacas(sacasTotal);
         } catch (e) {
-            __DEV__ && console.error('[Overview] Error fetching data:', e);
+            logger.error('[Overview]', 'Erro ao buscar dados:', e);
         } finally {
             setIsLoading(false);
         }
     }, []);
 
     /**
-     * Setup do ciclo de vida: subscribe realtime + polling fallback de 20s.
-     * Mantém KPIs e atividades recentes atualizados em tempo real.
+     * Subscribe realtime centralizado via useRealtimeSubscribe.
+     * Detecta qualquer mudança em assignments e atualiza KPIs.
+     */
+    useRealtimeSubscribe({
+        collection: COLLECTIONS.ASSIGNMENTS,
+        tag: '[Overview]',
+        debounceMs: 1500,
+        onEvent: useCallback(() => {
+            logger.debug('[Overview]', 'Mudança detectada, atualizando KPIs...');
+            fetchOverviewData();
+        }, [fetchOverviewData]),
+    });
+
+    /**
+     * Setup inicial + polling de 30s como safety net.
      */
     useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-
         fetchOverviewData();
 
-        // Subscribe realtime: detecta qualquer mudança em assignments
-        try {
-            unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
-                .subscribe(() => {
-                    __DEV__ && console.log('[Realtime Overview] Mudança detectada, atualizando KPIs...');
-                    fetchOverviewData();
-                });
-        } catch (subErr) {
-            __DEV__ && console.warn('[Realtime Overview] Subscribe indisponível, usando apenas polling:', subErr);
-        }
-
-        // Polling de 20s como fallback
         const interval = setInterval(() => {
             fetchOverviewData();
-        }, 20000);
+        }, 30000);
 
         return () => {
-            if (unsubscribe) unsubscribe();
             clearInterval(interval);
         };
     }, [fetchOverviewData]);

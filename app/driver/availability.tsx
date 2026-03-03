@@ -15,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { dispatchAdminAlert, ensureDriverPushToken } from '~/src/lib/push';
 import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
+import { useRealtimeSubscribe } from '~/src/hooks/useRealtimeSubscribe';
+import { logger } from '~/src/lib/logger';
 
 type ScreenState = 'loading' | 'blocked' | 'no_window' | 'already_filled' | 'form';
 
@@ -47,37 +49,7 @@ export default function AvailabilityScreen() {
         setActionModal({ visible: true, title, message, type });
     };
 
-    /**
-     * Setup do ciclo de vida: subscribe realtime + polling fallback de 20s.
-     * Quando o admin abre uma nova janela de disponibilidade, o motorista
-     * vê o formulário aparecer instantaneamente sem precisar sair da tela.
-     */
-    useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
 
-        checkState();
-
-        // Subscribe na coleção de janelas de disponibilidade (admin abre/fecha)
-        try {
-            unsubscribe = aether.db.collection(COLLECTIONS.AVAILABILITY_WINDOWS)
-                .subscribe(() => {
-                    console.log('[Realtime Availability] Janela alterada, rechecando estado...');
-                    checkState();
-                });
-        } catch (subErr) {
-            console.warn('[Realtime Availability] Subscribe indisponível, usando apenas polling:', subErr);
-        }
-
-        // Polling de 20s como fallback
-        const interval = setInterval(() => {
-            checkState();
-        }, 20000);
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-            clearInterval(interval);
-        };
-    }, []);
 
     /**
      * [PUSH FIX] Garante registro de push token ao montar a tela.
@@ -226,6 +198,36 @@ export default function AvailabilityScreen() {
 
     // [SENIOR FIX] Resgata o status atual da tela quando o app voltar para o foreground
     useForegroundRefresh(checkState);
+
+    /**
+     * Subscribe realtime centralizado via useRealtimeSubscribe.
+     * Quando o admin abre/fecha uma janela de disponibilidade, o motorista
+     * vê o formulário instantaneamente sem sair da tela.
+     */
+    useRealtimeSubscribe({
+        collection: COLLECTIONS.AVAILABILITY_WINDOWS,
+        tag: '[Availability]',
+        debounceMs: 1000,
+        onEvent: useCallback(() => {
+            logger.debug('[Availability]', 'Janela alterada, rechecando estado...');
+            checkState();
+        }, [checkState]),
+    });
+
+    /**
+     * Setup inicial + polling de 30s como safety net.
+     */
+    useEffect(() => {
+        checkState();
+
+        const interval = setInterval(() => {
+            checkState();
+        }, 30000);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, []);
 
     const handleConfirm = async () => {
         if (!user?.id) {

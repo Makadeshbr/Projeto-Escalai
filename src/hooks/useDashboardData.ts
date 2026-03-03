@@ -7,6 +7,7 @@ import {
 } from '~/src/lib/collections';
 import type { ModalType } from './useActionModal';
 import { useRequireAuth } from './useRequireAuth';
+import { useRealtimeSubscribe } from './useRealtimeSubscribe';
 import {
     useAssignmentsQuery, useDriverAvailabilityQuery, useCitiesQuery, queryKeys
 } from './queries/useAetherQueries';
@@ -132,32 +133,18 @@ export function useDashboardData(
         await queryClient.invalidateQueries({ queryKey: queryKeys.driverAvailability });
     }, [queryClient]);
 
-    // === Realtime subscribe (invalida cache em vez de fetch manual) ===
-    // O polling do React Query (refetchInterval) ja garante consistencia.
-    // O subscribe adiciona latencia sub-segundo para mudancas em tempo real.
-    useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-        let debounceTimer: ReturnType<typeof setTimeout>;
-
-        try {
-            unsubscribe = aether.db.collection(COLLECTIONS.ASSIGNMENTS)
-                .subscribe(() => {
-                    // [SENIOR FIX] Debounce no Realtime para evitar N+1 invalidacoes
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(() => {
-                        logger.debug('[Realtime Dashboard]', 'Mudanca detectada, invalidando cache React Query...');
-                        queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
-                    }, 1500);
-                });
-        } catch (subErr) {
-            logger.warn('[Realtime Dashboard]', 'Subscribe indisponivel, polling React Query ativo como fallback:', subErr);
-        }
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-            clearTimeout(debounceTimer);
-        };
-    }, [queryClient]);
+    // === Realtime subscribe centralizado (debounce + cleanup automático) ===
+    // O polling do React Query (refetchInterval) já garante consistência.
+    // O subscribe adiciona latência sub-segundo para mudanças em tempo real.
+    useRealtimeSubscribe({
+        collection: COLLECTIONS.ASSIGNMENTS,
+        tag: '[Dashboard]',
+        debounceMs: 1500,
+        onEvent: useCallback(() => {
+            logger.debug('[Realtime Dashboard]', 'Mudança detectada, invalidando cache React Query...');
+            queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+        }, [queryClient]),
+    });
 
     // === Mutacoes (logica de negocio preservada, invalidacao via React Query) ===
 
