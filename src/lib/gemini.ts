@@ -1,19 +1,5 @@
-// Serviço Reescrito: Usando REST puro (Fetch) para evitar crashes do Node/React Native Worklets no Expo Go.
-// Injeta com segurança se houver. Em produção, isso vira ENV nativo.
 import { logger } from '~/src/lib/logger';
-
-/**
- * Leitura robusta da API Key do Gemini.
- *
- * 1. process.env.EXPO_PUBLIC_GEMINI_API_KEY — substituído em build-time pelo Metro/Expo.
- *    REQUER que o .env esteja em UTF-8 (não UTF-16/UTF-16LE).
- * 2. Fallback hardcoded — garante que OTA updates funcionem mesmo sem rebuild.
- *
- * NOTA: Em produção futura, migrar para Aether Backend (proxy seguro) para
- * evitar expor a key no bundle JS.
- */
-const GEMINI_FALLBACK_KEY = 'AIzaSyAsnjpIuGuhtV4OaYdv9KWYEEIzZHMtLfM';
-const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || GEMINI_FALLBACK_KEY;
+import { aether } from '~/src/lib/aether';
 
 export interface RouteDraft {
     driverName: string;
@@ -71,71 +57,80 @@ REGRAS DE CONFORMIDADE:
 `;
 
 export async function parseLogisticsSheet(base64String: string, mimeType: string): Promise<RouteDraft[]> {
-    if (!apiKey) {
-        throw new Error('API Key do Gemini não encontrada.');
-    }
-
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        logger.info('[Gemini AI]', 'Iniciando extração via Aether Cloud Function OCR Proxy...');
+        
+        // Chamada segura e encampsulada pelo Node.js/Vercel (Aether Plattform)
+        // O Client SDK passa Bearer e Project-ID silenciosamente
+        const result = await aether.functions.invoke<any>('gemini-ocr-proxy', {
+            base64: base64String,
+            mimeType,
+            systemInstruction: SYSTEM_INSTRUCTION
+        }, { timeout: 60000 }); // Permite OCR de romaneios de até ~2-3 páginas com segurança
 
-        const payload = {
-            system_instruction: {
-                parts: { text: SYSTEM_INSTRUCTION }
-            },
-            contents: [
-                {
-                    parts: [
-                        { inline_data: { mime_type: mimeType, data: base64String } }
-                    ]
-                }
-            ],
-            generationConfig: {
-                temperature: 0.1,
-                response_mime_type: "application/json"
+        if (result.error) {
+            logger.error('[Gemini AI]', 'Aether Proxy rejeitou a operação:', result.error);
+            // Captura explicitamente bloqueio por cota (retorno 429 propagado pela CF)
+            if (typeof result.error === 'string' && result.error.includes('429')) {
+                throw new Error('Cota do Google Gemini esgotada no Backend Aether. Adicione créditos no AI Studio.');
             }
-        };
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            if (response.status === 429) {
-                // Erro de Limite de Cota/Billing do Google (Free Tier limit: 0)
-                throw new Error('As requisições gratuitas da sua Chave do Google estão esgotadas ou bloqueadas (Erro 429). Você precisa acessar o Google AI Studio e cadastrar o Cartão de Crédito (Pagamento por uso) ou o plano gratuito não está disponível para esta conta/região.');
-            }
-            throw new Error(`Google API Http Error: ${response.status} - ${errorText}`);
+            throw new Error(result.error);
         }
 
-        const dataResponse = await response.json();
+        if (!result.data) {
+            throw new Error('Proxy respondeu SUCESSO, porém sem os dados do OCR.');
+        }
 
-        let rawJsonString = dataResponse.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-        // Cleanup markdown artifacts if any slip through
-        const cleanString = rawJsonString.replace(/```json/g, '').replace(/```/g, '').trim();
-
-        const rawData: RouteDraft[] = JSON.parse(cleanString);
-
-        // Limpeza rigorosa a nível de código: a IA às vezes ignora o prompt
-        const sanitizedData = rawData.map(route => {
-            let cleanPlate = route.driverPlate || '';
-            // Se a IA mandou SDD-ABC1234, extrai só o ABC1234
-            cleanPlate = cleanPlate.replace(/SDD-?/i, '');
-            // Remove qualquer outro hífen ou espaço que a IA inventar
-            cleanPlate = cleanPlate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-
-            return {
-                ...route,
-                driverPlate: cleanPlate
-            };
-        });
-
-        return sanitizedData;
+        logger.info('[Gemini AI]', 'Extração via proxy bem-sucedida!');
+        return cleanRawData(result.data);
 
     } catch (e: any) {
-        logger.error('[Gemini AI]', 'Erro no OCR ou Parse JSON:', e);
-        throw new Error(`Falha ao extrair rotas nativamente: ${e.message}`);
+        logger.error('[Gemini AI]', 'Erro fatal na pipeline OCR (SDK/Proxy):', e);
+        throw new Error(`Falha ao extrair rotas de forma segura: ${e.message}`);
     }
 }
+
+/**
+ * Função utilitária para limpar a resposta e extrair JSON da IA do Proxy.
+ */
+function cleanRawData(dataResponse: any): RouteDraft[] {
+    let rawJsonString = dataResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!rawJsonString || typeof rawJsonString !== 'string') {
+        logger.warn('[Gemini AI]', 'Fallback: Proxy retornou payload irregular, assumindo array vazio', dataResponse);
+        return [];
+    }
+
+    // Cleanup markdown artifacts if any slip through
+    const cleanString = rawJsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    let rawData: RouteDraft[] = [];
+    try {
+        rawData = JSON.parse(cleanString);
+    } catch (err: any) {
+        logger.error('[Gemini AI]', 'A IA não devolveu um JSON válido.', cleanString);
+        throw new Error('Formato logístico retornado foi processado mas é ilegível pelo App (Corrupção de JSON).');
+    }
+
+    if (!Array.isArray(rawData)) {
+        logger.warn('[Gemini AI]', 'Fallback: IA retornou JSON não-Array', rawData);
+        return [];
+    }
+
+    // Limpeza rigorosa a nível de código: a IA às vezes ignora o prompt
+    const sanitizedData = rawData.map(route => {
+        let cleanPlate = route.driverPlate || '';
+        // Se a IA mandou SDD-ABC1234, extrai só o ABC1234
+        cleanPlate = cleanPlate.replace(/SDD-?/i, '');
+        // Remove qualquer outro hífen ou espaço que a IA inventar
+        cleanPlate = cleanPlate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+
+        return {
+            ...route,
+            driverPlate: cleanPlate
+        };
+    });
+
+    return sanitizedData;
+}
+
