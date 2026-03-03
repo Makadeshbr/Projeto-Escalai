@@ -53,7 +53,7 @@ export default function LoginScreen() {
 
         setIsLoading(true);
         try {
-            await aether.tenantAuth.signIn({ email: driverId.trim(), password });
+            await aether.tenantAuth.signIn({ email: driverId.trim().toLowerCase(), password });
             const authUser = aether.tenantAuth.getUser();
 
             if (!authUser) {

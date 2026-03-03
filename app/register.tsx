@@ -97,7 +97,7 @@ export default function RegisterScreen() {
             // 1. Create the Authentication Profile
             // NOTA: O SDK tenantAuth exige que propriedades customizadas vão dentro de 'metadata'
             const { user, error } = await aether.tenantAuth.signUp({
-                email: email.trim(),
+                email: email.trim().toLowerCase(),
                 password: password,
                 data: {
                     metadata: {
