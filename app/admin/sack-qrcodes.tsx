@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, ScrollView, Image,
-    ActivityIndicator, Modal, TextInput, RefreshControl, Alert
+    ActivityIndicator, Modal, TextInput, RefreshControl, Alert, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     QrCode, Plus, Trash2, Pencil, Check, X, Eye,
-    UploadCloud, Package, ArrowLeft, FileImage
+    UploadCloud, Package, ArrowLeft, FileImage, Camera, ImageIcon
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
@@ -19,6 +20,8 @@ import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
 import { logger } from '~/src/lib/logger';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
  * Extrai o primeiro número encontrado no label para ordenação numérica natural.
@@ -54,6 +57,9 @@ export default function SackQRCodesScreen() {
 
     // Estado para visualização fullscreen
     const [viewingQR, setViewingQR] = useState<SackQRCode | null>(null);
+
+    // Estado para menu de seleção de upload (Foto vs PDF)
+    const [showUploadMenu, setShowUploadMenu] = useState(false);
 
     // Modal de feedback
     const [actionModal, setActionModal] = useState({
@@ -194,6 +200,95 @@ export default function SackQRCodesScreen() {
     };
 
     /**
+     * Upload via ImagePicker com crop nativo do OS.
+     * Permite ao admin tirar foto ou escolher da galeria,
+     * com editor de corte integrado para enquadrar o QR Code.
+     *
+     * @param source - 'camera' para abrir câmera, 'gallery' para galeria
+     */
+    const handleUploadFromImage = async (source: 'camera' | 'gallery') => {
+        try {
+            setShowUploadMenu(false);
+
+            // Solicita permissão adequada
+            if (source === 'camera') {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') {
+                    showModal('Permissão Negada', 'Acesso à câmera é necessário para tirar foto do QR Code.', 'warning');
+                    return;
+                }
+            } else {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') {
+                    showModal('Permissão Negada', 'Acesso à galeria é necessário para selecionar imagem.', 'warning');
+                    return;
+                }
+            }
+
+            // Abre picker com crop nativo do OS
+            const launchFn = source === 'camera'
+                ? ImagePicker.launchCameraAsync
+                : ImagePicker.launchImageLibraryAsync;
+
+            const result = await launchFn({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,  // Habilita crop nativo do OS
+                quality: 0.9,         // Alta qualidade para QR Code nítido
+            });
+
+            if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+            setIsUploading(true);
+            setUploadProgress(0);
+
+            const asset = result.assets[0];
+            const fileName = `qr_code_${Date.now()}.jpg`;
+
+            try {
+                // Converte URI local em Blob
+                const response = await fetch(asset.uri);
+                const blob = await response.blob();
+
+                // Upload para Aether Storage
+                const uploadResult = await aether.storage.upload(blob, {
+                    folder: 'sack_qrcodes',
+                    fileName,
+                    contentType: 'image/jpeg',
+                });
+
+                if (uploadResult.success) {
+                    const fileData = uploadResult.data;
+                    await aether.db.collection(COLLECTIONS.SACK_QR_CODES).create({
+                        label: `QR Code ${Date.now()}`,
+                        storageFileId: fileData.id,
+                        downloadUrl: fileData.downloadUrl || fileData.publicUrl || fileData.url || '',
+                        fileName,
+                        mimeType: 'image/jpeg',
+                        fileSize: asset.fileSize || blob.size || 0,
+                        uploadedByAdminId: user?.id || 'admin',
+                        createdAt: new Date().toISOString(),
+                    });
+
+                    showModal('Upload Concluído', 'QR Code enviado com sucesso!', 'success');
+                    await fetchQRCodes();
+                } else {
+                    logger.warn('[QR Admin]', 'Upload falhou:', uploadResult.error);
+                    showModal('Falha no Upload', 'Não foi possível enviar a imagem.', 'error');
+                }
+            } catch (fileError) {
+                logger.error('[QR Admin]', 'Erro no upload de imagem:', fileError);
+                showModal('Erro', 'Falha ao enviar a imagem.', 'error');
+            }
+        } catch (error) {
+            logger.error('[QR Admin]', 'Erro ao abrir picker:', error);
+            showModal('Erro', 'Falha ao abrir seletor de imagem.', 'error');
+        } finally {
+            setIsUploading(false);
+            setUploadProgress(0);
+        }
+    };
+
+    /**
      * Salva o novo label de um QR Code.
      * @param qrId - ID do QR Code sendo editado
      */
@@ -298,7 +393,7 @@ export default function SackQRCodesScreen() {
             >
                 {/* Botão de Upload */}
                 <TouchableOpacity
-                    onPress={handleUploadQRCodes}
+                    onPress={() => setShowUploadMenu(true)}
                     disabled={isUploading}
                     className={`w-full bg-surface border-2 border-dashed border-orange-500/30 rounded-2xl p-6 items-center mt-2 mb-6 ${isUploading ? 'opacity-50' : ''}`}
                     activeOpacity={0.7}
@@ -438,7 +533,7 @@ export default function SackQRCodesScreen() {
                 )}
             </ScrollView>
 
-            {/* Modal Fullscreen de Visualização */}
+            {/* Modal Fullscreen de Visualização com Zoom */}
             <Modal visible={!!viewingQR} animationType="fade" transparent onRequestClose={() => setViewingQR(null)}>
                 <View className="flex-1 bg-black/95 items-center justify-center">
                     <TouchableOpacity
@@ -453,12 +548,21 @@ export default function SackQRCodesScreen() {
                             <Text className="text-white font-spaceGroteskBold text-xl mb-6 text-center">
                                 {viewingQR.label}
                             </Text>
-                            <View className="bg-white rounded-2xl p-4" style={{ width: 320, height: 320 }}>
-                                <Image
-                                    source={{ uri: viewingQR.downloadUrl }}
-                                    style={{ width: '100%', height: '100%' }}
-                                    resizeMode="contain"
-                                />
+                            <View className="bg-white rounded-2xl overflow-hidden" style={{ width: 320, height: 320 }}>
+                                <ScrollView
+                                    maximumZoomScale={5}
+                                    minimumZoomScale={1}
+                                    bouncesZoom
+                                    showsHorizontalScrollIndicator={false}
+                                    showsVerticalScrollIndicator={false}
+                                    contentContainerStyle={{ width: 320, height: 320 }}
+                                >
+                                    <Image
+                                        source={{ uri: viewingQR.downloadUrl }}
+                                        style={{ width: 320, height: 320 }}
+                                        resizeMode="contain"
+                                    />
+                                </ScrollView>
                             </View>
                             <Text className="text-[#64748b] text-xs font-spaceGrotesk mt-4">
                                 {viewingQR.fileName} • {formatFileSize(viewingQR.fileSize)}
@@ -470,7 +574,7 @@ export default function SackQRCodesScreen() {
 
             {/* FAB para upload rápido */}
             <TouchableOpacity
-                onPress={handleUploadQRCodes}
+                onPress={() => setShowUploadMenu(true)}
                 disabled={isUploading}
                 style={{
                     position: 'absolute',
@@ -492,6 +596,90 @@ export default function SackQRCodesScreen() {
             >
                 <Plus color="#000" size={26} strokeWidth={3} />
             </TouchableOpacity>
+
+            {/* Modal de seleção: Foto (com crop) vs PDF */}
+            <Modal visible={showUploadMenu} animationType="slide" transparent onRequestClose={() => setShowUploadMenu(false)}>
+                <TouchableOpacity
+                    className="flex-1 bg-black/60"
+                    activeOpacity={1}
+                    onPress={() => setShowUploadMenu(false)}
+                >
+                    <View className="flex-1" />
+                    <View className="bg-[#1a1d2e] rounded-t-3xl px-6 pt-6 pb-10 border-t border-border">
+                        <Text className="text-white font-spaceGroteskBold text-lg text-center mb-2">
+                            Enviar QR Code
+                        </Text>
+                        <Text className="text-[#94a3b8] font-spaceGrotesk text-xs text-center mb-6">
+                            Escolha como enviar o QR Code
+                        </Text>
+
+                        {/* Opção 1: Câmera (com crop) */}
+                        <TouchableOpacity
+                            onPress={() => handleUploadFromImage('camera')}
+                            className="flex-row items-center bg-surface border border-border rounded-xl px-4 py-4 mb-3"
+                            activeOpacity={0.7}
+                        >
+                            <View className="w-12 h-12 rounded-full bg-orange-500/10 border border-orange-500/20 items-center justify-center">
+                                <Camera color="#f97316" size={22} />
+                            </View>
+                            <View className="ml-4 flex-1">
+                                <Text className="text-white font-spaceGroteskBold text-base">
+                                    Tirar Foto
+                                </Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-xs mt-0.5">
+                                    Fotografe e corte o QR Code
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Opção 2: Galeria (com crop) */}
+                        <TouchableOpacity
+                            onPress={() => handleUploadFromImage('gallery')}
+                            className="flex-row items-center bg-surface border border-border rounded-xl px-4 py-4 mb-3"
+                            activeOpacity={0.7}
+                        >
+                            <View className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 items-center justify-center">
+                                <ImageIcon color="#3b82f6" size={22} />
+                            </View>
+                            <View className="ml-4 flex-1">
+                                <Text className="text-white font-spaceGroteskBold text-base">
+                                    Galeria
+                                </Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-xs mt-0.5">
+                                    Selecione e corte da galeria
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Opção 3: PDF / Múltiplos arquivos */}
+                        <TouchableOpacity
+                            onPress={() => { setShowUploadMenu(false); handleUploadQRCodes(); }}
+                            className="flex-row items-center bg-surface border border-border rounded-xl px-4 py-4 mb-3"
+                            activeOpacity={0.7}
+                        >
+                            <View className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 items-center justify-center">
+                                <FileImage color="#10b981" size={22} />
+                            </View>
+                            <View className="ml-4 flex-1">
+                                <Text className="text-white font-spaceGroteskBold text-base">
+                                    PDF / Múltiplos Arquivos
+                                </Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-xs mt-0.5">
+                                    Até 10 imagens ou PDFs por vez
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Botão cancelar */}
+                        <TouchableOpacity
+                            onPress={() => setShowUploadMenu(false)}
+                            className="items-center py-3 mt-2"
+                        >
+                            <Text className="text-[#94a3b8] font-spaceGroteskBold text-sm">Cancelar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
 
             <EnterpriseModal
                 visible={actionModal.visible}

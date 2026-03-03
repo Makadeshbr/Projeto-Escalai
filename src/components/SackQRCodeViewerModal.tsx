@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
     View, Text, Modal, TouchableOpacity, ScrollView,
     Image, ActivityIndicator, Dimensions, FlatList
 } from 'react-native';
+import { ZoomIn } from 'lucide-react-native';
 import { X, ChevronLeft, ChevronRight, QrCode, Package } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
 import { aetherFetchAll } from '~/src/lib/aether';
@@ -44,6 +45,19 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
     const [qrCodes, setQrCodes] = useState<SackQRCode[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeIndex, setActiveIndex] = useState(0);
+
+    /** Refs de ScrollView com zoom — permite resetar zoom ao trocar de slide */
+    const zoomRefs = useRef<Record<string, ScrollView | null>>({});
+
+    /**
+     * Reseta o zoom de todos os slides quando o motorista troca de QR Code.
+     * Evita que o zoom anterior persista ao navegar no carousel.
+     */
+    const resetAllZoom = useCallback(() => {
+        Object.values(zoomRefs.current).forEach(ref => {
+            ref?.scrollTo?.({ x: 0, y: 0, animated: false });
+        });
+    }, []);
 
     /**
      * Busca todos os QR Codes ativos (não arquivados) do Aether BaaS.
@@ -88,10 +102,13 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
      * Renderiza cada slide do carousel com a imagem do QR Code.
      * Usa width fixa do dispositivo para paginação perfeita.
      */
+    /** Tamanho da área de imagem do QR Code */
+    const QR_IMAGE_SIZE = SCREEN_WIDTH - 64;
+
     const renderQRSlide = ({ item, index }: { item: SackQRCode; index: number }) => (
         <View style={{ width: SCREEN_WIDTH, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
             {/* Label do QR Code */}
-            <View className="bg-surface border border-border rounded-xl px-5 py-3 mb-6">
+            <View className="bg-surface border border-border rounded-xl px-5 py-3 mb-4">
                 <Text className="text-white text-lg font-spaceGroteskBold text-center tracking-wide">
                     {item.label || `QR Code ${index + 1}`}
                 </Text>
@@ -100,31 +117,48 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
                 </Text>
             </View>
 
-            {/* Imagem do QR Code - ocupa área máxima */}
-            <View className="bg-white rounded-2xl p-4 items-center justify-center shadow-lg"
-                style={{ width: SCREEN_WIDTH - 64, height: SCREEN_WIDTH - 64 }}
+            {/* Imagem do QR Code com pinch-to-zoom (1x → 5x) */}
+            <View className="bg-white rounded-2xl overflow-hidden shadow-lg"
+                style={{ width: QR_IMAGE_SIZE, height: QR_IMAGE_SIZE }}
             >
-                <Image
-                    source={{ uri: item.downloadUrl }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="contain"
-                />
+                <ScrollView
+                    ref={(ref) => { zoomRefs.current[item.id] = ref; }}
+                    maximumZoomScale={5}
+                    minimumZoomScale={1}
+                    bouncesZoom
+                    showsHorizontalScrollIndicator={false}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ width: QR_IMAGE_SIZE, height: QR_IMAGE_SIZE }}
+                >
+                    <Image
+                        source={{ uri: item.downloadUrl }}
+                        style={{ width: QR_IMAGE_SIZE, height: QR_IMAGE_SIZE }}
+                        resizeMode="contain"
+                    />
+                </ScrollView>
             </View>
 
-            {/* Tamanho do arquivo */}
-            <Text className="text-[#64748b] text-[10px] font-spaceGrotesk uppercase tracking-widest mt-4">
-                {(item.fileSize / 1024).toFixed(0)} KB • {item.mimeType.split('/')[1]?.toUpperCase()}
-            </Text>
+            {/* Hint de zoom + tamanho do arquivo */}
+            <View className="flex-row items-center justify-center gap-2 mt-3">
+                <ZoomIn color="#64748b" size={14} />
+                <Text className="text-[#64748b] text-[10px] font-spaceGrotesk uppercase tracking-widest">
+                    Aperte para ampliar • {(item.fileSize / 1024).toFixed(0)} KB
+                </Text>
+            </View>
         </View>
     );
 
     /**
-     * Handler de scroll — calcula o índice do slide ativo baseado no offset.
+     * Handler de scroll — calcula o índice do slide ativo e reseta zoom.
+     * Reseta zoom de todos os slides para evitar estado visual inconsistente.
      */
     const handleScroll = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
         const index = Math.round(offsetX / SCREEN_WIDTH);
         if (index >= 0 && index < qrCodes.length) {
+            if (index !== activeIndex) {
+                resetAllZoom();
+            }
             setActiveIndex(index);
         }
     };
