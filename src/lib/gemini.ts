@@ -2,7 +2,18 @@
 // Injeta com segurança se houver. Em produção, isso vira ENV nativo.
 import { logger } from '~/src/lib/logger';
 
-const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+/**
+ * Leitura robusta da API Key do Gemini.
+ *
+ * 1. process.env.EXPO_PUBLIC_GEMINI_API_KEY — substituído em build-time pelo Metro/Expo.
+ *    REQUER que o .env esteja em UTF-8 (não UTF-16/UTF-16LE).
+ * 2. Fallback hardcoded — garante que OTA updates funcionem mesmo sem rebuild.
+ *
+ * NOTA: Em produção futura, migrar para Aether Backend (proxy seguro) para
+ * evitar expor a key no bundle JS.
+ */
+const GEMINI_FALLBACK_KEY = 'AIzaSyAsnjpIuGuhtV4OaYdv9KWYEEIzZHMtLfM';
+const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || GEMINI_FALLBACK_KEY;
 
 export interface RouteDraft {
     driverName: string;
