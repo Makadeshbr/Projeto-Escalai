@@ -48,6 +48,7 @@ export interface DriverAvailability {
     };
     lockedAt: string;
     createdAt: string;
+    respondedAt?: string;       // [ENTERPRISE] Timestamp BRT de quando o motorista clicou "Confirmar"
 }
 
 // ---- Assignments (admin dispatches) ----
@@ -153,34 +154,177 @@ export const WAVE_META = {
     morning: { label: 'Manhã', time: '06:00 - 11:00' },
 } as const;
 
+// ============================================================
+// [ENTERPRISE] Utilitários de Timezone — America/Sao_Paulo
+// ============================================================
+// Regra: TODAS as datas e horários do Escalai devem respeitar
+// o fuso horário do Brasil (BRT/BRST), independente do timezone
+// configurado no celular do motorista.
+// ============================================================
+
 /**
- * Formata uma data no padrão ISO (YYYY-MM-DD) usando timezone LOCAL.
- * [AUDIT FIX — BP-002] Evita off-by-one causado por `toISOString()` que usa UTC.
- * Exemplo: às 23:30 BRT (GMT-3), `toISOString()` já retorna o dia seguinte.
- * @param date - Objeto Date para formatar
- * @returns String no formato 'YYYY-MM-DD' no timezone local
+ * Retorna a data/hora ATUAL no fuso horário de São Paulo (America/Sao_Paulo).
+ * Usa Intl.DateTimeFormat para converter UTC → BRT de forma confiável,
+ * sem depender do timezone do dispositivo do motorista.
+ * @returns Objeto Date representando o momento atual em BRT
  */
-function formatLocalDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+export function getBrazilNow(): Date {
+    const now = new Date();
+    // Intl.DateTimeFormat com timeZone força a conversão para BRT/BRST
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    });
+    const parts = formatter.formatToParts(now);
+    const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
+    return new Date(
+        parseInt(get('year')),
+        parseInt(get('month')) - 1,
+        parseInt(get('day')),
+        parseInt(get('hour')),
+        parseInt(get('minute')),
+        parseInt(get('second'))
+    );
+}
+
+/**
+ * Gera um timestamp ISO legível em BRT para persistência no banco.
+ * Formato: "2026-03-03T20:35:00-03:00"
+ * @returns String ISO com offset fixo de BRT (-03:00)
+ */
+export function formatBrazilTimestamp(): string {
+    const brt = getBrazilNow();
+    const year = brt.getFullYear();
+    const month = String(brt.getMonth() + 1).padStart(2, '0');
+    const day = String(brt.getDate()).padStart(2, '0');
+    const hours = String(brt.getHours()).padStart(2, '0');
+    const minutes = String(brt.getMinutes()).padStart(2, '0');
+    const seconds = String(brt.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-03:00`;
+}
+
+/**
+ * Formata um timestamp (ISO ou qualquer formato parseable) para exibição legível em BRT.
+ * Exemplo: "14:32" ou "14:32 - 03/03"
+ * @param isoTimestamp - String de timestamp para converter
+ * @param includeDate - Se true, inclui a data no formato dd/mm
+ * @returns String formatada para exibição no App (ex: "14:32")
+ */
+export function formatBrazilTime(isoTimestamp: string, includeDate = false): string {
+    try {
+        const date = new Date(isoTimestamp);
+        if (isNaN(date.getTime())) return '--:--';
+        const formatter = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            hour: '2-digit',
+            minute: '2-digit',
+            ...(includeDate ? { day: '2-digit', month: '2-digit' } : {}),
+            hour12: false,
+        });
+        return formatter.format(date);
+    } catch {
+        return '--:--';
+    }
+}
+
+// ============================================================
+// [ENTERPRISE] Sistema de Deadline Automático
+// ============================================================
+// Regra de Negócio Fixa:
+//   • Segunda a Sábado → Horário limite: 18:00 BRT
+//   • Domingo           → Horário limite: 12:00 BRT
+// ============================================================
+
+/** Mapeamento do dia da semana para o horário limite de resposta (0=Dom, 6=Sáb) */
+const DEADLINE_HOURS: Record<number, number> = {
+    0: 12, // Domingo: 12:00
+    1: 18, // Segunda: 18:00
+    2: 18, // Terça: 18:00
+    3: 18, // Quarta: 18:00
+    4: 18, // Quinta: 18:00
+    5: 18, // Sexta: 18:00
+    6: 18, // Sábado: 18:00
+};
+
+/**
+ * Retorna o horário limite (Date em BRT) para responder a disponibilidade de uma data-alvo.
+ * O deadline é no PRÓPRIO dia em que a janela pede resposta (dia corrente),
+ * baseado no dia da semana ATUAL (quando o motorista está respondendo).
+ * @param _targetDate - Data alvo da janela (formato YYYY-MM-DD). Parâmetro reservado para futura granularidade.
+ * @returns Objeto Date representando o deadline em BRT
+ */
+export function getDeadlineForDate(_targetDate: string): Date {
+    const brazilNow = getBrazilNow();
+    const dayOfWeek = brazilNow.getDay(); // 0=Dom, 6=Sáb
+    const deadlineHour = DEADLINE_HOURS[dayOfWeek] ?? 18;
+    const deadline = new Date(
+        brazilNow.getFullYear(),
+        brazilNow.getMonth(),
+        brazilNow.getDate(),
+        deadlineHour, 0, 0, 0
+    );
+    return deadline;
+}
+
+/**
+ * Verifica se o prazo para responder a disponibilidade já expirou.
+ * Compara o horário atual em BRT com o deadline do dia.
+ * @param targetDate - Data alvo da janela (formato YYYY-MM-DD)
+ * @returns true se o prazo expirou, false se ainda pode responder
+ */
+export function isDeadlinePassed(targetDate: string): boolean {
+    const brazilNow = getBrazilNow();
+    const deadline = getDeadlineForDate(targetDate);
+    return brazilNow >= deadline;
+}
+
+/**
+ * Calcula quantos milissegundos faltam para o deadline expirar.
+ * Retorna 0 se já expirou. Usado para o countdown timer no formulário.
+ * @param targetDate - Data alvo da janela (formato YYYY-MM-DD)
+ * @returns Milissegundos restantes (0 se expirado)
+ */
+export function getTimeRemainingMs(targetDate: string): number {
+    const brazilNow = getBrazilNow();
+    const deadline = getDeadlineForDate(targetDate);
+    const diff = deadline.getTime() - brazilNow.getTime();
+    return Math.max(0, diff);
+}
+
+/**
+ * Formata uma data no padrão ISO (YYYY-MM-DD) usando timezone de São Paulo.
+ * [ENTERPRISE FIX] Usa getBrazilNow() em vez de timezone local do dispositivo.
+ * @param date - Objeto Date para formatar (opcional, usa BRT agora se omitido)
+ * @returns String no formato 'YYYY-MM-DD' em BRT
+ */
+function formatLocalDate(date?: Date): string {
+    const d = date || getBrazilNow();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
 /**
- * Retorna a data de HOJE no formato 'YYYY-MM-DD' usando timezone local.
+ * Retorna a data de HOJE no formato 'YYYY-MM-DD' usando timezone de São Paulo.
  * @returns String no formato 'YYYY-MM-DD'
  */
 export function getTodayDateStr(): string {
-    return formatLocalDate(new Date());
+    return formatLocalDate(getBrazilNow());
 }
 
 /**
- * Retorna a data de AMANHÃ no formato 'YYYY-MM-DD' usando timezone local.
+ * Retorna a data de AMANHÃ no formato 'YYYY-MM-DD' usando timezone de São Paulo.
  * @returns String no formato 'YYYY-MM-DD'
  */
 export function getTomorrowDateStr(): string {
-    const d = new Date();
+    const d = getBrazilNow();
     d.setDate(d.getDate() + 1);
     return formatLocalDate(d);
 }

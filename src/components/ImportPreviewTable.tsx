@@ -69,7 +69,12 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
                 value={route.sacas !== undefined ? String(route.sacas) : ''}
                 placeholder="Qtd"
                 placeholderTextColor="#475569"
-                onChangeText={(val) => onChangeRoute(idx, 'sacas', val ? parseInt(val, 10) : 0)}
+                onChangeText={(val) => {
+                    // [FIX F4] Sanitiza input: remove não-numéricos e evita NaN
+                    const cleaned = val.replace(/[^0-9]/g, '');
+                    const parsed = cleaned ? parseInt(cleaned, 10) : 0;
+                    onChangeRoute(idx, 'sacas', isNaN(parsed) ? 0 : parsed);
+                }}
                 keyboardType="numeric"
                 maxLength={4}
             />

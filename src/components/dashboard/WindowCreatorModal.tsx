@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Modal, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { ArrowLeft, Edit3, Clock, Info, Send } from 'lucide-react-native';
+import { ArrowLeft, Edit3, Clock, Info, Send, Timer } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS } from '~/src/lib/collections';
+import { COLLECTIONS, formatBrazilTimestamp } from '~/src/lib/collections';
 import { notifyAllDrivers, diagnosePushError } from '~/src/lib/push';
 import { logger } from '~/src/lib/logger';
 
@@ -16,8 +16,6 @@ interface WindowCreatorModalProps {
 export default function WindowCreatorModal({ visible, onClose, onSuccess }: WindowCreatorModalProps) {
     const [title, setTitle] = useState('');
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [hour, setHour] = useState('10:00');
-    const [period, setPeriod] = useState<'AM' | 'PM'>('PM');
     const [driverCount, setDriverCount] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -27,8 +25,6 @@ export default function WindowCreatorModal({ visible, onClose, onSuccess }: Wind
             // Reset state
             setTitle('');
             setSelectedDate(new Date());
-            setHour('10:00');
-            setPeriod('PM');
 
             // Fetch potential driver count for the info banner
             fetchDriverCount();
@@ -50,6 +46,27 @@ export default function WindowCreatorModal({ visible, onClose, onSuccess }: Wind
 
     const getFirstDayOfMonth = (year: number, month: number) => {
         return new Date(year, month, 1).getDay();
+    };
+
+    /**
+     * [ENTERPRISE] Retorna o label de deadline baseado no dia da semana da data selecionada.
+     * Domingo: 12:00 / Seg-Sáb: 18:00
+     * @param date - Data selecionada no calendário
+     * @returns String formatada com o horário limite
+     */
+    const getDeadlineLabel = (date: Date): string => {
+        const dayOfWeek = date.getDay();
+        return dayOfWeek === 0 ? '12:00' : '18:00';
+    };
+
+    /**
+     * [ENTERPRISE] Retorna o label do dia da semana em PT-BR
+     * @param date - Data selecionada
+     * @returns Nome do dia da semana (ex: "Domingo", "Segunda-feira")
+     */
+    const getDayOfWeekLabel = (date: Date): string => {
+        const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        return days[date.getDay()];
     };
 
     const renderCalendar = () => {
@@ -158,7 +175,9 @@ export default function WindowCreatorModal({ visible, onClose, onSuccess }: Wind
 
     const handleCreate = async () => {
         const finalTitle = title.trim() || `Convocação ${selectedDate.toLocaleDateString('pt-BR')}`;
-        const timeLimitFormatted = `${hour}${period}`;
+
+        // [ENTERPRISE] Deadline automático baseado no dia da semana
+        const deadlineLabel = getDeadlineLabel(selectedDate);
 
         // Format to YYYY-MM-DD
         const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
@@ -178,20 +197,20 @@ export default function WindowCreatorModal({ visible, onClose, onSuccess }: Wind
                 return;
             }
 
-            // Create window
+            // [ENTERPRISE] Cria janela com timestamp BRT e deadline automático
             await aether.db.collection(COLLECTIONS.AVAILABILITY_WINDOWS).create({
                 title: finalTitle,
                 targetDate: targetStr,
-                timeLimit: timeLimitFormatted,
-                openedAt: new Date().toISOString(),
+                timeLimit: deadlineLabel,
+                openedAt: formatBrazilTimestamp(),
                 isOpen: true
             });
 
-            // Send push notification
+            // [ENTERPRISE] Push com deadline automático no texto
             try {
                 await notifyAllDrivers(
                     `N0VA CONVOCAÇÃO: ${finalTitle} 🚀`,
-                    `Responda até as ${timeLimitFormatted} se você estará disponível dia ${labelStr}. Vagas limitadas, garanta sua escala!`
+                    `Responda até as ${deadlineLabel} se você estará disponível dia ${labelStr}. Vagas limitadas, garanta sua escala!`
                 );
             } catch (pushErr) {
                 logger.warn('Push notification failed, but window was created:', pushErr);
@@ -246,25 +265,28 @@ export default function WindowCreatorModal({ visible, onClose, onSuccess }: Wind
                         <Text className="text-slate-400 font-spaceGroteskBold text-[10px] uppercase tracking-widest mb-3">Data da Janela</Text>
                         {renderCalendar()}
 
-                        {/* Time Limit */}
-                        <Text className="text-slate-400 font-spaceGroteskBold text-[10px] uppercase tracking-widest mb-3">Horário Limite para Resposta</Text>
-                        <View className="flex-row gap-4 mb-8">
-                            <View className="flex-1 bg-[#1c1e29] border border-white/5 rounded-2xl flex-row items-center px-4 h-16">
-                                <Clock color="#ffd500" size={18} className="mr-3" />
-                                <TextInput
-                                    value={hour}
-                                    onChangeText={setHour}
-                                    keyboardType="numbers-and-punctuation"
-                                    className="flex-1 text-white font-spaceGroteskBold text-[15px] h-full"
-                                />
+                        {/* [ENTERPRISE] Deadline Automático — Card Visual */}
+                        <Text className="text-slate-400 font-spaceGroteskBold text-[10px] uppercase tracking-widest mb-3">Horário Limite (Automático)</Text>
+                        <View className="bg-[#1c1e29] border border-white/5 rounded-2xl p-5 mb-6">
+                            <View className="flex-row items-center gap-3 mb-3">
+                                <View className="w-12 h-12 bg-primary/10 rounded-xl items-center justify-center">
+                                    <Timer color="#ffd500" size={22} />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-white font-spaceGroteskBold text-xl">
+                                        {getDeadlineLabel(selectedDate)}
+                                    </Text>
+                                    <Text className="text-slate-400 font-spaceGrotesk text-xs">
+                                        {getDayOfWeekLabel(selectedDate)} — Limite para resposta
+                                    </Text>
+                                </View>
                             </View>
-                            <TouchableOpacity
-                                onPress={() => setPeriod(p => p === 'AM' ? 'PM' : 'AM')}
-                                className="w-1/3 bg-[#1c1e29] border border-white/5 rounded-2xl flex-row items-center justify-center px-4 h-16 gap-2"
-                            >
-                                <Clock color="#ffd500" size={16} />
-                                <Text className="text-white font-spaceGroteskBold text-[15px]">{period}</Text>
-                            </TouchableOpacity>
+                            <View className="bg-white/5 rounded-xl p-3 mt-1">
+                                <Text className="text-slate-400 font-spaceGrotesk text-[11px] leading-relaxed">
+                                    📋 <Text className="text-slate-300 font-spaceGroteskBold">Seg a Sáb:</Text> motoristas podem responder até <Text className="text-primary font-spaceGroteskBold">18:00</Text>{'\n'}
+                                    📋 <Text className="text-slate-300 font-spaceGroteskBold">Domingo:</Text> motoristas podem responder até <Text className="text-primary font-spaceGroteskBold">12:00</Text>
+                                </Text>
+                            </View>
                         </View>
 
                         {/* Info Banner */}

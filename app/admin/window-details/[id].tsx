@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Clock, MapPin, UserCheck, UserMinus, ShieldAlert, Send } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
 import { aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS } from '~/src/lib/collections';
+import { COLLECTIONS, formatBrazilTime } from '~/src/lib/collections';
 import { sendPushNotification } from '~/src/lib/push';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { logger } from '~/src/lib/logger';
@@ -18,6 +18,7 @@ type DetailedDriver = {
     phone?: string;
     expoPushToken?: string;
     type: 'available' | 'unavailable' | 'pending';
+    respondedAt?: string; // [ENTERPRISE] Horário em que respondeu (BRT)
 };
 
 export default function WindowDetailsScreen() {
@@ -58,12 +59,16 @@ export default function WindowDetailsScreen() {
             const pendings: DetailedDriver[] = [];
 
             allDrivers.forEach(driver => {
-                const driverId = driver.user_id || driver._payload?.user_id || driver.id; // Fallbacks para pegar ID do Firebase/Documento
+                const driverId = driver.user_id || driver._payload?.user_id || driver.id;
 
                 const response = windowResponses.find(r => {
                     const fKey = r.driverId || r._payload?.driverId || r.user_id || r._payload?.user_id || r.userId || r._payload?.userId;
                     return fKey === driverId;
                 });
+
+                // [ENTERPRISE] Extrai o timestamp de resposta (respondedAt → createdAt como fallback)
+                const rawRespondedAt = response?.respondedAt || response?._payload?.respondedAt
+                    || response?.createdAt || response?._payload?.createdAt || null;
 
                 const mappedDriver: DetailedDriver = {
                     id: driver.id,
@@ -73,6 +78,7 @@ export default function WindowDetailsScreen() {
                     avatarUrl: driver.avatarUrl || driver._payload?.avatarUrl,
                     phone: driver.phone || driver._payload?.phone,
                     expoPushToken: driver.expoPushToken || driver._payload?.expoPushToken,
+                    respondedAt: rawRespondedAt,
                     type: 'pending'
                 };
 
@@ -171,6 +177,11 @@ export default function WindowDetailsScreen() {
     };
 
     const renderDriverItem = ({ item, index }: { item: DetailedDriver, index: number }) => {
+        // [ENTERPRISE] Formata o horário de resposta em BRT para exibição
+        const respondedTimeLabel = item.respondedAt
+            ? formatBrazilTime(item.respondedAt)
+            : null;
+
         return (
             <Animated.View entering={FadeInDown.delay(index * 50).springify()} className="mb-3">
                 <View className="flex-row items-center p-4 bg-[#151722] rounded-2xl border border-white/5">
@@ -185,7 +196,7 @@ export default function WindowDetailsScreen() {
                                 </Text>
                             </View>
                         )}
-                        {/* Indicador de Status Offline/Online (simulação visual pro status fixo da tab) */}
+                        {/* Indicador de Status */}
                         <View className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#151722] ${activeTab === 'available' ? 'bg-emerald-400' :
                             activeTab === 'unavailable' ? 'bg-red-500' : 'bg-slate-500'
                             }`} />
@@ -195,17 +206,34 @@ export default function WindowDetailsScreen() {
                         <Text className="text-white font-spaceGroteskBold text-base mb-1" numberOfLines={1}>{item.name}</Text>
 
                         {/* Placa com estilo Metal/Mercosul */}
-                        <View className="flex-row items-center">
+                        <View className="flex-row items-center gap-2">
                             <View className="bg-slate-200 px-2 py-0.5 rounded-sm border-t-2 border-sky-600 flex-row items-center shadow-sm">
                                 <Text className="text-[10px] font-spaceGroteskBold text-slate-800 tracking-widest">{item.plate}</Text>
                             </View>
+
+                            {/* [ENTERPRISE] Badge de horário de resposta */}
+                            {respondedTimeLabel && activeTab !== 'pending' && (
+                                <View className="flex-row items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md">
+                                    <Clock size={10} color="#64748b" />
+                                    <Text className="text-[9px] font-spaceGrotesk text-slate-400">
+                                        {respondedTimeLabel}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </View>
 
-                    {/* Action se necessário (exemplo telefone p/ ligar) */}
+                    {/* Badge status do app */}
                     {activeTab === 'pending' && !item.expoPushToken && (
                         <View className="bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
                             <Text className="text-[9px] text-red-400 font-spaceGroteskBold">App Desinstalado</Text>
+                        </View>
+                    )}
+
+                    {/* [ENTERPRISE] Badge "Não respondeu" para pendentes */}
+                    {activeTab === 'pending' && item.expoPushToken && (
+                        <View className="bg-slate-800/80 px-2 py-1 rounded border border-white/5">
+                            <Text className="text-[9px] text-slate-400 font-spaceGroteskBold">Aguardando</Text>
                         </View>
                     )}
                 </View>

@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Switch, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, CheckCircle, ChevronLeft, Truck, Moon, Lock, CheckCircle2, AlertTriangle, Sun, Sunset, CalendarCheck } from 'lucide-react-native';
+import { Calendar, CheckCircle, ChevronLeft, Truck, Moon, Lock, CheckCircle2, AlertTriangle, Sun, Sunset, CalendarCheck, Clock, Timer } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
 import { useAuthStore } from '~/src/store/auth';
 import { aether } from '~/src/lib/aether';
 import { router } from 'expo-router';
 import {
     COLLECTIONS, DriverAvailability, AvailabilityWindow,
-    getTomorrowDateStr, getTodayDateStr
+    getTomorrowDateStr, getTodayDateStr,
+    isDeadlinePassed, getTimeRemainingMs, getDeadlineForDate,
+    formatBrazilTimestamp, formatBrazilTime, getBrazilNow
 } from '~/src/lib/collections';
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,7 +20,16 @@ import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 import { useRealtimeSubscribe } from '~/src/hooks/useRealtimeSubscribe';
 import { logger } from '~/src/lib/logger';
 
-type ScreenState = 'loading' | 'blocked' | 'no_window' | 'already_filled' | 'form';
+type ScreenState = 'loading' | 'blocked' | 'no_window' | 'already_filled' | 'form' | 'expired';
+
+// ============================================================
+// [ENTERPRISE] Mapeamento semântico dos dias da semana para deadlines
+// ============================================================
+const DEADLINE_LABELS: Record<number, string> = {
+    0: '12:00', // Domingo
+    1: '18:00', 2: '18:00', 3: '18:00',
+    4: '18:00', 5: '18:00', 6: '18:00', // Seg-Sáb
+};
 
 export default function AvailabilityScreen() {
     const { user } = useAuthStore();
@@ -34,6 +45,11 @@ export default function AvailabilityScreen() {
     const [selectedShifts, setSelectedShifts] = useState({
         morning: false,
     });
+
+    // [ENTERPRISE] Estado do countdown timer
+    const [countdown, setCountdown] = useState('');
+    const [countdownMs, setCountdownMs] = useState(0);
+
     const toggleShift = (shift: keyof typeof selectedShifts) => {
         setSelectedShifts(prev => ({ ...prev, [shift]: !prev[shift] }));
     };
@@ -49,7 +65,42 @@ export default function AvailabilityScreen() {
         setActionModal({ visible: true, title, message, type });
     };
 
+    /**
+     * [ENTERPRISE] Countdown timer que atualiza a cada segundo.
+     * Formata o tempo restante em "Xh XXmin" ou "XXmin XXs".
+     * Se o deadline expirar enquanto o motorista está na tela, redireciona para 'expired'.
+     */
+    useEffect(() => {
+        if (screenState !== 'form' || !targetDateStr) return;
 
+        const updateCountdown = () => {
+            const remaining = getTimeRemainingMs(targetDateStr);
+            setCountdownMs(remaining);
+
+            if (remaining <= 0) {
+                setCountdown('Encerrado');
+                setScreenState('expired');
+                return;
+            }
+
+            const totalSeconds = Math.floor(remaining / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            if (hours > 0) {
+                setCountdown(`${hours}h ${String(minutes).padStart(2, '0')}min`);
+            } else if (minutes > 0) {
+                setCountdown(`${minutes}min ${String(seconds).padStart(2, '0')}s`);
+            } else {
+                setCountdown(`${seconds}s`);
+            }
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+        return () => clearInterval(interval);
+    }, [screenState, targetDateStr]);
 
     /**
      * [PUSH FIX] Garante registro de push token ao montar a tela.
@@ -81,7 +132,6 @@ export default function AvailabilityScreen() {
         setScreenState('loading');
         try {
             // [Self-Healing] Garante que a integridade referencial do motorista exista na tabela
-            // Agora usa método direto pois as correções de RLS já estão deployadas
             if (user?.id) {
                 try {
                     const statusCheck = await aether.db.collection(COLLECTIONS.DRIVER_STATUS)
@@ -89,10 +139,8 @@ export default function AvailabilityScreen() {
                         .eq('user_id', user.id)
                         .get();
 
-                    // Se não existe, cria via método direto
                     if (!statusCheck || (statusCheck as any[]).length === 0) {
                         try {
-                            // Envia os dados diretamente como campos flat (não como _payload)
                             await aether.db.collection(COLLECTIONS.DRIVER_STATUS).create({
                                 user_id: user.id,
                                 driverName: user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
@@ -100,7 +148,7 @@ export default function AvailabilityScreen() {
                                 expoPushToken: user.metadata?.expoPushToken || '',
                                 status: 'active',
                                 updatedByAdminId: 'system_self_healing',
-                                created_at: new Date().toISOString()
+                                created_at: formatBrazilTimestamp()
                             });
                             console.log('[Self-Healing] Driver Status criado via método direto');
                         } catch (directError) {
@@ -148,7 +196,15 @@ export default function AvailabilityScreen() {
             const firstPendingWindow = openWindows.find(w => !userAvails.some(a => a.targetDate === w.targetDate));
 
             if (firstPendingWindow) {
-                // There is a pending window to answer
+                // [ENTERPRISE] Verifica se o deadline já passou antes de exibir o formulário
+                if (isDeadlinePassed(firstPendingWindow.targetDate)) {
+                    setWindowDoc(firstPendingWindow as unknown as AvailabilityWindow);
+                    setTargetDateStr(firstPendingWindow.targetDate);
+                    formatLabel(firstPendingWindow.targetDate, firstPendingWindow.targetDate === todayStr);
+                    setScreenState('expired');
+                    return;
+                }
+
                 setWindowDoc(firstPendingWindow as unknown as AvailabilityWindow);
                 setTargetDateStr(firstPendingWindow.targetDate);
                 formatLabel(firstPendingWindow.targetDate, firstPendingWindow.targetDate === todayStr);
@@ -157,9 +213,7 @@ export default function AvailabilityScreen() {
             }
 
             // If we are here, ALL open windows are already answered, OR there are no open windows.
-            // Let's gather all future/today responses to show them in the list.
             // 4. Self-Healing: Clean up "Ghost" Responses
-            // If the admin deleted a window in the past, the driver's response might still be floating around.
             const upcomingResponses: any[] = [];
             const ghostResponses: any[] = [];
 
@@ -240,6 +294,17 @@ export default function AvailabilityScreen() {
         }
         if (isLoading) return; // Prevent double clicks
 
+        // [ENTERPRISE] Defesa dupla: verifica deadline antes de salvar
+        if (isDeadlinePassed(targetDateStr)) {
+            showModal(
+                'Prazo Encerrado',
+                'O horário limite para responder esta disponibilidade já passou. Contate o administrador.',
+                'warning'
+            );
+            setScreenState('expired');
+            return;
+        }
+
         setIsLoading(true);
         try {
             // [SENIOR DEV] Anti-Duplication Defense: Check one last time right before inserting
@@ -255,6 +320,9 @@ export default function AvailabilityScreen() {
                 return;
             }
 
+            // [ENTERPRISE] Usa timestamps BRT em vez de UTC
+            const nowBrt = formatBrazilTimestamp();
+
             await aether.db.collection(COLLECTIONS.DRIVER_AVAILABILITY).create({
                 driverId: user.id,
                 driverName: user.metadata?.name || user.name || user.email || '',
@@ -263,8 +331,9 @@ export default function AvailabilityScreen() {
                 targetDate: targetDateStr,
                 isAvailable,
                 shifts: isAvailable ? selectedShifts : { morning: false },
-                lockedAt: new Date().toISOString(),
-                createdAt: new Date().toISOString(),
+                lockedAt: nowBrt,
+                createdAt: nowBrt,
+                respondedAt: nowBrt,
             });
 
             showModal('Pronto!', `Sua disponibilidade foi confirmada para ${targetTitle.toLowerCase()}.`, 'success');
@@ -348,6 +417,78 @@ export default function AvailabilityScreen() {
         );
     }
 
+    // ---- EXPIRED STATE (DEADLINE PASSED) ----
+    if (screenState === 'expired') {
+        const brazilNow = getBrazilNow();
+        const deadlineLabel = DEADLINE_LABELS[brazilNow.getDay()] || '18:00';
+
+        return (
+            <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+                <LinearGradient colors={['#1a1d2e', THEME.colors.background, THEME.colors.headerBackground]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+
+                <View className="flex-row items-center justify-between p-4 z-10 border-b border-border">
+                    <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/driver/dashboard')} className="w-10 h-10 rounded-full items-center justify-center bg-surface border border-border">
+                        <ChevronLeft color="#fff" size={24} />
+                    </TouchableOpacity>
+                    <Text className="text-lg font-spaceGroteskBold tracking-widest uppercase text-white">Disponibilidade</Text>
+                    <View className="w-10" />
+                </View>
+
+                <View className="flex-1 items-center justify-center px-8 z-10">
+                    {/* Ícone de Relógio com Glow Premium */}
+                    <View className="w-24 h-24 bg-red-500/10 rounded-full items-center justify-center border-2 border-red-500/20 mb-6"
+                        style={{
+                            shadowColor: '#ef4444',
+                            shadowOffset: { width: 0, height: 0 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 20,
+                            elevation: 10,
+                        }}
+                    >
+                        <Timer color="#f87171" size={40} />
+                    </View>
+
+                    <Text className="text-3xl font-spaceGroteskBold text-white text-center mb-3">
+                        Prazo Encerrado
+                    </Text>
+                    <Text className="text-[#94a3b8] text-center font-spaceGrotesk text-base leading-relaxed mb-6">
+                        O horário limite para responder a disponibilidade de hoje já passou.
+                    </Text>
+
+                    {/* Card com informações do deadline */}
+                    <View className="bg-surface border border-border rounded-2xl p-5 w-full">
+                        <View className="flex-row items-center gap-3 mb-4">
+                            <View className="w-10 h-10 bg-red-500/10 rounded-xl items-center justify-center">
+                                <Clock color="#f87171" size={20} />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-[10px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-[0.2em]">Horário Limite</Text>
+                                <Text className="text-white text-lg font-spaceGroteskBold">{deadlineLabel}</Text>
+                            </View>
+                        </View>
+                        {targetDateLabel ? (
+                            <View className="flex-row items-center gap-3">
+                                <View className="w-10 h-10 bg-primary/10 rounded-xl items-center justify-center">
+                                    <Calendar color={THEME.colors.primary} size={20} />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-[10px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-[0.2em]">Data da Escala</Text>
+                                    <Text className="text-white text-lg font-spaceGroteskBold">{targetDateLabel}</Text>
+                                </View>
+                            </View>
+                        ) : null}
+                    </View>
+
+                    <Text className="text-text-muted text-[11px] font-spaceGrotesk text-center mt-6 leading-relaxed opacity-60">
+                        Entre em contato com o administrador caso precise registrar sua disponibilidade fora do prazo.
+                    </Text>
+                </View>
+
+                <DriverBottomNav activeTab="availability" />
+            </SafeAreaView>
+        );
+    }
+
     // ---- ALREADY FILLED STATE ----
     if (screenState === 'already_filled') {
         return (
@@ -378,6 +519,10 @@ export default function AvailabilityScreen() {
                         {allResponses.map((response, index) => {
                             const [year, month, day] = response.targetDate.split('-');
                             const formattedDate = `${day}/${month}/${year}`;
+
+                            // [ENTERPRISE] Extrai e formata o horário de resposta em BRT
+                            const respondedAtRaw = (response as any).respondedAt || (response as any).createdAt;
+                            const respondedAtFormatted = respondedAtRaw ? formatBrazilTime(respondedAtRaw) : null;
 
                             return (
                                 <View key={response.id || index} className="bg-surface border border-border rounded-3xl overflow-hidden shadow-lg w-full mb-6 relative">
@@ -415,6 +560,16 @@ export default function AvailabilityScreen() {
                                                 <AlertTriangle color="#f87171" size={20} />
                                                 <Text className="text-[#94a3b8] font-spaceGrotesk text-[13px] flex-1 leading-relaxed">
                                                     Você declarou indisponibilidade para este dia.
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        {/* [ENTERPRISE] Badge de horário de resposta */}
+                                        {respondedAtFormatted && (
+                                            <View className="flex-row items-center gap-2 mt-3 pt-3 border-t border-border">
+                                                <Clock color="#64748b" size={12} />
+                                                <Text className="text-text-muted text-[10px] font-spaceGrotesk">
+                                                    Respondido às {respondedAtFormatted}
                                                 </Text>
                                             </View>
                                         )}
@@ -462,6 +617,35 @@ export default function AvailabilityScreen() {
             </View>
 
             <ScrollView className="flex-1 px-6 pb-24 z-10" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
+
+                {/* [ENTERPRISE] Countdown Timer Banner */}
+                {countdown && countdownMs > 0 && (
+                    <View className={`flex-row items-center justify-center gap-2.5 mt-4 py-3 px-4 rounded-2xl border ${
+                        countdownMs < 3600000
+                            ? 'bg-red-500/10 border-red-500/20'
+                            : 'bg-primary/10 border-primary/20'
+                    }`}>
+                        <Timer
+                            color={countdownMs < 3600000 ? '#f87171' : THEME.colors.primary}
+                            size={18}
+                        />
+                        <Text className={`font-spaceGroteskBold text-[13px] tracking-wider ${
+                            countdownMs < 3600000 ? 'text-[#f87171]' : 'text-primary'
+                        }`}>
+                            PRAZO: {countdown}
+                        </Text>
+                        <View className={`px-2 py-0.5 rounded-full ${
+                            countdownMs < 3600000 ? 'bg-red-500/20' : 'bg-primary/20'
+                        }`}>
+                            <Text className={`text-[9px] font-spaceGroteskBold uppercase tracking-widest ${
+                                countdownMs < 3600000 ? 'text-[#f87171]' : 'text-primary'
+                            }`}>
+                                {countdownMs < 3600000 ? 'URGENTE' : 'ABERTO'}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
                 {/* Title Section */}
                 <View className="mt-6 mb-8 items-center">
                     <Text className="text-[11px] font-spaceGroteskBold text-[#94a3b8] uppercase tracking-[0.2em] mb-2">

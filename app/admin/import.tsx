@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { useAuthStore } from '~/src/store/auth';
-import { COLLECTIONS, DriverAvailability, Assignment, getTodayDateStr, getTomorrowDateStr, City } from '~/src/lib/collections';
+import { COLLECTIONS, DriverAvailability, Assignment, getTodayDateStr, getTomorrowDateStr, City, formatBrazilTimestamp } from '~/src/lib/collections';
 import { parseLogisticsSheet, RouteDraft } from '~/src/lib/gemini';
 import ImportPreviewTable from '~/src/components/ImportPreviewTable';
 import { notifyDriver, isExpoGo } from '~/src/lib/push';
@@ -47,6 +47,28 @@ export default function ImportRouteScreen() {
     const [pendingCitiesToRegister, setPendingCitiesToRegister] = useState<string[]>([]);
     const [isRegisteringCities, setIsRegisteringCities] = useState(false);
 
+    /**
+     * [FIX F5] Normaliza registros de disponibilidade do Aether REST.
+     * Extraído para escopo do módulo — evita duplicação de código.
+     * @param raw - Registro bruto da API (pode ter campos em _payload)
+     * @returns Objeto DriverAvailability normalizado
+     */
+    const normalizeAvailability = useCallback((raw: any): DriverAvailability => {
+        const p = raw._payload || raw;
+        return {
+            id: raw.id || p.id || '',
+            driverId: p.driverId || raw.driverId || '',
+            driverName: p.driverName || raw.driverName || '',
+            driverPlate: (p.driverPlate || raw.driverPlate || '').toUpperCase(),
+            windowId: p.windowId || raw.windowId || '',
+            targetDate: p.targetDate || raw.targetDate || '',
+            isAvailable: p.isAvailable ?? raw.isAvailable ?? true,
+            shifts: p.shifts || raw.shifts || { morning: true },
+            lockedAt: p.lockedAt || raw.lockedAt || '',
+            createdAt: p.createdAt || raw.createdAt || '',
+        };
+    }, []);
+
     const loadDriversForEngine = useCallback(async () => {
         try {
             const targetDateStr = isSameDay ? getTodayDateStr() : getTomorrowDateStr();
@@ -61,24 +83,6 @@ export default function ImportRouteScreen() {
             ]);
 
             setKnownDatabaseCities(citiesRaw as unknown as City[]);
-
-            // [CRITICAL FIX] A API REST do Aether pode retornar campos dentro de _payload.
-            // Normalizamos cada registro para garantir acesso direto aos campos.
-            const normalizeAvailability = (raw: any): DriverAvailability => {
-                const p = raw._payload || raw;
-                return {
-                    id: raw.id || p.id || '',
-                    driverId: p.driverId || raw.driverId || '',
-                    driverName: p.driverName || raw.driverName || '',
-                    driverPlate: (p.driverPlate || raw.driverPlate || '').toUpperCase(),
-                    windowId: p.windowId || raw.windowId || '',
-                    targetDate: p.targetDate || raw.targetDate || '',
-                    isAvailable: p.isAvailable ?? raw.isAvailable ?? true,
-                    shifts: p.shifts || raw.shifts || { morning: true },
-                    lockedAt: p.lockedAt || raw.lockedAt || '',
-                    createdAt: p.createdAt || raw.createdAt || '',
-                };
-            };
 
             // Normaliza e filtra pela data alvo
             const allNormalized = (availabilityRecords as any[]).map(normalizeAvailability);
@@ -154,22 +158,7 @@ export default function ImportRouteScreen() {
                 aetherFetchAll(COLLECTIONS.DRIVER_STATUS),
             ]);
 
-            const normalizeAvailability = (raw: any): DriverAvailability => {
-                const p = raw._payload || raw;
-                return {
-                    id: raw.id || p.id || '',
-                    driverId: p.driverId || raw.driverId || '',
-                    driverName: p.driverName || raw.driverName || '',
-                    driverPlate: (p.driverPlate || raw.driverPlate || '').toUpperCase(),
-                    windowId: p.windowId || raw.windowId || '',
-                    targetDate: p.targetDate || raw.targetDate || '',
-                    isAvailable: p.isAvailable ?? raw.isAvailable ?? true,
-                    shifts: p.shifts || raw.shifts || { morning: true },
-                    lockedAt: p.lockedAt || raw.lockedAt || '',
-                    createdAt: p.createdAt || raw.createdAt || '',
-                };
-            };
-
+            // [FIX F5] Usa normalizeAvailability extraída (sem duplicação)
             const allNormalized = (availabilityRecords as any[]).map(normalizeAvailability);
             const dateFiltered = allNormalized.filter(r => r.targetDate === targetDateStr);
             const knownPlates = new Set(dateFiltered.map(d => d.driverPlate.replace(/[^A-Z0-9]/g, '')));
@@ -255,8 +244,18 @@ export default function ImportRouteScreen() {
                 allFormattedRoutes = [...allFormattedRoutes, ...formatted];
             }
 
+            // [FIX F1] Deduplicação: remove rotas com mesma placa+doca que já existam na tabela
             setRoutes(prev => {
-                const accumulated = [...prev, ...allFormattedRoutes];
+                const existingKeys = new Set(
+                    prev.map(r => `${r.driverPlate.replace(/[^A-Z0-9]/g, '')}_${r.dock}`)
+                );
+                const uniqueNewRoutes = allFormattedRoutes.filter(r => {
+                    const key = `${r.driverPlate.replace(/[^A-Z0-9]/g, '')}_${r.dock}`;
+                    if (existingKeys.has(key)) return false;
+                    existingKeys.add(key); // Evita duplicatas dentro do próprio lote novo
+                    return true;
+                });
+                const accumulated = [...prev, ...uniqueNewRoutes];
                 recalculateValidationMap(accumulated, availableDrivers);
                 return accumulated;
             });
@@ -343,7 +342,7 @@ export default function ImportRouteScreen() {
                     name: cityName,
                     code: cityName.substring(0, 3).toUpperCase(),
                     isActive: true,
-                    createdAt: new Date().toISOString(),
+                    createdAt: formatBrazilTimestamp(), // [FIX F3] BRT em vez de UTC
                 });
                 successCount++;
             }
@@ -438,6 +437,30 @@ export default function ImportRouteScreen() {
 
                     let dbCreated = false;
 
+                    // [FIX F1] Anti-duplicata no banco: verifica se Assignment já existe
+                    try {
+                        const existingAssignments = await aether.db.collection(COLLECTIONS.ASSIGNMENTS)
+                            .query()
+                            .eq('driverPlate', driverData.driverPlate)
+                            .eq('dock', route.dock)
+                            .get();
+
+                        // Filtra por data de hoje para não bloquear assignments de outros dias
+                        const todayStr = getTodayDateStr();
+                        const hasDuplicate = (existingAssignments as any[]).some(a => {
+                            const created = a.createdAt || a._payload?.createdAt || '';
+                            return created.startsWith(todayStr);
+                        });
+
+                        if (hasDuplicate) {
+                            __DEV__ && console.warn(`[Anti-Duplicata] Assignment já existe p/ ${route.driverPlate} na doca ${route.dock} hoje. Ignorando.`);
+                            return null;
+                        }
+                    } catch (dupCheckErr) {
+                        // Se a checagem falhar, segue adiante (fail-open para não bloquear o fluxo)
+                        __DEV__ && console.warn('[Anti-Duplicata] Checagem falhou, prosseguindo:', dupCheckErr);
+                    }
+
                     // Cria Assignment mapeando TODOS os campos do PDF com RETRY
                     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
                         try {
@@ -458,7 +481,7 @@ export default function ImportRouteScreen() {
                                 dockStatus: 'waiting',
                                 status: 'pending',
                                 createdByAdminId: snapAdminId,
-                                createdAt: new Date().toISOString(),
+                                createdAt: formatBrazilTimestamp(), // [FIX F2] BRT em vez de UTC
                             });
                             dbCreated = true;
                             break; // Sucesso na criacao
@@ -802,7 +825,7 @@ export default function ImportRouteScreen() {
                                     <>
                                         <CheckCircle2 color="#000" size={20} />
                                         <Text className="text-black font-spaceGroteskBold text-[15px] uppercase tracking-wide">
-                                            Cadastrar As {pendingCitiesToRegister.length} Magicamentes
+                                            Cadastrar {pendingCitiesToRegister.length} Magicamente
                                         </Text>
                                     </>
                                 )}
