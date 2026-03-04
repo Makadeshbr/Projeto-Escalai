@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Image } from 'react-native';
+import { logger } from '~/src/lib/logger';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Lock, Eye, EyeOff, LogIn, Fingerprint } from 'lucide-react-native';
+import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore, AuthUser } from '~/src/store/auth';
@@ -11,11 +12,20 @@ import { Input } from '~/src/components/ui/Input';
 import { Button } from '~/src/components/ui/Button';
 import { ensureDriverPushToken } from '~/src/lib/push';
 
+/** Número de tentativas falhas antes de ativar o cooldown */
+const MAX_LOGIN_ATTEMPTS = 5;
+/** Duração do cooldown em milissegundos (30 segundos) */
+const LOCKOUT_DURATION_MS = 30_000;
+
 export default function LoginScreen() {
     const [driverId, setDriverId] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Controle de rate limiting — evita brute force de senha
+    const [loginAttempts, setLoginAttempts] = useState(0);
+    const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
     // Alert Modal State
     const [alertConfig, setAlertConfig] = useState<{
@@ -40,7 +50,28 @@ export default function LoginScreen() {
 
     const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
+    /**
+     * Verifica se o usuário está em período de bloqueio por tentativas excessivas.
+     * Retorna os segundos restantes ou 0 se não há bloqueio ativo.
+     */
+    const getRemainingLockoutSeconds = (): number => {
+        if (!lockoutUntil) return 0;
+        const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+        return remaining > 0 ? remaining : 0;
+    };
+
     const handleLogin = async () => {
+        // Verifica bloqueio por tentativas excessivas antes de qualquer validação
+        const remainingSeconds = getRemainingLockoutSeconds();
+        if (remainingSeconds > 0) {
+            showAlert(
+                'Muitas Tentativas',
+                `Por segurança, o acesso está temporariamente bloqueado. Tente novamente em ${remainingSeconds} segundo${remainingSeconds !== 1 ? 's' : ''}.`,
+                'warning'
+            );
+            return;
+        }
+
         if (!driverId || !password) {
             showAlert('Dados Incompletos', 'Por favor, preencha seu e-mail e senha para acessar o portal.', 'warning');
             return;
@@ -77,6 +108,9 @@ export default function LoginScreen() {
                 metadata: (authUser.metadata as Record<string, unknown>) || {},
             };
 
+            // Login bem-sucedido — zera contador de tentativas
+            setLoginAttempts(0);
+            setLockoutUntil(null);
             login(typedUser, role);
 
             // [SENIOR FIX] Captura a permissão de Push no exato momento do Login.
@@ -96,7 +130,7 @@ export default function LoginScreen() {
                 router.replace('/driver/dashboard');
             }
         } catch (error: any) {
-            console.error("[Login Error]", error);
+            logger.error('[Login]', error);
 
             // Tratamento de mensagens granulares do Auth
             let erroTratado = 'Erro ao conectar com o servidor. Verifique sua internet.';
@@ -111,6 +145,14 @@ export default function LoginScreen() {
             } else if (error?.message) {
                 // Remove prefixos técnicos do Firebase/Supabase caso vazem
                 erroTratado = error.message.replace(/firebase|auth\//gi, '').trim();
+            }
+
+            // Incrementa contador de tentativas falhas e aplica bloqueio se necessário
+            const newAttempts = loginAttempts + 1;
+            setLoginAttempts(newAttempts);
+            if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+                setLockoutUntil(Date.now() + LOCKOUT_DURATION_MS);
+                setLoginAttempts(0); // Reseta para permitir nova janela após cooldown
             }
 
             showAlert('Falha na Autenticação', erroTratado, 'error');
@@ -181,24 +223,8 @@ export default function LoginScreen() {
                                 containerClassName="mb-1"
                             />
 
-                            {/* Recuperação de senha — funcionalidade pendente de implementação */}
-                            <View className="flex-row justify-end mt-3">
-                                <TouchableOpacity disabled onPress={() => { }} style={{ opacity: 0.4 }}>
-                                    <Text className="text-[13px] font-spaceGrotesk text-[#94a3b8]">
-                                        Esqueci minha senha (em breve)
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
                         </View>
                     </View>
-
-                    {/* Biometria — funcionalidade pendente de implementação com expo-local-authentication */}
-                    <TouchableOpacity disabled className="flex-row items-center justify-center gap-2 mb-8 py-2 relative z-10" style={{ opacity: 0.35 }}>
-                        <Fingerprint color="#475569" size={24} />
-                        <Text className="text-[13px] font-spaceGrotesk text-text-muted">
-                            Biometria (em breve)
-                        </Text>
-                    </TouchableOpacity>
 
                     {/* Action Buttons */}
                     <View className="gap-4 w-full relative z-10">
