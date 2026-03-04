@@ -402,39 +402,53 @@ export default function ImportRouteScreen() {
         setIsDispatching(true);
         let failedPushes = 0;
         let successCount = 0;
-        let noDriverCount = 0;
 
         try {
-            // Snapshot do contexto atual (evita race conditions com state updates)
             const snapRoutes = [...routes];
             const snapDrivers = [...availableDrivers];
             const snapAdminId = user?.id || '';
 
-            // [FIX CRÍTICO] Processa TODAS as rotas, não apenas as validadas.
-            // Rotas com placa validada recebem push. Rotas sem match são criadas
-            // com dados do PDF (nome/placa da IA) para não perder nenhuma rota.
-            setDispatchProgress({ current: 0, total: snapRoutes.length });
+            // Filtra apenas motoristas cadastrados no sistema (com match de placa)
+            const validRoutes = snapRoutes.filter(r => {
+                const cleanPlate = r.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                return validationMap[cleanPlate] === true;
+            });
 
-            const BATCH_SIZE = 10;
-            const BATCH_DELAY_MS = 200;
+            // Rotas de motoristas NÃO cadastrados — ficam na tabela para correção
+            const invalidRoutes = snapRoutes.filter(r => {
+                const cleanPlate = r.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                return validationMap[cleanPlate] !== true;
+            });
+
+            if (validRoutes.length === 0) {
+                // Nenhum motorista válido — avisa e para
+                setResultData({
+                    title: 'Nenhum Motorista Cadastrado',
+                    message: `Nenhuma das ${snapRoutes.length} placas lidas pela IA foi encontrada na base de motoristas. Todos os motoristas precisam estar cadastrados no app para receber rotas.`,
+                    type: 'error'
+                });
+                setResultModalVisible(true);
+                setIsDispatching(false);
+                return;
+            }
+
+            setDispatchProgress({ current: 0, total: validRoutes.length });
+
+            const BATCH_SIZE = 5;
+            const BATCH_DELAY_MS = 300;
             const MAX_RETRIES = 3;
 
-            for (let i = 0; i < snapRoutes.length; i += BATCH_SIZE) {
-                const batch = snapRoutes.slice(i, i + BATCH_SIZE);
+            for (let i = 0; i < validRoutes.length; i += BATCH_SIZE) {
+                const batch = validRoutes.slice(i, i + BATCH_SIZE);
 
                 const batchPromises = batch.map(async (route) => {
                     const cleanPlate = route.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-                    // Tenta encontrar driver na base (disponibilidade + status)
                     const driverData = snapDrivers.find(
                         d => d.driverPlate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanPlate
                     );
 
-                    // [FIX] Se não achar na base, usa dados da IA/PDF como fallback
-                    const driverActualId = driverData?.driverId || driverData?.id || '';
-                    const driverName = driverData?.driverName || route.driverName || 'Motorista';
-                    const driverPlate = driverData?.driverPlate || route.driverPlate;
-                    const isValidated = !!driverData;
+                    if (!driverData) return null;
+                    const driverActualId = driverData.driverId || driverData.id;
 
                     let dbCreated = false;
 
@@ -442,7 +456,7 @@ export default function ImportRouteScreen() {
                     try {
                         const existingAssignments = await aether.db.collection(COLLECTIONS.ASSIGNMENTS)
                             .query()
-                            .eq('driverPlate', driverPlate)
+                            .eq('driverPlate', driverData.driverPlate)
                             .eq('dock', route.dock)
                             .get();
 
@@ -453,7 +467,7 @@ export default function ImportRouteScreen() {
                         });
 
                         if (hasDuplicate) {
-                            __DEV__ && console.warn(`[Anti-Duplicata] Assignment já existe p/ ${route.driverPlate} doca ${route.dock}. Ignorando.`);
+                            __DEV__ && console.warn(`[Anti-Duplicata] ${route.driverPlate} doca ${route.dock} já existe hoje.`);
                             return null;
                         }
                     } catch (dupCheckErr) {
@@ -475,8 +489,8 @@ export default function ImportRouteScreen() {
                                 routeLabel: route.routeLabel || '',
                                 isSdd: route.isSdd,
                                 driverId: driverActualId,
-                                driverName: driverName,
-                                driverPlate: driverPlate,
+                                driverName: driverData.driverName,
+                                driverPlate: driverData.driverPlate,
                                 dockStatus: 'waiting',
                                 status: 'pending',
                                 createdByAdminId: snapAdminId,
@@ -490,28 +504,21 @@ export default function ImportRouteScreen() {
                                 console.error(`[Dispatch] Falha final DB p/ ${route.driverPlate}`);
                                 return null;
                             }
-                            await new Promise(r => setTimeout(r, 500 * attempt));
+                            await new Promise(r => setTimeout(r, 800 * attempt));
                         }
                     }
 
                     if (dbCreated) {
-                        // Push apenas para motoristas validados (que existem na base com ID)
-                        if (isValidated && driverActualId) {
-                            try {
-                                await notifyDriver(
-                                    driverActualId,
-                                    'NOVA ROTA NA ESCALA 📦',
-                                    `Você foi escalado para a base ${route.city} (Turno: ${route.waveLabel}). Rota: ${route.routeLabel || 'N/A'}. Dirija-se à Doca ${route.dock}${route.isSdd ? ' com URGÊNCIA (Prioridade Laranja)' : ''}.`
-                                );
-                                return { route, pushSuccess: true, validated: true };
-                            } catch (pushErr) {
-                                __DEV__ && console.warn(`[Dispatch] Push falhou p/ ${route.driverPlate}`, pushErr);
-                                return { route, pushSuccess: false, validated: true };
-                            }
-                        } else {
-                            // Rota criada mas sem push (motorista avulso/não cadastrado)
-                            noDriverCount++;
-                            return { route, pushSuccess: false, validated: false };
+                        try {
+                            await notifyDriver(
+                                driverActualId,
+                                'NOVA ROTA NA ESCALA 📦',
+                                `Você foi escalado para a base ${route.city} (Turno: ${route.waveLabel}). Rota: ${route.routeLabel || 'N/A'}. Dirija-se à Doca ${route.dock}${route.isSdd ? ' com URGÊNCIA (Prioridade Laranja)' : ''}.`
+                            );
+                            return { route, pushSuccess: true };
+                        } catch (pushErr) {
+                            __DEV__ && console.warn(`[Dispatch] Push falhou p/ ${route.driverPlate}`, pushErr);
+                            return { route, pushSuccess: false };
                         }
                     }
 
@@ -523,9 +530,7 @@ export default function ImportRouteScreen() {
                 batchResults.forEach(r => {
                     if (r.status === 'fulfilled' && r.value) {
                         successCount++;
-                        if (r.value.validated && !r.value.pushSuccess) {
-                            failedPushes++;
-                        }
+                        if (!r.value.pushSuccess) failedPushes++;
                     } else if (r.status === 'rejected') {
                         console.warn('[Dispatch] Falha sistêmica no Batch:', r.reason);
                     }
@@ -533,43 +538,43 @@ export default function ImportRouteScreen() {
 
                 setDispatchProgress(prev => ({ ...prev, current: prev.current + batch.length }));
 
-                if (i + BATCH_SIZE < snapRoutes.length) {
+                if (i + BATCH_SIZE < validRoutes.length) {
                     await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
                 }
             }
 
-            // Limpa tabela após despacho
-            setRoutes([]);
-            setValidationMap({});
-
-            // Monta mensagem de resultado
-            if (successCount === 0) {
+            // Mantém rotas de motoristas não cadastrados na tabela
+            if (invalidRoutes.length > 0) {
+                setRoutes(invalidRoutes);
+                const pushNote = failedPushes > 0
+                    ? (isExpoGo
+                        ? '\n\nPush indisponível no Expo Go (modo dev).'
+                        : `\n\n${failedPushes} push(es) falharam.`)
+                    : '';
                 setResultData({
-                    title: 'Nenhuma Rota Despachada',
-                    message: 'Nenhuma rota foi criada. Possível causa: todas já existiam no sistema de hoje (anti-duplicata) ou erro de conexão.',
-                    type: 'error'
+                    title: 'Despacho Parcial',
+                    message: `${successCount} rotas despachadas para motoristas cadastrados.\n\n${invalidRoutes.length} motorista(s) NÃO cadastrados ficaram na tabela. Cadastre-os no app antes de despachar.${pushNote}`,
+                    type: 'partial'
                 });
-            } else if (noDriverCount > 0 || failedPushes > 0) {
-                const parts: string[] = [];
-                parts.push(`${successCount} rotas criadas com sucesso.`);
-                if (noDriverCount > 0) parts.push(`${noDriverCount} motorista(s) avulsos (sem cadastro) — rotas criadas mas sem notificação push.`);
+            } else {
+                setRoutes([]);
+                setValidationMap({});
                 if (failedPushes > 0) {
                     const pushNote = isExpoGo
                         ? 'Push indisponível no Expo Go (modo dev).'
-                        : `${failedPushes} push(es) falharam.`;
-                    parts.push(pushNote);
+                        : `${failedPushes} celular(es) não receberam push.`;
+                    setResultData({
+                        title: 'Rotas Criadas (Push Parcial)',
+                        message: `${successCount} rotas criadas com sucesso.\n\n${pushNote}`,
+                        type: 'partial'
+                    });
+                } else {
+                    setResultData({
+                        title: 'Despacho Perfeito',
+                        message: `100% da tabela (${successCount} rotas) despachada para a frota com sucesso!`,
+                        type: 'success'
+                    });
                 }
-                setResultData({
-                    title: 'Despacho Concluído',
-                    message: parts.join('\n\n'),
-                    type: noDriverCount > 0 ? 'partial' : 'success'
-                });
-            } else {
-                setResultData({
-                    title: 'Despacho Perfeito',
-                    message: `100% da tabela (${successCount} rotas) despachada para a frota com sucesso!`,
-                    type: 'success'
-                });
             }
             setResultModalVisible(true);
 
