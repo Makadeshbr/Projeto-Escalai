@@ -5,7 +5,7 @@ import { THEME } from '~/src/constants/theme';
 import { Bell, Zap, CheckCircle, Navigation, History, AlertTriangle, TrendingUp, User, MapPin, CheckCircle2, Package, QrCode } from 'lucide-react-native';
 import { useAuthStore } from '~/src/store/auth';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS, Assignment } from '~/src/lib/collections';
+import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { useRealtimeSubscribe } from '~/src/hooks/useRealtimeSubscribe';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -90,13 +90,30 @@ export default function DashboardScreen() {
             // O .query() do SDK em fallback às vezes retorna vazio durante oscilações.
             const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as unknown as Assignment[];
 
-            // Filtra as atribuições deste motorista e ignora as rotas que sofreram limpeza pelo admin (archived)
-            const allAssigned = allAssignmentsRaw.filter(a => a.driverId === user.id && a.archived !== true);
+            // [CRITICAL FIX] O motorista NÃO DEVE ver as rotas do dia anterior que por ventura os Admins
+            // tenham esquecido de "limpar"/arquivar. Aplicamos filtro estrito da Data de Hoje.
+            const todayStr = getTodayDateStr();
+
+            // Filtra as atribuições deste motorista, ignora as rotas que sofreram limpeza (archived)
+            // AND garante que SÓ ENTRA AS DE HOJE
+            const allAssigned = allAssignmentsRaw.filter(a => {
+                if (a.driverId !== user.id || a.archived === true || !a.createdAt) return false;
+                
+                const createdDate = new Date(a.createdAt);
+                if (isNaN(createdDate.getTime())) return false;
+                
+                const year = createdDate.getFullYear();
+                const month = String(createdDate.getMonth() + 1).padStart(2, '0');
+                const day = String(createdDate.getDate()).padStart(2, '0');
+                const assignmentDateStr = `${year}-${month}-${day}`;
+                
+                return assignmentDateStr === todayStr;
+            });
 
             if (__DEV__) {
                 console.log(`[Driver Dashboard] ID local: ${user.id}`);
                 console.log(`[Driver Dashboard] Total de assignments recebidos: ${allAssignmentsRaw.length}`);
-                console.log(`[Driver Dashboard] Assignments correspondendo ao ID: ${allAssigned.length}`);
+                console.log(`[Driver Dashboard] Assignments de HOJE correspondendo ao ID: ${allAssigned.length}`);
             }
 
             if (allAssignmentsRaw.length > 0 && allAssigned.length === 0) {
