@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
     View, Text, Modal, TouchableOpacity, ScrollView,
-    Image, ActivityIndicator, Dimensions, FlatList
+    Image, ActivityIndicator, Dimensions, FlatList, TextInput
 } from 'react-native';
-import { ZoomIn } from 'lucide-react-native';
+import { ZoomIn, Search } from 'lucide-react-native';
 import { X, ChevronLeft, ChevronRight, QrCode, Package } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
 import { aetherFetchAll } from '~/src/lib/aether';
@@ -45,6 +45,7 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
     const [qrCodes, setQrCodes] = useState<SackQRCode[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
 
     /** Refs de ScrollView com zoom — permite resetar zoom ao trocar de slide */
     const zoomRefs = useRef<Record<string, ScrollView | null>>({});
@@ -58,6 +59,25 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
             ref?.scrollTo?.({ x: 0, y: 0, animated: false });
         });
     }, []);
+
+    const filteredQRCodes = useMemo(() => {
+        if (!searchQuery) return qrCodes;
+        const queryNumbers = searchQuery.replace(/\D/g, ''); // Garante que é número
+        if (!queryNumbers) return qrCodes;
+
+        return qrCodes.filter(qr => {
+            const qrNumber = extractSortNumber(qr.label);
+            return qrNumber !== null && qrNumber.toString().includes(queryNumbers);
+        });
+    }, [qrCodes, searchQuery]);
+
+    const handleSearch = (text: string) => {
+        const numericText = text.replace(/[^0-9]/g, '');
+        setSearchQuery(numericText);
+        setActiveIndex(0);
+        resetAllZoom();
+    };
+
 
     /**
      * Busca todos os QR Codes ativos (não arquivados) do Aether BaaS.
@@ -88,6 +108,7 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
 
                 setQrCodes(active);
                 setActiveIndex(0);
+                setSearchQuery('');
             } catch (error) {
                 logger.error('[QRViewer]', 'Erro ao buscar QR Codes:', error);
             } finally {
@@ -155,7 +176,7 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
     const handleScroll = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
         const index = Math.round(offsetX / SCREEN_WIDTH);
-        if (index >= 0 && index < qrCodes.length) {
+        if (index >= 0 && index < filteredQRCodes.length) {
             if (index !== activeIndex) {
                 resetAllZoom();
             }
@@ -188,38 +209,61 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
                     </TouchableOpacity>
                 </View>
 
+                {/* Sutil Barra de Busca Numérica */}
+                {!isLoading && qrCodes.length > 0 && (
+                    <View className="px-5 py-3 border-b border-border bg-background/50">
+                        <View className="flex-row items-center bg-surface border border-border/70 rounded-xl px-4 py-1">
+                            <Search color="#94a3b8" size={18} />
+                            <TextInput
+                                value={searchQuery}
+                                onChangeText={handleSearch}
+                                placeholder="Buscar saca pelo número..."
+                                placeholderTextColor="#64748b"
+                                keyboardType="number-pad"
+                                className="flex-1 ml-3 text-white font-spaceGrotesk text-[15px] h-10"
+                                maxLength={8}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => handleSearch('')} className="p-1">
+                                    <X color="#94a3b8" size={16} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                )}
+
                 {/* Conteúdo */}
                 {isLoading ? (
                     <View className="flex-1 items-center justify-center">
                         <ActivityIndicator size="large" color={THEME.colors.primary} />
                         <Text className="text-[#94a3b8] mt-4 font-spaceGrotesk">Buscando QR Codes...</Text>
                     </View>
-                ) : qrCodes.length === 0 ? (
+                ) : filteredQRCodes.length === 0 ? (
                     <View className="flex-1 items-center justify-center px-8">
                         <View className="w-20 h-20 rounded-full bg-surface border border-border items-center justify-center mb-6">
                             <Package color="#94a3b8" size={36} />
                         </View>
                         <Text className="text-white text-xl font-spaceGroteskBold text-center mb-2">
-                            Nenhum QR Code disponível
+                            {searchQuery ? 'Nenhnuma saca com esse número' : 'Nenhum QR Code disponível'}
                         </Text>
                         <Text className="text-[#94a3b8] font-spaceGrotesk text-center leading-relaxed">
-                            O administrador ainda não subiu os QR Codes das sacas. Quando estiverem disponíveis, aparecerão aqui.
+                            {searchQuery ? 'Tente buscar por um identificador diferente.' : 'O administrador ainda não subiu os QR Codes das sacas. Quando estiverem disponíveis, aparecerão aqui.'}
                         </Text>
                     </View>
                 ) : (
                     <View className="flex-1 justify-center">
                         {/* Indicador de posição */}
-                        <View className="flex-row items-center justify-center mb-6 gap-2">
+                        <View className="flex-row items-center justify-center mt-6 mb-6 gap-2">
                             <View className="bg-orange-500/10 border border-orange-500/20 px-4 py-2 rounded-full">
                                 <Text className="text-orange-400 font-spaceGroteskBold text-sm tracking-wider">
-                                    {activeIndex + 1} de {qrCodes.length}
+                                    {activeIndex + 1} de {filteredQRCodes.length}
                                 </Text>
                             </View>
                         </View>
 
-                        {/* Carousel horizontal */}
+                        {/* Carousel horizontal MUITO OTIMIZADO PARA IMAGENS HD */}
                         <FlatList
-                            data={qrCodes}
+                            data={filteredQRCodes}
                             renderItem={renderQRSlide}
                             keyExtractor={(item) => item.id}
                             horizontal
@@ -232,20 +276,27 @@ export function SackQRCodeViewerModal({ visible, onClose }: SackQRCodeViewerModa
                                 offset: SCREEN_WIDTH * index,
                                 index,
                             })}
+                            // Flags Extremos de Otimização Memory-Leak (Renderiza de 1 em 1 slide)
+                            initialNumToRender={1}
+                            maxToRenderPerBatch={1}
+                            windowSize={3}
+                            removeClippedSubviews={true}
                         />
 
-                        {/* Dots indicadores */}
-                        <View className="flex-row items-center justify-center mt-6 gap-2 pb-8">
-                            {qrCodes.map((_, index) => (
-                                <View
-                                    key={index}
-                                    className={`rounded-full ${index === activeIndex
-                                        ? 'w-8 h-2 bg-orange-500'
-                                        : 'w-2 h-2 bg-[#2d3345]'
-                                        }`}
-                                />
-                            ))}
-                        </View>
+                        {/* Dots indicadores limitados a no máximo 20 imagens, pra não vazar pra tela e travar */}
+                        {filteredQRCodes.length <= 20 ? (
+                            <View className="flex-row items-center justify-center mt-6 gap-2 pb-8 flex-wrap px-4">
+                                {filteredQRCodes.map((_, index) => (
+                                    <View
+                                        key={index}
+                                        className={`rounded-full mb-1 ${index === activeIndex
+                                            ? 'w-8 h-2 bg-orange-500'
+                                            : 'w-2 h-2 bg-[#2d3345]'
+                                            }`}
+                                    />
+                                ))}
+                            </View>
+                        ) : <View className="pb-8" />}
                     </View>
                 )}
             </View>

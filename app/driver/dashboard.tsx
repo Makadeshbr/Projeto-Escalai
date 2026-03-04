@@ -330,15 +330,15 @@ export default function DashboardScreen() {
                             {assignments.some(a => !!a.sacas && a.sacas > 0) && (
                                 <TouchableOpacity
                                     onPress={() => setShowQRCodes(true)}
-                                    className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4 flex-row items-center gap-3 mx-2 mb-4"
+                                    className="bg-surface border border-[#f9731640] rounded-2xl p-4 flex-row items-center gap-3 mx-2 mb-4 shadow-sm"
                                     activeOpacity={0.7}
                                 >
-                                    <View className="w-10 h-10 rounded-full bg-orange-500/20 items-center justify-center">
+                                    <View className="w-10 h-10 rounded-full items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)' }}>
                                         <QrCode color="#f97316" size={20} />
                                     </View>
-                                    <View className="flex-1">
-                                        <Text className="text-white font-spaceGroteskBold text-sm">QR Codes das Sacas</Text>
-                                        <Text className="text-orange-400/70 font-spaceGrotesk text-xs">Toque para ver os QR Codes da sua rota</Text>
+                                    <View className="flex-1 pr-2">
+                                        <Text className="text-white font-spaceGroteskBold text-[15px]" numberOfLines={1}>QR Codes das Sacas</Text>
+                                        <Text className="text-[#94a3b8] font-spaceGrotesk text-xs mt-1" numberOfLines={1}>Toque para acessar os QRs</Text>
                                     </View>
                                 </TouchableOpacity>
                             )}

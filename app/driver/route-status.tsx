@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Dimensions, StyleSheet, Linking, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Dimensions, StyleSheet, Linking, TextInput, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Menu, Truck, Waves, Hourglass, CheckCircle2, MessageCircle, Bell, Navigation, PartyPopper, Package, AlertTriangle, QrCode } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -277,7 +277,12 @@ export default function RouteStatusScreen() {
                 </View>
             </View>
 
-            <View className="flex-1 p-6 pb-20 mt-4">
+            <ScrollView 
+                className="flex-1 z-10" 
+                contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 160 }}
+                showsVerticalScrollIndicator={false}
+                bounces={true}
+            >
                 {/* Info Card Superior */}
                 <View className="bg-[#2a2818] border border-white/10 rounded-xl p-4 shadow-lg mb-6 z-20">
                     <View className="flex-row justify-between items-center mb-4">
@@ -292,15 +297,17 @@ export default function RouteStatusScreen() {
                     {assignment.routeLabel || assignment.sacas ? (
                         <View className="flex-row justify-between items-center mb-4 pb-4 border-b border-white/5">
                             {assignment.routeLabel && (
-                                <>
+                                <View className="flex-1 mr-2">
                                     <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">ROTA ATUAL</Text>
-                                    <Text className="text-white text-sm font-mono font-bold px-2 py-0.5 bg-primary/20 text-primary border border-primary/20 rounded">
-                                        {assignment.routeLabel}
-                                    </Text>
-                                </>
+                                    <View className="px-2 py-0.5 bg-primary/20 border border-primary/20 rounded self-start mt-1">
+                                        <Text className="text-white text-sm font-mono font-bold text-primary">
+                                            {assignment.routeLabel}
+                                        </Text>
+                                    </View>
+                                </View>
                             )}
                             {!!assignment.sacas && (
-                                <View className="flex-row items-center gap-1 ml-auto bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/30">
+                                <View className="flex-row items-center gap-1 bg-orange-500/10 px-2 py-1 rounded border border-orange-500/30">
                                     <Package size={14} color="#f97316" />
                                     <Text className="text-sm font-bold uppercase tracking-wider" style={{ color: '#f97316' }}>
                                         {assignment.sacas} SACA{assignment.sacas > 1 ? 'S' : ''}
@@ -331,26 +338,26 @@ export default function RouteStatusScreen() {
                 {!!assignment.sacas && assignment.sacas > 0 && (
                     <TouchableOpacity
                         onPress={() => setShowQRCodes(true)}
-                        className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex-row items-center justify-between mb-6"
+                        className="bg-surface border border-[#f9731640] rounded-xl p-4 flex-row items-center justify-between mb-8 shadow-sm z-20"
                         activeOpacity={0.7}
                     >
-                        <View className="flex-row items-center gap-3">
-                            <View className="w-10 h-10 rounded-full bg-orange-500/20 items-center justify-center">
+                        <View className="flex-row items-center gap-3 flex-1 overflow-hidden">
+                            <View className="w-10 h-10 rounded-full items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)' }}>
                                 <QrCode color="#f97316" size={20} />
                             </View>
-                            <View>
-                                <Text className="text-white font-bold text-sm">Ver QR Codes das Sacas</Text>
-                                <Text className="text-orange-400/70 text-xs">{assignment.sacas} saca{assignment.sacas > 1 ? 's' : ''} na rota</Text>
+                            <View className="flex-1 pr-2">
+                                <Text className="text-white font-spaceGroteskBold text-[15px] shrink" numberOfLines={1}>Ver QR Codes</Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-[12px] mt-0.5 shrink" numberOfLines={1}>{assignment.sacas} saca{assignment.sacas > 1 ? 's' : ''} na rota</Text>
                             </View>
                         </View>
-                        <View className="bg-orange-500/20 px-3 py-1.5 rounded-full">
-                            <Text className="text-orange-400 text-xs font-bold uppercase">Abrir</Text>
+                        <View className="px-3 py-1.5 rounded-full shrink-0" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)' }}>
+                            <Text className="text-[#f97316] text-xs font-spaceGroteskBold uppercase tracking-wider">Abrir</Text>
                         </View>
                     </TouchableOpacity>
                 )}
 
                 {/* ========== MÁQUINA DE ESTADOS VISUAL ========== */}
-                <View className="flex-1 items-center justify-center p-4">
+                <View className="flex-1 items-center justify-center min-h-[350px] py-4">
 
                     {/* ESTADO 1: Motorista já saiu da doca → "Boa Viagem" */}
                     {isDeparted && (
@@ -455,7 +462,7 @@ export default function RouteStatusScreen() {
 
                 {/* Footer Actions */}
                 {!isDeparted && (
-                    <View className="mt-auto pb-6 gap-3">
+                    <View className="mt-auto pt-8 pb-4 gap-3 w-full">
                         {/* Contatar Administrador via WhatsApp */}
                         <TouchableOpacity
                             onPress={() => {
@@ -506,7 +513,7 @@ export default function RouteStatusScreen() {
                         </TouchableOpacity>
                     </View>
                 )}
-            </View>
+            </ScrollView>
 
             {/* Status Bar Floating Bottom */}
             <View className="absolute bottom-20 left-0 right-0 p-4 border-t border-white/5 bg-background/95 z-40">

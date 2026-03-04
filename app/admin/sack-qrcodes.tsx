@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    View, Text, TouchableOpacity, ScrollView, Image,
+    View, Text, TouchableOpacity, ScrollView, FlatList, Image,
     ActivityIndicator, Modal, TextInput, RefreshControl, Alert, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -383,155 +383,155 @@ export default function SackQRCodesScreen() {
             </View>
 
             {/* Conteúdo */}
-            <ScrollView
+            {/* Conteúdo */}
+            <FlatList
                 className="flex-1 z-10 px-5"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 120 }}
                 refreshControl={
                     <RefreshControl refreshing={isLoading} onRefresh={fetchQRCodes} tintColor={THEME.colors.primary} />
                 }
-            >
-                {/* Botão de Upload */}
-                <TouchableOpacity
-                    onPress={() => setShowUploadMenu(true)}
-                    disabled={isUploading}
-                    className={`w-full bg-surface border-2 border-dashed border-orange-500/30 rounded-2xl p-6 items-center mt-2 mb-6 ${isUploading ? 'opacity-50' : ''}`}
-                    activeOpacity={0.7}
-                >
-                    {isUploading ? (
-                        <View className="items-center">
-                            <ActivityIndicator size="large" color="#f97316" />
-                            <Text className="text-orange-400 font-spaceGroteskBold text-base mt-3">
-                                Enviando... {uploadProgress}%
-                            </Text>
+                data={qrCodes}
+                keyExtractor={(item) => item.id}
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                ListHeaderComponent={
+                    <TouchableOpacity
+                        onPress={() => setShowUploadMenu(true)}
+                        disabled={isUploading}
+                        className={`w-full bg-surface border-2 border-dashed border-orange-500/30 rounded-2xl p-6 items-center mt-2 mb-6 ${isUploading ? 'opacity-50' : ''}`}
+                        activeOpacity={0.7}
+                    >
+                        {isUploading ? (
+                            <View className="items-center">
+                                <ActivityIndicator size="large" color="#f97316" />
+                                <Text className="text-orange-400 font-spaceGroteskBold text-base mt-3">
+                                    Enviando... {uploadProgress}%
+                                </Text>
+                            </View>
+                        ) : (
+                            <>
+                                <View className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/20 items-center justify-center mb-3">
+                                    <UploadCloud color="#f97316" size={28} />
+                                </View>
+                                <Text className="text-white font-spaceGroteskBold text-base">
+                                    Enviar QR Codes
+                                </Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-xs text-center mt-1">
+                                    Toque para selecionar imagens ou PDFs (até 10 por vez)
+                                </Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                }
+                ListEmptyComponent={
+                    isLoading ? (
+                        <View className="items-center py-12">
+                            <ActivityIndicator size="large" color={THEME.colors.primary} />
+                            <Text className="text-[#94a3b8] mt-4 font-spaceGrotesk">Carregando QR Codes...</Text>
                         </View>
                     ) : (
-                        <>
-                            <View className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/20 items-center justify-center mb-3">
-                                <UploadCloud color="#f97316" size={28} />
+                        <View className="items-center py-12 px-4">
+                            <View className="w-20 h-20 rounded-full bg-surface border border-border items-center justify-center mb-4">
+                                <Package color="#94a3b8" size={36} />
                             </View>
-                            <Text className="text-white font-spaceGroteskBold text-base">
-                                Enviar QR Codes
+                            <Text className="text-white text-lg font-spaceGroteskBold text-center mb-2">
+                                Nenhum QR Code cadastrado
                             </Text>
-                            <Text className="text-[#94a3b8] font-spaceGrotesk text-xs text-center mt-1">
-                                Toque para selecionar imagens ou PDFs (até 10 por vez)
+                            <Text className="text-[#94a3b8] font-spaceGrotesk text-center leading-relaxed">
+                                Envie os QR Codes das sacas usando o botão acima.{'\n'}
+                                Os motoristas com sacas poderão consultá-los diretamente no app.
                             </Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-
-                {/* Lista de QR Codes */}
-                {isLoading && qrCodes.length === 0 ? (
-                    <View className="items-center py-12">
-                        <ActivityIndicator size="large" color={THEME.colors.primary} />
-                        <Text className="text-[#94a3b8] mt-4 font-spaceGrotesk">Carregando QR Codes...</Text>
-                    </View>
-                ) : qrCodes.length === 0 ? (
-                    <View className="items-center py-12 px-4">
-                        <View className="w-20 h-20 rounded-full bg-surface border border-border items-center justify-center mb-4">
-                            <Package color="#94a3b8" size={36} />
                         </View>
-                        <Text className="text-white text-lg font-spaceGroteskBold text-center mb-2">
-                            Nenhum QR Code cadastrado
-                        </Text>
-                        <Text className="text-[#94a3b8] font-spaceGrotesk text-center leading-relaxed">
-                            Envie os QR Codes das sacas usando o botão acima.{'\n'}
-                            Os motoristas com sacas poderão consultá-los diretamente no app.
-                        </Text>
-                    </View>
-                ) : (
-                    <View className="gap-3">
-                        {qrCodes.map((qr) => (
-                            <View
-                                key={qr.id}
-                                className="bg-surface rounded-2xl border border-border overflow-hidden"
+                    )
+                }
+                renderItem={({ item: qr }) => (
+                    <View className="bg-surface rounded-2xl border border-border overflow-hidden mb-3">
+                        <View className="flex-row items-center p-4">
+                            {/* Thumbnail */}
+                            <TouchableOpacity
+                                onPress={() => setViewingQR(qr)}
+                                className="mr-4"
                             >
-                                <View className="flex-row items-center p-4">
-                                    {/* Thumbnail */}
-                                    <TouchableOpacity
-                                        onPress={() => setViewingQR(qr)}
-                                        className="mr-4"
-                                    >
-                                        <View className="w-16 h-16 rounded-xl bg-white overflow-hidden items-center justify-center border border-border">
-                                            {qr.mimeType.startsWith('image/') ? (
-                                                <Image
-                                                    source={{ uri: qr.downloadUrl }}
-                                                    className="w-full h-full"
-                                                    resizeMode="contain"
-                                                />
-                                            ) : (
-                                                <FileImage color="#94a3b8" size={24} />
-                                            )}
-                                        </View>
-                                    </TouchableOpacity>
-
-                                    {/* Info */}
-                                    <View className="flex-1">
-                                        {editingId === qr.id ? (
-                                            <TextInput
-                                                value={editLabel}
-                                                onChangeText={setEditLabel}
-                                                autoFocus
-                                                maxLength={100}
-                                                className="text-white font-spaceGroteskBold text-[15px] bg-background rounded-lg px-3 py-2 border border-primary/30"
-                                                placeholderTextColor={THEME.colors.textMuted}
-                                            />
-                                        ) : (
-                                            <Text className="text-white font-spaceGroteskBold text-[15px]" numberOfLines={1}>
-                                                {qr.label}
-                                            </Text>
-                                        )}
-                                        <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-1">
-                                            {formatFileSize(qr.fileSize)} • {new Date(qr.createdAt).toLocaleDateString('pt-BR')}
-                                        </Text>
-                                    </View>
-
-                                    {/* Ações */}
-                                    <View className="flex-row items-center gap-2 ml-2">
-                                        {editingId === qr.id ? (
-                                            <>
-                                                <TouchableOpacity
-                                                    onPress={() => handleSaveLabel(qr.id)}
-                                                    className="w-9 h-9 rounded-full bg-green-500/10 border border-green-500/20 items-center justify-center"
-                                                >
-                                                    <Check color="#4ade80" size={16} />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => setEditingId(null)}
-                                                    className="w-9 h-9 rounded-full bg-surface border border-border items-center justify-center"
-                                                >
-                                                    <X color="#94a3b8" size={16} />
-                                                </TouchableOpacity>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <TouchableOpacity
-                                                    onPress={() => setViewingQR(qr)}
-                                                    className="w-9 h-9 rounded-full bg-surface border border-border items-center justify-center"
-                                                >
-                                                    <Eye color="#94a3b8" size={16} />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => { setEditingId(qr.id); setEditLabel(qr.label); }}
-                                                    className="w-9 h-9 rounded-full bg-surface border border-border items-center justify-center"
-                                                >
-                                                    <Pencil color="#94a3b8" size={14} />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => handleDelete(qr)}
-                                                    className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/20 items-center justify-center"
-                                                >
-                                                    <Trash2 color="#ef4444" size={14} />
-                                                </TouchableOpacity>
-                                            </>
-                                        )}
-                                    </View>
+                                <View className="w-16 h-16 rounded-xl bg-white overflow-hidden items-center justify-center border border-border">
+                                    {qr.mimeType.startsWith('image/') ? (
+                                        <Image
+                                            source={{ uri: qr.downloadUrl }}
+                                            className="w-full h-full"
+                                            resizeMode="contain"
+                                        />
+                                    ) : (
+                                        <FileImage color="#94a3b8" size={24} />
+                                    )}
                                 </View>
+                            </TouchableOpacity>
+
+                            {/* Info */}
+                            <View className="flex-1">
+                                {editingId === qr.id ? (
+                                    <TextInput
+                                        value={editLabel}
+                                        onChangeText={setEditLabel}
+                                        autoFocus
+                                        maxLength={100}
+                                        className="text-white font-spaceGroteskBold text-[15px] bg-background rounded-lg px-3 py-2 border border-primary/30"
+                                        placeholderTextColor={THEME.colors.textMuted}
+                                    />
+                                ) : (
+                                    <Text className="text-white font-spaceGroteskBold text-[15px]" numberOfLines={1}>
+                                        {qr.label}
+                                    </Text>
+                                )}
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px] mt-1">
+                                    {formatFileSize(qr.fileSize)} • {new Date(qr.createdAt).toLocaleDateString('pt-BR')}
+                                </Text>
                             </View>
-                        ))}
+
+                            {/* Ações */}
+                            <View className="flex-row items-center gap-2 ml-2">
+                                {editingId === qr.id ? (
+                                    <>
+                                        <TouchableOpacity
+                                            onPress={() => handleSaveLabel(qr.id)}
+                                            className="w-9 h-9 rounded-full bg-green-500/10 border border-green-500/20 items-center justify-center"
+                                        >
+                                            <Check color="#4ade80" size={16} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => setEditingId(null)}
+                                            className="w-9 h-9 rounded-full bg-surface border border-border items-center justify-center"
+                                        >
+                                            <X color="#94a3b8" size={16} />
+                                        </TouchableOpacity>
+                                    </>
+                                ) : (
+                                    <>
+                                        <TouchableOpacity
+                                            onPress={() => setViewingQR(qr)}
+                                            className="w-9 h-9 rounded-full bg-surface border border-border items-center justify-center"
+                                        >
+                                            <Eye color="#94a3b8" size={16} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => { setEditingId(qr.id); setEditLabel(qr.label); }}
+                                            className="w-9 h-9 rounded-full bg-surface border border-border items-center justify-center"
+                                        >
+                                            <Pencil color="#94a3b8" size={14} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleDelete(qr)}
+                                            className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/20 items-center justify-center"
+                                        >
+                                            <Trash2 color="#ef4444" size={14} />
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+                            </View>
+                        </View>
                     </View>
                 )}
-            </ScrollView>
+            />
 
             {/* Modal Fullscreen de Visualização com Zoom */}
             <Modal visible={!!viewingQR} animationType="fade" transparent onRequestClose={() => setViewingQR(null)}>
