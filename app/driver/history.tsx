@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { useAuthStore } from '~/src/store/auth';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS, Assignment, DriverAvailability } from '~/src/lib/collections';
+import { COLLECTIONS, Assignment, DriverAvailability, extractBrazilDateStr } from '~/src/lib/collections';
 import { validateArray, AssignmentSchema, DriverAvailabilitySchema } from '~/src/lib/schemas';
 import { SkeletonList } from '~/src/components/ui/Skeleton';
 import { AssignmentDetailModal } from '~/src/components/AssignmentDetailModal';
@@ -242,15 +242,20 @@ export default function DriverHistoryScreen() {
                     const assignment = (doc._payload || doc) as Assignment;
                     // Ignora rotas ativas (in_progress, pending) - Só finalizadas/validadas entram no extrato.
                     if (assignment.createdAt) {
-                        const dateNum = new Date(assignment.createdAt);
-                        timeline.push({
-                            type: 'route',
-                            dateObj: dateNum,
-                            dateLabel: dateNum.toLocaleDateString('pt-BR'),
-                            dayLabel: dateNum.toLocaleDateString('pt-BR', { weekday: 'long' }),
-                            isSameDay: assignment.isSdd || false,
-                            data: assignment
-                        });
+                        const brtDateStr = extractBrazilDateStr(assignment.createdAt);
+                        if (brtDateStr) {
+                            const dateParts = brtDateStr.split('-');
+                            const safeDate = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+                            
+                            timeline.push({
+                                type: 'route',
+                                dateObj: safeDate,
+                                dateLabel: safeDate.toLocaleDateString('pt-BR'),
+                                dayLabel: safeDate.toLocaleDateString('pt-BR', { weekday: 'long' }),
+                                isSameDay: assignment.isSdd || false,
+                                data: assignment
+                            });
+                        }
                     }
                 });
             }

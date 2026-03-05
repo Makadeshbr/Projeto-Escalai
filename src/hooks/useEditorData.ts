@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
+import { COLLECTIONS, Assignment, getTodayDateStr, extractBrazilDateStr } from '~/src/lib/collections';
 import { notifyDriver, diagnosePushError } from '~/src/lib/push';
 import { useActionModal } from './useActionModal';
 import { logger } from '~/src/lib/logger';
@@ -34,11 +34,7 @@ export function useEditorData() {
 
                 // Precisa ter sido criado hoje OU estar em andamento
                 if (!payload.createdAt) return false;
-                const createdDate = new Date(payload.createdAt);
-                const year = createdDate.getFullYear();
-                const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-                const day = String(createdDate.getDate()).padStart(2, '0');
-                const isToday = `${year}-${month}-${day}` === todayStr;
+                const isToday = extractBrazilDateStr(payload.createdAt) === todayStr;
 
                 const isStillActive = (payload.status === 'pending' || payload.status === 'confirmed' || payload.status === 'in_progress'
                     || payload.dockStatus === 'waiting' || payload.dockStatus === 'liberated');

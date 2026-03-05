@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { aether } from '~/src/lib/aether';
 import {
     COLLECTIONS, City, DriverAvailability, Assignment,
-    getTodayDateStr, getTomorrowDateStr
+    getTodayDateStr, getTomorrowDateStr, extractBrazilDateStr
 } from '~/src/lib/collections';
 import type { ModalType } from './useActionModal';
 import { useRequireAuth } from './useRequireAuth';
@@ -94,11 +94,7 @@ export function useDashboardData(
             if ((a as any).archived === true) return false;
             if (!a.createdAt) return false;
 
-            const createdDate = new Date(a.createdAt);
-            const year = createdDate.getFullYear();
-            const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-            const day = String(createdDate.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}` === todayStr;
+            return extractBrazilDateStr(a.createdAt) === todayStr;
         });
 
         // Ordena do mais recente primeiro — SEM limite de quantidade

@@ -14,7 +14,7 @@ import Animated, {
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { useAuthStore } from '~/src/store/auth';
 import { aether } from '~/src/lib/aether';
-import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
+import { COLLECTIONS, Assignment, getTodayDateStr, extractBrazilDateStr } from '~/src/lib/collections';
 import { THEME } from '~/src/constants/theme';
 import { dispatchAdminAlert, ensureDriverPushToken } from '~/src/lib/push';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
@@ -106,11 +106,7 @@ export default function RouteStatusScreen() {
                 if (a.status === 'completed' || !a.dock) return false;
                 if (!a.createdAt) return false;
 
-                const createdDate = new Date(a.createdAt);
-                const year = createdDate.getFullYear();
-                const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-                const day = String(createdDate.getDate()).padStart(2, '0');
-                const localCreatedStr = `${year}-${month}-${day}`;
+                const localCreatedStr = extractBrazilDateStr(a.createdAt);
 
                 const isToday = localCreatedStr === todayStr;
                 const isStillActive = (a.status === 'pending' || a.status === 'in_progress' || a.dockStatus === 'waiting' || a.dockStatus === 'liberated' || a.dockStatus === 'departed');

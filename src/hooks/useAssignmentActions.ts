@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { aether } from '~/src/lib/aether';
 import {
     COLLECTIONS, Assignment, DriverAvailability,
-    getTodayDateStr
+    getTodayDateStr, extractBrazilDateStr
 } from '~/src/lib/collections';
 import { notifyDriver, diagnosePushError, isExpoGo } from '~/src/lib/push';
 import type { ModalType } from './useActionModal';
@@ -265,12 +265,8 @@ export function useAssignmentActions(callbacks: {
 
         return (all as unknown as Assignment[]).filter(a => {
             if (!a.createdAt) return false;
-            // Valida robusta de timezone (ex: 2026-02-24T02:00:00Z em BRT é 2026-02-23)
-            const createdDate = new Date(a.createdAt);
-            const year = createdDate.getFullYear();
-            const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-            const day = String(createdDate.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}` === todayStr;
+            // Valida robusta de timezone via extração padronizada BRT
+            return extractBrazilDateStr(a.createdAt) === todayStr;
         });
     }, []);
 

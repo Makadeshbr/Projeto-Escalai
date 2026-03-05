@@ -328,3 +328,36 @@ export function getTomorrowDateStr(): string {
     d.setDate(d.getDate() + 1);
     return formatLocalDate(d);
 }
+
+/**
+ * [ENTERPRISE FIX] Extrai a data (YYYY-MM-DD) de uma string ISO
+ * respeitando o Fuso Horário do Brasil, independente de em qual fuso o app esteja rodando.
+ * Garante que rotas do dia anterior não vazem para hoje por causa do fuso do celular UTC/local.
+ * @param isoTimestamp - String de timestamp ISO
+ * @returns String no formato 'YYYY-MM-DD' alinhado ao Brasil
+ */
+export function extractBrazilDateStr(isoTimestamp: string): string {
+    if (!isoTimestamp) return '';
+    
+    // Fast path: se foi gerado pelo formatBrazilTimestamp do backend (termina em -03:00)
+    // o começo YYYY-MM-DD já está correto no Brasil.
+    if (isoTimestamp.length >= 10 && isoTimestamp.includes('T') && isoTimestamp.includes('-03:00')) {
+         return isoTimestamp.substring(0, 10);
+    }
+
+    try {
+        const date = new Date(isoTimestamp);
+        if (isNaN(date.getTime())) return '';
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        });
+        const parts = formatter.formatToParts(date);
+        const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
+        return `${get('year')}-${get('month')}-${get('day')}`;
+    } catch {
+        return '';
+    }
+}

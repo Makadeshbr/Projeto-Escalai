@@ -8,7 +8,7 @@ import { DriverAvatar } from '~/src/components/ui/DriverAvatar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { useAuthStore } from '~/src/store/auth';
-import { COLLECTIONS, getTodayDateStr } from '~/src/lib/collections';
+import { COLLECTIONS, getTodayDateStr, extractBrazilDateStr } from '~/src/lib/collections';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { router } from 'expo-router';
 import { SkeletonList } from '~/src/components/ui/Skeleton';
@@ -64,11 +64,7 @@ export default function AdminOverviewScreen() {
                     // [SENIOR FIX - HISTORY PERSISTENCE] Oculta rotas que o Admin marcou como "Limpar" no Dashboard Principal
                     if (a.archived === true) return false;
                     if (!a.createdAt) return false;
-                    const createdDate = new Date(a.createdAt);
-                    const year = createdDate.getFullYear();
-                    const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-                    const day = String(createdDate.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}` === todayStr;
+                    return extractBrazilDateStr(a.createdAt) === todayStr;
                 })
                 .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

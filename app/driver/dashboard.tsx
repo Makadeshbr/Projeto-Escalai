@@ -5,7 +5,7 @@ import { THEME } from '~/src/constants/theme';
 import { Bell, Zap, CheckCircle, Navigation, History, AlertTriangle, TrendingUp, User, MapPin, CheckCircle2, Package, QrCode } from 'lucide-react-native';
 import { useAuthStore } from '~/src/store/auth';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
+import { COLLECTIONS, Assignment, getTodayDateStr, extractBrazilDateStr } from '~/src/lib/collections';
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { useRealtimeSubscribe } from '~/src/hooks/useRealtimeSubscribe';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -99,13 +99,8 @@ export default function DashboardScreen() {
             const allAssigned = allAssignmentsRaw.filter(a => {
                 if (a.driverId !== user.id || a.archived === true || !a.createdAt) return false;
                 
-                const createdDate = new Date(a.createdAt);
-                if (isNaN(createdDate.getTime())) return false;
-                
-                const year = createdDate.getFullYear();
-                const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-                const day = String(createdDate.getDate()).padStart(2, '0');
-                const assignmentDateStr = `${year}-${month}-${day}`;
+                const assignmentDateStr = extractBrazilDateStr(a.createdAt);
+                if (!assignmentDateStr) return false;
                 
                 return assignmentDateStr === todayStr;
             });

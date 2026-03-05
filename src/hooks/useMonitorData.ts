@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { aether } from '~/src/lib/aether';
-import { COLLECTIONS, Assignment, getTodayDateStr } from '~/src/lib/collections';
+import { COLLECTIONS, Assignment, getTodayDateStr, extractBrazilDateStr } from '~/src/lib/collections';
 import { useAuthStore } from '~/src/store/auth';
 import { notifyDriver, diagnosePushError } from '~/src/lib/push';
 import { useActionModal } from './useActionModal';
@@ -103,12 +103,8 @@ export function useMonitorData() {
             if ((a as any).archived === true) return false;
             if (!a.createdAt) return false;
 
-            // Converte timestamp UTC do banco para data local
-            const createdDate = new Date(a.createdAt);
-            const year = createdDate.getFullYear();
-            const month = String(createdDate.getMonth() + 1).padStart(2, '0');
-            const day = String(createdDate.getDate()).padStart(2, '0');
-            const localCreatedStr = `${year}-${month}-${day}`;
+            // Extrai a data BRT (ignorando Timezone UTC do SO)
+            const localCreatedStr = extractBrazilDateStr(a.createdAt);
 
             // Valido se criado hoje OU se ainda esta ativo (nao-completado)
             const isToday = localCreatedStr === todayStr;
