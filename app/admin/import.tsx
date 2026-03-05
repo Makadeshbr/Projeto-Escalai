@@ -452,7 +452,9 @@ export default function ImportRouteScreen() {
 
                     let dbCreated = false;
 
-                    // Anti-duplicata: verifica se Assignment já existe para hoje
+                    // Anti-duplicata: verifica se Assignment ativo (nao arquivado) ja existe para hoje.
+                    // Registros arquivados (archived: true) sao IGNORADOS para permitir redespacho
+                    // quando o admin usou Limpar ou Apagar Permanente no mesmo dia.
                     try {
                         const existingAssignments = await aether.db.collection(COLLECTIONS.ASSIGNMENTS)
                             .query()
@@ -462,12 +464,15 @@ export default function ImportRouteScreen() {
 
                         const todayStr = getTodayDateStr();
                         const hasDuplicate = (existingAssignments as any[]).some(a => {
-                            const created = a.createdAt || a._payload?.createdAt || '';
+                            const payload = a._payload || a;
+                            // Ignora registros arquivados (soft-deleted) — eles nao bloqueiam redespacho
+                            if (payload.archived === true) return false;
+                            const created = payload.createdAt || '';
                             return created.startsWith(todayStr);
                         });
 
                         if (hasDuplicate) {
-                            __DEV__ && console.warn(`[Anti-Duplicata] ${route.driverPlate} doca ${route.dock} já existe hoje.`);
+                            __DEV__ && console.warn(`[Anti-Duplicata] ${route.driverPlate} doca ${route.dock} já existe hoje (ativo).`);
                             return null;
                         }
                     } catch (dupCheckErr) {

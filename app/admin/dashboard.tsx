@@ -347,6 +347,7 @@ export default function AdminRouteManagement() {
                     onSelect={(a) => { setSelectedAssignment(a); setShowAssignmentModal(true); }}
                     onRefresh={data.fetchRecentAssignments}
                     onClear={() => data.clearRecentAssignments(setIsLoading)}
+                    onHardDelete={() => data.hardDeleteRecentAssignments(setIsLoading)}
                 />
             </ScrollView>
 

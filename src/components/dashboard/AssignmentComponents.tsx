@@ -33,33 +33,53 @@ interface RecentAssignmentsListProps {
     onSelect: (assignment: Assignment) => void;
     /** Callback para recarregar a lista */
     onRefresh: () => void;
-    /** Callback para limpar todos */
+    /** Callback para arquivar(esconder da tela) todos */
     onClear: () => void;
+    /** Callback para deletar do banco de dados pra sempre */
+    onHardDelete: () => void;
 }
 
 /**
  * Exibe lista de despachos recentes com cards interativos.
- * Inclui botões Recarregar e Limpar no header.
+ * Inclui botões Recarregar, Arquivar e Apagar no header.
  */
 export function RecentAssignmentsList({
-    assignments, onSelect, onRefresh, onClear
+    assignments, onSelect, onRefresh, onClear, onHardDelete
 }: RecentAssignmentsListProps) {
     return (
         <View className="pb-28">
-            {/* Header com ações */}
-            <View className="flex-row justify-between items-center mb-4 px-1">
-                <Text className="text-white text-base font-spaceGroteskBold">Despachos Recentes</Text>
-                <View className="flex-row gap-3">
-                    <TouchableOpacity onPress={onRefresh}>
-                        <Text className="text-primary text-[13px] font-spaceGrotesk">Recarregar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={onClear}>
-                        <View className="px-3 py-1 bg-red-500/10 rounded border border-red-500/20">
-                            <Text className="text-[#ef4444] text-[11px] font-spaceGrotesk uppercase tracking-wider">Limpar</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+            {/* Header com ações — linha 1: título + Recarregar */}
+            <View className="flex-row justify-between items-center mb-2 px-1">
+                <Text className="text-white text-base font-spaceGroteskBold">
+                    Despachos Recentes
+                    {assignments.length > 0 && (
+                        <Text className="text-[#94a3b8] text-xs font-spaceGrotesk"> ({assignments.length})</Text>
+                    )}
+                </Text>
+                <TouchableOpacity onPress={onRefresh}>
+                    <Text className="text-primary text-[13px] font-spaceGrotesk">Recarregar</Text>
+                </TouchableOpacity>
             </View>
+
+            {/* Linha 2: botões de ação — sempre visíveis */}
+            <View className="flex-row gap-2 mb-4 px-1">
+                <TouchableOpacity onPress={onClear} className="flex-1">
+                    <View className="py-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20 items-center">
+                        <Text className="text-yellow-400 text-[11px] font-spaceGroteskBold uppercase tracking-wider">
+                            📦 Arquivar (Guardar no RH)
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={onHardDelete} className="flex-1">
+                    <View className="py-2 bg-red-500/10 rounded-lg border border-red-500/30 items-center">
+                        <Text className="text-[#ef4444] text-[11px] font-spaceGroteskBold uppercase tracking-wider">
+                            🗑️ Apagar (Redespachar)
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
+
+
 
             {/* Lista ou estado vazio */}
             <View className="gap-3">

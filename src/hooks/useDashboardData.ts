@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { aether } from '~/src/lib/aether';
+import { aether, aetherFetchAll } from '~/src/lib/aether';
 import {
     COLLECTIONS, City, DriverAvailability, Assignment,
     getTodayDateStr, getTomorrowDateStr, extractBrazilDateStr
@@ -145,7 +145,9 @@ export function useDashboardData(
     // === Mutacoes (logica de negocio preservada, invalidacao via React Query) ===
 
     /**
-     * Arquiva todas as movimentacoes recentes.
+     * Arquiva todas as movimentacoes recentes (soft-delete).
+     * As rotas ficam salvas no banco mas ocultadas da UI.
+     * Use esta opcao quando o dia encerrou e quer preservar o historico do RH.
      * [AUDIT FIX — SCALE-002] Batch chunking de 10 + delay entre batches.
      */
     const clearRecentAssignments = useCallback(async (
@@ -157,8 +159,8 @@ export function useDashboardData(
         }
 
         showModal(
-            'ATENCAO: Limpar Banco de Dados',
-            'Deseja arquivar todas as movimentacoes recentes? Elas sairao desta tela, mas permanecerao salvas no Relatorio de RH e no Historico do Motorista.',
+            'Arquivar Movimentacoes',
+            'As rotas sairao desta tela, mas permanecerao salvas no Historico do Motorista e Relatorio de RH. Use "Apagar Permanente" se precisar redespachar hoje.',
             'confirm',
             async () => {
                 setIsLoading(true);
@@ -179,7 +181,7 @@ export function useDashboardData(
 
                     // Invalida cache → refetch → useMemo filtra archived automaticamente
                     await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
-                    showModal('Limpeza Concluida', 'As movimentacoes foram apagadas.', 'success');
+                    showModal('Limpeza Concluida', 'As movimentacoes foram arquivadas.', 'success');
                 } catch (e: unknown) {
                     const message = e instanceof Error ? e.message : 'Erro critico ao limpar rotas.';
                     showModal('Falha na Exclusao', message, 'error');
@@ -189,6 +191,66 @@ export function useDashboardData(
             }
         );
     }, [recentAssignments, showModal, queryClient]);
+
+    /**
+     * Apaga PERMANENTEMENTE TODAS as rotas de hoje do banco (incluindo arquivadas).
+     * Use quando o admin despacheu por engano e quer redespachar hoje.
+     * Busca tanto rotas visiveis quanto as ja arquivadas com o botao Arquivar.
+     * ATENCAO: Esta acao e IRREVERSIVEL.
+     */
+    const hardDeleteRecentAssignments = useCallback(async (
+        setIsLoading: (v: boolean) => void
+    ) => {
+        showModal(
+            '⚠️ APAGAR PERMANENTEMENTE',
+            'Isso vai apagar TODAS as rotas de hoje do banco (inclusive as ja arquivadas), de forma IRREVERSIVEL, para que voce possa redespachar. Confirma?',
+            'confirm',
+            async () => {
+                setIsLoading(true);
+                try {
+                    // Busca TODAS as rotas de hoje, inclusive as arquivadas
+                    const todayStr = getTodayDateStr();
+                    const allDocs = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
+                    const todayAll = (allDocs as any[]).filter(doc => {
+                        const payload = doc._payload || doc;
+                        const created = payload.createdAt || '';
+                        return extractBrazilDateStr(created) === todayStr;
+                    });
+
+                    if (todayAll.length === 0) {
+                        showModal('Nada Encontrado', 'Nenhuma rota de hoje foi encontrada no banco de dados.', 'info');
+                        return;
+                    }
+
+                    const BATCH_SIZE = 10;
+                    const DELAY_MS = 600;
+
+                    for (let i = 0; i < todayAll.length; i += BATCH_SIZE) {
+                        const chunk = todayAll.slice(i, i + BATCH_SIZE);
+                        await Promise.allSettled(
+                            chunk.map((doc: any) => {
+                                const id = doc._payload?.id || doc.id;
+                                return id ? aether.db.collection(COLLECTIONS.ASSIGNMENTS).delete(id) : Promise.resolve();
+                            })
+                        );
+
+                        if (i + BATCH_SIZE < todayAll.length) {
+                            await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+                        }
+                    }
+
+                    // Invalida cache completo → refetch
+                    await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+                    showModal('Apagado!', `${todayAll.length} rota(s) removidas permanentemente. Redespacha agora!`, 'success');
+                } catch (e: unknown) {
+                    const message = e instanceof Error ? e.message : 'Erro critico ao apagar rotas.';
+                    showModal('Falha na Exclusao', message, 'error');
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        );
+    }, [showModal, queryClient]);
 
     /**
      * Adiciona uma nova cidade ao banco de dados.
@@ -242,6 +304,7 @@ export function useDashboardData(
         recentAssignments,
         fetchRecentAssignments,
         clearRecentAssignments,
+        hardDeleteRecentAssignments,
 
         // Acoes
         handleAddCity,
