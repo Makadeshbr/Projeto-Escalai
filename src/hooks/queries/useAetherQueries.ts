@@ -36,6 +36,8 @@ export function useAssignmentsQuery(options?: {
         },
         refetchInterval: options?.refetchInterval,
         enabled: options?.enabled,
+        staleTime: 0, // Nunca confia no cache pra rotas do motorista - sempre garante que pega do DB
+        gcTime: 1000 * 60 * 5, // Limpa o lixo após 5 minutos
     });
 }
 

@@ -44,19 +44,15 @@ export default function DashboardScreen() {
         if (!user?.id) return;
         setIsLoading(true);
         try {
-            // [Self-Healing] Garante que a integridade referencial do motorista exista na tabela
-            // Agora usa método direto pois as correções de RLS já estão deployadas
+            // [Self-Healing] Garante integridade referencial do motorista
             try {
                 const statusCheck = await aether.db.collection(COLLECTIONS.DRIVER_STATUS)
                     .query()
                     .eq('user_id', user.id)
                     .get();
 
-                // Se não existe, cria via método direto
                 if (!statusCheck || (statusCheck as any[]).length === 0) {
                     try {
-                        // Envia os dados diretamente como campos flat (não como _payload)
-                        // O SDK do Aether está com problema ao salvar JSON nested
                         await aether.db.collection(COLLECTIONS.DRIVER_STATUS).create({
                             user_id: user.id,
                             driverName: user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
@@ -67,73 +63,55 @@ export default function DashboardScreen() {
                             updatedByAdminId: 'system_self_healing',
                             created_at: new Date().toISOString()
                         });
-                        logger.debug('[Self-Healing] Driver Status criado via método direto');
                     } catch (directError: any) {
                         logger.warn('[Self-Healing] Erro no método direto:', directError.message);
                     }
                 }
             } catch (healError) {
-                // O erro é silencioso para não impactar a usabilidade do condutor caso haja latência de rede
                 logger.warn('[Self-Healing] Erro na sincronização de auto-cura do driver_status:', healError);
             }
 
-            // [PUSH AUTO-SYNC] Garante que o push token mais recente está no DRIVER_STATUS.
-            // Executa em paralelo (fire-and-forget) para não bloquear carregamento do dashboard.
+            // PUSH AUTO-SYNC fire-and-forget
             ensureDriverPushToken(
                 user.id,
                 user.metadata?.name || user.name || user.email?.split('@')[0] || 'Motorista',
                 user.metadata?.vehiclePlate || 'S/Placa',
                 user.metadata?.avatarUrl || ''
-            ).catch(err => logger.warn('[PushSync] Fire-and-forget falhou:', err));
+            ).catch(err => logger.warn('[PushSync] Falhou:', err));
 
-            // [SENIOR DEV FIX] Buscamos ALL via aetherFetchAll (robusto) e filtramos local.
-            // O .query() do SDK em fallback às vezes retorna vazio durante oscilações.
+            // Busca FULL collection fresquinha (Ignora caches parciais)
             const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as unknown as Assignment[];
 
-            // [CRITICAL FIX] O motorista NÃO DEVE ver as rotas do dia anterior que por ventura os Admins
-            // tenham esquecido de "limpar"/arquivar. Aplicamos filtro estrito da Data de Hoje.
-            const todayStr = getTodayDateStr();
+            // [CRITICAL TIMEZONE FIX 2.0]
+            // Pegar a string de HOJE sempre *no exato momento* que o script roda,
+            // não de escopos fora, pois se o app dormir à meia-noite, a constante ficaria presa no "ontem".
+            const rightNow = new Date();
+            // Force Brazil Timezone just to be safe
+            const spTime = new Date(rightNow.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+            const currentDayStr = `${spTime.getFullYear()}-${String(spTime.getMonth() + 1).padStart(2, '0')}-${String(spTime.getDate()).padStart(2, '0')}`;
 
-            // Filtra as atribuições deste motorista, ignora as rotas que sofreram limpeza (archived)
-            // AND garante que SÓ ENTRA AS DE HOJE
+            // Filtro Severo
             const allAssigned = allAssignmentsRaw.filter(a => {
                 if (a.driverId !== user.id || a.archived === true || !a.createdAt) return false;
                 
                 const assignmentDateStr = extractBrazilDateStr(a.createdAt);
                 if (!assignmentDateStr) return false;
                 
-                return assignmentDateStr === todayStr;
+                return assignmentDateStr === currentDayStr;
             });
 
-            if (__DEV__) {
-                console.log(`[Driver Dashboard] ID local: ${user.id}`);
-                console.log(`[Driver Dashboard] Total de assignments recebidos: ${allAssignmentsRaw.length}`);
-                console.log(`[Driver Dashboard] Assignments de HOJE correspondendo ao ID: ${allAssigned.length}`);
-            }
-
-            if (allAssignmentsRaw.length > 0 && allAssigned.length === 0) {
-                // Tenta achar pelo nome ou placa para ver se o admin salvou com ID errado
-                const possibleMatches = allAssignmentsRaw.filter(a =>
-                    a.driverName === user.metadata?.name ||
-                    a.driverName === user.name
-                );
-                if (possibleMatches.length > 0) {
-                    logger.debug(`[Driver Dashboard WARNING] Achei ${possibleMatches.length} assignments com SEU NOME, mas com ID diferente! ID salvo: ${possibleMatches[0].driverId}`);
-                }
-            }
-
             if (allAssigned) {
-                // [HOTFIX] Inclusão de "in_progress" para não colocar rotas que liberaram doca num Limbo visual 
-                const pendingOrConfirmed = allAssigned.filter(a => a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress');
-                logger.debug(`[Driver Dashboard] Destes, pending/confirmed/in_progress: ${pendingOrConfirmed.length}`);
+                const pendingOrConfirmed = allAssigned.filter(a => 
+                    a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress'
+                );
 
-                // Sort to show the earliest created first
+                // Sort: mais recentes embaixo ou em cima conforme a logica
                 pendingOrConfirmed.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-                setAssignments(pendingOrConfirmed);
+                
+                // Forca render substituindo array inteiro, expurgando sujeiras guardadas na tela
+                setAssignments([...pendingOrConfirmed]);
 
                 const completed = allAssigned.filter(a => a.status === 'completed').length;
-
-                // Calculates unread notifications (not completed and flag driverDidReadNotification is false/undefined)
                 const unread = allAssigned.filter(a => a.status !== 'completed' && !a.driverDidReadNotification).length;
 
                 setStats({ total: allAssigned.length, completed });
