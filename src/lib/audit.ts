@@ -8,7 +8,7 @@
  */
 
 import { aether } from './aether';
-import { COLLECTIONS } from './collections';
+import { COLLECTIONS, formatBrazilTimestamp } from './collections';
 
 /**
  * Tipos de ações auditáveis no sistema.
@@ -71,7 +71,7 @@ export function logAudit(
         action,
         description,
         metadata,
-        timestamp: new Date().toISOString(),
+        timestamp: formatBrazilTimestamp(),
     };
 
     // Fire-and-forget — não bloqueia operação principal

@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { aether, aetherFetchAll } from './aether';
-import { COLLECTIONS } from './collections';
+import { COLLECTIONS, formatBrazilTimestamp } from './collections';
 import { logger } from './logger';
 
 export const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -348,7 +348,7 @@ export async function ensureDriverPushToken(
             // Atualiza com o token fresco
             await aether.db.collection(COLLECTIONS.DRIVER_STATUS).update(record.id, {
                 expoPushToken: freshToken,
-                updatedAt: new Date().toISOString(),
+                updatedAt: formatBrazilTimestamp(),
             });
             logger.info('[PushSync]', `Token atualizado no DRIVER_STATUS (${currentToken ? 'renovado' : 'primeiro registro'})`);
         } else {
@@ -361,7 +361,7 @@ export async function ensureDriverPushToken(
                 expoPushToken: freshToken,
                 status: 'active',
                 updatedByAdminId: 'system_push_auto_sync',
-                created_at: new Date().toISOString(),
+                created_at: formatBrazilTimestamp(),
             });
             logger.info('[PushSync]', 'DRIVER_STATUS criado com push token (novo motorista)');
         }
@@ -400,14 +400,14 @@ export async function registerAdminPushToken(
             await aether.db.collection(COLLECTIONS.ADMIN_STATUS).update(record.id, {
                 expoPushToken: token,
                 adminName,
-                updatedAt: new Date().toISOString(),
+                updatedAt: formatBrazilTimestamp(),
             });
         } else {
             await aether.db.collection(COLLECTIONS.ADMIN_STATUS).create({
                 user_id: adminId,
                 adminName,
                 expoPushToken: token,
-                createdAt: new Date().toISOString(),
+                createdAt: formatBrazilTimestamp(),
             });
         }
         logger.info('[Push]', 'Admin push token registrado com sucesso.');
@@ -474,7 +474,7 @@ export async function dispatchAdminAlert(
             read: false,
             relatedDriverId: relatedDriverId || null,
             relatedAssignmentId: relatedAssignmentId || null,
-            createdAt: new Date().toISOString()
+            createdAt: formatBrazilTimestamp()
         });
     } catch (e) {
         logger.warn('[Push]', 'Erro ao persistir notificação de admin:', e);

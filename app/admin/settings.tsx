@@ -6,7 +6,7 @@ import { ArrowLeft, Settings2, ShieldAlert, Send, Clock, UserX, UserCheck, Searc
 import { LinearGradient } from 'expo-linear-gradient';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { useAuthStore } from '~/src/store/auth';
-import { COLLECTIONS, getTomorrowDateStr, getTodayDateStr } from '~/src/lib/collections';
+import { COLLECTIONS, getTomorrowDateStr, getTodayDateStr, formatBrazilTimestamp } from '~/src/lib/collections';
 import { notifyAllDrivers, diagnosePushError } from '~/src/lib/push';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
@@ -189,7 +189,7 @@ export default function AdminSettingsScreen() {
             } else {
                 await aether.db.collection(COLLECTIONS.CITIES).create({
                     ...payload,
-                    createdAt: new Date().toISOString()
+                    createdAt: formatBrazilTimestamp()
                 });
                 showModal('Praça Criada', `${payload.name} já pode ser detectada pela Inteligência Artificial.`, 'success');
             }
@@ -314,7 +314,7 @@ export default function AdminSettingsScreen() {
                 status: newStatus,
                 _payload: {
                     status: newStatus,
-                    updatedAt: new Date().toISOString()
+                    updatedAt: formatBrazilTimestamp()
                 }
             });
             showModal('Status Atualizado', `A conta do motorista foi ${newStatus === 'blocked' ? 'bloqueada' : 'desbloqueada'}.`, 'success');
@@ -498,7 +498,7 @@ export default function AdminSettingsScreen() {
                                             { key: 'status', label: 'Status' },
                                             { key: 'createdAt', label: 'Criado em' },
                                         ] as ExportColumn<Record<string, unknown>>[],
-                                        `frota_escalai_${new Date().toISOString().slice(0, 10)}`,
+                                        `frota_escalai_${getTodayDateStr()}`,
                                     );
                                 } catch (e: any) {
                                     showModal('Erro', e.message || 'Falha ao exportar.', 'error');

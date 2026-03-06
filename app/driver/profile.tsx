@@ -9,7 +9,7 @@ import { aether, aetherConfig } from '~/src/lib/aether';
 import { getAetherClient } from '@aether-baas/react-native';
 import DriverBottomNav from '~/src/components/DriverBottomNav';
 import { ensureDriverPushToken, isExpoGo } from '~/src/lib/push';
-import { COLLECTIONS } from '~/src/lib/collections';
+import { COLLECTIONS, formatBrazilTimestamp } from '~/src/lib/collections';
 import { THEME } from '~/src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnterpriseModal } from '~/src/components/EnterpriseModal';
@@ -284,7 +284,7 @@ export default function DriverProfileScreen() {
                         if (statusRecords && (statusRecords as any[]).length > 0) {
                             await aether.db.collection(COLLECTIONS.DRIVER_STATUS).update(
                                 (statusRecords[0] as any).id,
-                                { expoPushToken: '', updatedAt: new Date().toISOString() }
+                                { expoPushToken: '', updatedAt: formatBrazilTimestamp() }
                             );
                         }
                     } catch (syncErr) {

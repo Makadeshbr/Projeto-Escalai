@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { useAuthStore } from '~/src/store/auth';
-import { COLLECTIONS, SackQRCode } from '~/src/lib/collections';
+import { COLLECTIONS, SackQRCode, formatBrazilTimestamp } from '~/src/lib/collections';
 import { SackQRCodeSchema, validateArray } from '~/src/lib/schemas';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -170,7 +170,7 @@ export default function SackQRCodesScreen() {
                             mimeType: file.mimeType || 'image/jpeg',
                             fileSize: file.size || fileData.size || 0,
                             uploadedByAdminId: user?.id || 'admin',
-                            createdAt: new Date().toISOString(),
+                            createdAt: formatBrazilTimestamp(),
                         });
                         successCount++;
                     } else {

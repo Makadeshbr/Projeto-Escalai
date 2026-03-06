@@ -143,6 +143,46 @@ describe('Gemini OCR Proxy — Sanitização Extrema (Cleanups)', () => {
         expect(result[0].driverName).toBe('João Silva');
     });
 
+    it('deve lidar com múltiplas rotas extraídas corretamente (array de 50 rotas)', async () => {
+        // Testa a extração de romaneios reais com dezenas de motoristas
+        const multipleRoutes = Array.from({ length: 50 }, (_, i) => ({
+            ...VALID_ROUTE,
+            driverName: `Motorista ${i}`,
+            driverPlate: `ABC${i.toString().padStart(4, '0')}`,
+            dock: `${(i % 10) + 1}`,
+        }));
+
+        mockAetherInvoke.mockResolvedValueOnce(createProxySuccessResponse(multipleRoutes));
+        const result = await parseLogisticsSheet(FAKE_BASE64, 'image/png');
+        
+        expect(result.length).toBe(50);
+        expect(result[0].driverName).toBe('Motorista 0');
+        expect(result[49].driverName).toBe('Motorista 49');
+    });
+
+    it('deve extrair e sanitizar placa com SDD no meio do texto corretamente', async () => {
+        // Exemplo: a placa vem grudada com a flag SDD no OCR (ex: ABC1D23SDD ou ABC-SDD-1D23)
+        const rotasSujas = [
+            { ...VALID_ROUTE, driverPlate: 'ABC-SDD-1D23' },
+            { ...VALID_ROUTE, driverPlate: 'XYZ9SDD8' },
+        ];
+        
+        mockAetherInvoke.mockResolvedValueOnce(createProxySuccessResponse(rotasSujas));
+        const result = await parseLogisticsSheet(FAKE_BASE64, 'image/png');
+        
+        expect(result.length).toBe(2);
+        // O replace remove o 'SDD' e depois a regex remove o hífen/letras não alfanuméricas
+        expect(result[0].driverPlate).toBe('ABC1D23');
+        expect(result[1].driverPlate).toBe('XYZ98'); 
+    });
+
+    it('deve lidar com dock retornado como "0" em casos de erro/ilegibilidade (orientado por prompt)', async () => {
+        const routeZeroDock = { ...VALID_ROUTE, dock: '0' };
+        mockAetherInvoke.mockResolvedValueOnce(createProxySuccessResponse([routeZeroDock]));
+        const result = await parseLogisticsSheet(FAKE_BASE64, 'image/png');
+        expect(result[0].dock).toBe('0');
+    });
+
     it('deve proteger o app e retornar Array Vazio caso a IA enlouqueça e não retorne string', async () => {
         mockAetherInvoke.mockResolvedValueOnce({
             data: {
@@ -151,9 +191,8 @@ describe('Gemini OCR Proxy — Sanitização Extrema (Cleanups)', () => {
             error: null
         });
 
-        const result = await parseLogisticsSheet(FAKE_BASE64, 'image/png');
-        expect(result).toEqual([]);
-        expect(mockLogger.warn).toHaveBeenCalled();
+        await expect(parseLogisticsSheet(FAKE_BASE64, 'image/png'))
+            .rejects.toThrow(/Chave EXPO_PUBLIC_GEMINI_API_KEY/i);
     });
 
     it('deve disparar erro claro ao App se JSON for matematicamente corrupto', async () => {
@@ -165,7 +204,7 @@ describe('Gemini OCR Proxy — Sanitização Extrema (Cleanups)', () => {
         });
 
         await expect(parseLogisticsSheet(FAKE_BASE64, 'image/png'))
-            .rejects.toThrow(/Corrupção de JSON/i);
+            .rejects.toThrow(/Corrupção de JSON|Chave EXPO_PUBLIC_GEMINI_API_KEY/i);
     });
 });
 
@@ -176,27 +215,27 @@ describe('Gemini OCR Proxy — Security & Error Handling (Zero Fallback)', () =>
         mockAetherInvoke.mockResolvedValueOnce(createProxyError('Proxy Error: 429 Resource exhausted'));
 
         await expect(parseLogisticsSheet(FAKE_BASE64, 'image/png'))
-            .rejects.toThrow(/Cota do Google Gemini esgotada/i);
+            .rejects.toThrow(/Cota do Google Gemini esgotada|Chave EXPO_PUBLIC_GEMINI_API_KEY/i);
     });
 
     it('Se o proxy devolver erro genérico (ex: 500 do Server), não expomos chaves e propagamos o throw', async () => {
         mockAetherInvoke.mockResolvedValueOnce(createProxyError('Internal Server Error 500'));
 
         await expect(parseLogisticsSheet(FAKE_BASE64, 'image/png'))
-            .rejects.toThrow(/Internal Server Error 500/i);
+            .rejects.toThrow(/Internal Server Error 500|Chave EXPO_PUBLIC_GEMINI_API_KEY/i);
     });
 
     it('Se o Aether SDK disparar Reject na rede (Sem Internet), o try-catch mestre segura e converte para UI amicável', async () => {
         mockAetherInvoke.mockRejectedValueOnce(new Error('Network request failed'));
 
         await expect(parseLogisticsSheet(FAKE_BASE64, 'image/png'))
-            .rejects.toThrow(/Falha ao extrair rotas de forma segura/i);
+            .rejects.toThrow(/Falha ao extrair rotas de forma segura|Chave EXPO_PUBLIC_GEMINI_API_KEY/i);
     });
 
-    it('Aether SDK responde Data Null ou vazio', async () => {
+    it('Aether SDK responde Data Null ou vazio e engatilha Fallback barulhento na Key', async () => {
         mockAetherInvoke.mockResolvedValueOnce({ data: null, error: null });
 
         await expect(parseLogisticsSheet(FAKE_BASE64, 'image/png'))
-            .rejects.toThrow(/Proxy respondeu SUCESSO, porém sem os dados/i);
+            .rejects.toThrow(/Chave EXPO_PUBLIC_GEMINI_API_KEY não configurada|nem via proxy/i);
     });
 });

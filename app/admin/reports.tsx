@@ -5,7 +5,7 @@ import { THEME } from '~/src/constants/theme';
 import { Target, Search, CheckCircle2, Package, Cloud, UserX, UserCheck, ShieldAlert, BadgeInfo, Calendar } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
-import { COLLECTIONS } from '~/src/lib/collections';
+import { COLLECTIONS, getTodayDateStr } from '~/src/lib/collections';
 import AdminBottomNav from '~/src/components/AdminBottomNav';
 import { ExportButton } from '~/src/components/ExportButton';
 import { ExportColumn } from '~/src/lib/export';
@@ -275,7 +275,7 @@ export default function AdminReportsScreen() {
                                 { key: 'metrics', label: 'Folgas', format: (v: any) => String(v?.offDays ?? 0) },
                             ] as ExportColumn<Record<string, unknown>>[]}
                             title="Relatório de RH — Frota Escalai"
-                            filename={`relatorio_frota_${new Date().toISOString().slice(0, 10)}`}
+                            filename={`relatorio_frota_${getTodayDateStr()}`}
                         />
                     </View>
 

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatBrazilTimestamp } from './collections';
 
 /**
  * CrashReporter — abstração para crash reporting.
@@ -68,7 +69,7 @@ export const crashReporter = {
      */
     captureException(error: Error, context?: CrashContext): void {
         const entry: CrashEntry = {
-            timestamp: new Date().toISOString(),
+            timestamp: formatBrazilTimestamp(),
             message: error.message,
             stack: error.stack,
             context,

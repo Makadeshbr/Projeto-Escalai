@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { aether } from '~/src/lib/aether';
 import {
     COLLECTIONS, Assignment, DriverAvailability,
-    getTodayDateStr, extractBrazilDateStr
+    getTodayDateStr, extractBrazilDateStr, formatBrazilTimestamp
 } from '~/src/lib/collections';
 import { notifyDriver, diagnosePushError, isExpoGo } from '~/src/lib/push';
 import type { ModalType } from './useActionModal';
@@ -118,7 +118,7 @@ export function useAssignmentActions(callbacks: {
                         dockStatus: 'waiting',
                         status: 'pending',
                         createdByAdminId: snapUser?.id || '',
-                        createdAt: new Date().toISOString(),
+                        createdAt: formatBrazilTimestamp(),
                     };
 
                     let dbCreated = false;

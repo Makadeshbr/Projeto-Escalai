@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import {
     COLLECTIONS, City, DriverAvailability, Assignment,
-    getTodayDateStr, getTomorrowDateStr, extractBrazilDateStr
+    getTodayDateStr, getTomorrowDateStr, extractBrazilDateStr, formatBrazilTimestamp
 } from '~/src/lib/collections';
 import type { ModalType } from './useActionModal';
 import { useRequireAuth } from './useRequireAuth';
@@ -271,7 +271,7 @@ export function useDashboardData(
                 name: name.trim(),
                 code: code.trim() || name.trim().substring(0, 3).toUpperCase(),
                 isActive: true,
-                createdAt: new Date().toISOString(),
+                createdAt: formatBrazilTimestamp(),
             });
             // Invalida cache de cidades → refetch automatico via React Query
             await queryClient.invalidateQueries({ queryKey: queryKeys.cities });
