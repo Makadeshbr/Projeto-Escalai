@@ -82,13 +82,9 @@ export default function DashboardScreen() {
             // Busca FULL collection fresquinha (Ignora caches parciais)
             const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as unknown as Assignment[];
 
-            // [CRITICAL TIMEZONE FIX 2.0]
-            // Pegar a string de HOJE sempre *no exato momento* que o script roda,
-            // não de escopos fora, pois se o app dormir à meia-noite, a constante ficaria presa no "ontem".
-            const rightNow = new Date();
-            // Force Brazil Timezone just to be safe
-            const spTime = new Date(rightNow.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-            const currentDayStr = `${spTime.getFullYear()}-${String(spTime.getMonth() + 1).padStart(2, '0')}-${String(spTime.getDate()).padStart(2, '0')}`;
+            // [CRITICAL TIMEZONE FIX 2.0 / SAFE]
+            // Extrai a data corrente usando a fonte de verdade centralizada do Brazil (Intl seguro)
+            const currentDayStr = getTodayDateStr();
 
             // Filtro Severo
             const allAssigned = allAssignmentsRaw.filter(a => {

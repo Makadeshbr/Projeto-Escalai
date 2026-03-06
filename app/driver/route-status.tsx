@@ -96,18 +96,16 @@ export default function RouteStatusScreen() {
                 return null;
             }
 
-            // [TIMEZONE FIX + ZERO CACHE STICKINESS 2.0]
-            // Pegar a string de HOJE sempre *no exato momento* que o script roda
-            const rightNow = new Date();
-            const spTime = new Date(rightNow.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-            const currentDayStr = `${spTime.getFullYear()}-${String(spTime.getMonth() + 1).padStart(2, '0')}-${String(spTime.getDate()).padStart(2, '0')}`;
+            // [TIMEZONE FIX + ZERO CACHE STICKINESS + SAFE ENGINE FIX]
+            // Extrai a data corrente usando a fonte de verdade centralizada do Brazil (Intl seguro)
+            const currentDayStr = getTodayDateStr();
 
             // Converte a data UTC do banco para local
             // e garante que docas em andamento não despareçam na virada de meia-noite
             const active = allRaw.find(a => {
                 if ((a as any).archived === true) return false;
                 if (a.driverId !== user.id) return false;
-                if (a.status === 'completed' || !a.dock) return false;
+                if (a.status === 'completed') return false; // REMOVIDO || !a.dock para não sumir com o card se a IA alucinar a doca
                 if (!a.createdAt) return false;
 
                 const localCreatedStr = extractBrazilDateStr(a.createdAt);
