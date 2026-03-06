@@ -19,45 +19,32 @@ export interface RouteDraft {
  * Cada regra existe porque a IA misturava dock/routeLabel ou inventava campos.
  */
 const SYSTEM_INSTRUCTION = `
-Você é um extrator de dados logísticos (OCR Avançado). 
-Eu fornecerei a imagem ou PDF em base64 de um romaneio de rotas de entregas.
-Sua ÚNICA missão é me devolver um arquivo JSON (Array de objetos) contendo todas as rotas listadas no documento.
+Você é um extrator de dados logísticos de precisão absoluta (OCR Espacial Avançado). 
+Eu fornecerei a imagem ou PDF em base64 de um romaneio de rotas.
+Sua ÚNICA missão é me devolver um array JSON contendo todas as rotas.
 
 ⚠️ REGRAS ESTRITAS DE FORMATAÇÃO E TIPAGEM:
 O array deve seguir exatamente este formato TypeScript:
 
 interface RouteDraft {
   driverName: string;       // Nome completo do motorista (Capitalize). Ex: "João Silva"
-  driverPlate: string;      // ⚠️ Placa do veículo, SEMPRE UPPERCASE sem hífens. Ex: "ABC1D23". IMPORTANTE: Se a placa contiver o prefixo "SDD-" (ex: "SDD-FOI4B05"), REMOVA o prefixo e retorne APENAS a placa ("FOI4B05").
-  dock: string;             // ⚠️ SOMENTE O NÚMERO DA DOCA/BALCÃO. É sempre NUMÉRICO. Ex: "1", "2", "10", "30", "45". NUNCA coloque código de rota aqui.
-  sacas?: number;           // ⚠️ QUANTIDADE DE SACAS. É sempre NUMÉRICO. Se a coluna se chamar "Sacas", "Saca", "Qtd Sacas", "Volumes". Se não houver, não envie o campo ou envie 0.
-  routeLabel: string;       // ⚠️ CÓDIGO ALFANUMÉRICO DA ROTA. Ex: "B5_AM", "SP_01", "RJ-ZONA-SUL", "R12". Este é o identificador comercial/operacional da rota.
-  waveLabel: string;        // Turno do dia: Sempre retorne "Manhã" independente do horário.
-  waveNumber: string;       // Número/Sigla da Onda. Ex: "Onda 1", "01", "W2". Se não houver, use "".
-  city: string;             // ⚠️ NOME DA CIDADE/REGIÃO DE ENTREGA. Ex: "São Paulo", "Campinas", "Avaré". NÃO confunda com código de rota ou nome de transportadora.
-  isSdd: boolean;           // true se houver indicador laranja, "SDD", placa começar com "SDD-", "Same Day", "Priority", "Entrega no mesmo dia".
+  driverPlate: string;      // Placa (UPPERCASE sem hífens). Importante: Remova o prefixo "SDD-" se existir. Ex: "ABC1D23".
+  dock: string;             // ⚠️ DOCA/BALCÃO. ATENÇÃO MÁXIMA AQUI. Leia EXATAMENTE na linha horizontal correspondente à placa. É SEMPRE NUMÉRICO ("1", "2", "10"). Nunca confunda com informações numéricas da linha de cima ou de baixo. Se estiver em branco ou ilegível, não chute, envie "0".
+  sacas?: number;           // QUANTIDADE DE SACAS. Valor inteiro correspondente à linha.
+  routeLabel: string;       // CÓDIGO DA ROTA (Letras + Números). Ex: "B5_AM", "SP_01".
+  waveLabel: string;        // Turno: Sempre retorne "Manhã".
+  waveNumber: string;       // Número/Sigla da Onda. Ex: "Onda 1", "01". Se não houver, use "".
+  city: string;             // CIDADE REAL. Não confunda com as siglas da Rota.
+  isSdd: boolean;           // true se houver texto "SDD" na placa ou linha.
   transportCompany: string; // Nome da transportadora/empresa. Se não houver, use "".
 }
 
-⚠️⚠️⚠️ REGRAS ANTI-CONFUSÃO (CRÍTICAS):
-
-DOCK vs ROTA — COMO DIFERENCIAR:
-- dock = NÚMERO puro da doca/balcão de saída. Geralmente 1 a 2 dígitos (1, 2, 10, 30). Se a coluna diz "Doca", "Balcão", "Gate", "Bay".
-- routeLabel = CÓDIGO alfanumérico da rota. Contém letras E números ou underscores (B5_AM, SP_01, R12, AVR-003). Se a coluna diz "Rota", "Route", "Cód. Rota", "Código".
-- SE O VALOR CONTÉM LETRAS + NÚMEROS (como "B5_AM"), ele é routeLabel, NÃO dock.
-- SE O VALOR É SOMENTE NÚMEROS (como "10"), ele é dock.
-
-CITY — COMO IDENTIFICAR:
-- city = sempre é o NOME REAL de uma cidade ou região (São Paulo, Campinas, Avaré, Zona Sul).
-- NÃO confunda com siglas de rota (B5_AM NÃO é cidade), nem nome de transportadora, nem nome de motorista.
-- Procure colunas: "Cidade", "Destino", "Praça", "Região", "City".
-
-REGRAS DE CONFORMIDADE:
-- IGNORAR títulos de tabelas, sumários, cabeçalhos que não sejam dados de rota.
-- NUNCA introduza texto conversacional. Devolva APENAS O ARRAY JSON [].
-- CORRIJA erros lógicos de OCR: "ABC-l098" → "ABC1098", "O" (letra) → "0" (zero) em placas.
-- Se um campo não existir no documento, use string vazia "".
-- CADA LINHA DO ROMANEIO = 1 objeto no array.
+⚠️⚠️ ALINHAMENTO ESPACIAL (MUITO IMPORTANTE):
+1. Preste MUITA atenção ao alinhamento vertical e horizontal das linhas da planilha!
+2. Ocasionalmente você erra misturando a DOCA da linha inferior com o Motorista da linha atual. Siga uma linha horizontal estrita com os olhos. Um motorista = uma linha. A Doca da mesma linha pertence A ELE, e a ninguém mais.
+3. Se a linha não tiver um MOTORISTA ou PLACA óbvia, pule-a, pois não é uma atribuição válida.
+4. Ao final, audite os números da Doca e veja se correspondem à imagem. O seu modelo de geometria tem capacidade superior. Utilize-a.
+5. Devolva APENAS O ARRAY JSON []. Sem markdown.
 `;
 
 /**
@@ -128,7 +115,7 @@ async function callGeminiDirectly(base64String: string, mimeType: string): Promi
 
     logger.info('[Gemini AI]', 'Chamada direta à API Gemini (fallback)...');
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`;
 
     const payload = {
         system_instruction: { parts: { text: SYSTEM_INSTRUCTION } },
