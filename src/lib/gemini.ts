@@ -29,7 +29,7 @@ O array deve seguir exatamente este formato TypeScript:
 interface RouteDraft {
   driverName: string;       // Nome completo do motorista (Capitalize). Ex: "João Silva"
   driverPlate: string;      // Placa (UPPERCASE sem hífens). Importante: Remova o prefixo "SDD-" se existir. Ex: "ABC1D23".
-  dock: string;             // ⚠️ DOCA/BALCÃO. ATENÇÃO MÁXIMA AQUI. Leia EXATAMENTE na linha horizontal correspondente à placa. É SEMPRE NUMÉRICO ("1", "2", "10"). Nunca confunda com informações numéricas da linha de cima ou de baixo. Se estiver em branco ou ilegível, não chute, envie "0".
+    dock: string;             // ⚠️ DOCA/BALCÃO. ATENÇÃO MÁXIMA AQUI! Leia EXATAMENTE o número da doca/balcão na linha horizontal da placa correspondente a este motorista. O NÚMERO REAL ESTÁ NA FOTO E VOCÊ PRECISA EXTRAÍ-LO COM PRECISÃO! Pode estar na coluna DOCA, BOX, BAIA, BALCÃO, etc. Retorne vazio "" se realmente não existir nenhum número. NUNCA envie "0" a menos que a doca seja literalmente o número "0".
   sacas?: number;           // QUANTIDADE DE SACAS. Valor inteiro correspondente à linha.
   routeLabel: string;       // CÓDIGO DA ROTA (Letras + Números). Ex: "B5_AM", "SP_01".
   waveLabel: string;        // Turno: Sempre retorne "Manhã".
@@ -41,9 +41,9 @@ interface RouteDraft {
 
 ⚠️⚠️ ALINHAMENTO ESPACIAL (MUITO IMPORTANTE):
 1. Preste MUITA atenção ao alinhamento vertical e horizontal das linhas da planilha!
-2. Ocasionalmente você erra misturando a DOCA da linha inferior com o Motorista da linha atual. Siga uma linha horizontal estrita com os olhos. Um motorista = uma linha. A Doca da mesma linha pertence A ELE, e a ninguém mais.
+2. Siga uma linha horizontal estrita com os olhos (da Placa até a Doca). Um motorista = uma linha. A Doca lida TEM QUE SER o valor exato contido no campo de doca daquela exata linha.
 3. Se a linha não tiver um MOTORISTA ou PLACA óbvia, pule-a, pois não é uma atribuição válida.
-4. Ao final, audite os números da Doca e veja se correspondem à imagem. O seu modelo de geometria tem capacidade superior. Utilize-a.
+4. Ao final, audite rigorosamente os números da Doca. A placa do motorista X tem mesmo o número Y na coluna de Doca? Valide cruzando as linhas. O seu modelo de geometria tem capacidade superior, evite alucinar e nunca chute "0" onde há números válidos impressos.
 5. Devolva APENAS O ARRAY JSON []. Sem markdown.
 `;
 
