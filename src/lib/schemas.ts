@@ -30,6 +30,7 @@ export const AssignmentSchema = z.object({
     driverPlate: safeString,
     dockStatus: z.enum(['waiting', 'liberated', 'departed']).catch('waiting'),
     status: z.enum(['pending', 'confirmed', 'in_progress', 'completed']).catch('pending'),
+    driverDidReadNotification: z.boolean().optional().catch(undefined),
     createdByAdminId: safeString,
     createdAt: safeString,
     archived: z.boolean().optional().catch(undefined),

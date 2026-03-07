@@ -15,6 +15,7 @@ import { NotificationCenter } from '~/src/components/NotificationCenter';
 import { useForegroundRefresh } from '~/src/hooks/useForegroundRefresh';
 import { SackQRCodeViewerModal } from '~/src/components/SackQRCodeViewerModal';
 import { logger } from '~/src/lib/logger';
+import { validateArray, AssignmentSchema } from '~/src/lib/schemas';
 
 export default function DashboardScreen() {
     const { user } = useAuthStore();
@@ -80,14 +81,16 @@ export default function DashboardScreen() {
             ).catch(err => logger.warn('[PushSync] Falhou:', err));
 
             // Busca FULL collection fresquinha (Ignora caches parciais)
-            const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as unknown as Assignment[];
+            const allAssignmentsRaw = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS) as any[];
+            // [SENIOR FIX] Extrai o _payload e valida os tipos
+            const validAssignments = validateArray(allAssignmentsRaw, AssignmentSchema, 'assignments');
 
             // [CRITICAL TIMEZONE FIX 2.0 / SAFE]
             // Extrai a data corrente usando a fonte de verdade centralizada do Brazil (Intl seguro)
             const currentDayStr = getTodayDateStr();
 
             // Filtro Severo
-            const allAssigned = allAssignmentsRaw.filter(a => {
+            const allAssigned = validAssignments.filter(a => {
                 if (a.driverId !== user.id || a.archived === true || !a.createdAt) return false;
                 
                 const assignmentDateStr = extractBrazilDateStr(a.createdAt);
