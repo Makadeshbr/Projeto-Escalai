@@ -99,13 +99,16 @@ export default function ImportRouteScreen() {
                     const p = s._payload || s;
                     const plate = (p.driverPlate || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
                     const status = p.status || 'active';
-                    return plate && status !== 'blocked' && status !== 'deleted' && !knownPlates.has(plate);
+                    // Apenas aceita como fallback motoristas que tenham um user_id válido (logaram no app)
+                    // Do contrário, se usarmos s.id, despacharemos rotas fantasmas inacessíveis no firebase auth do motorista
+                    const hasValidAuthId = Boolean(p.user_id || p.driverId);
+                    return plate && status !== 'blocked' && status !== 'deleted' && !knownPlates.has(plate) && hasValidAuthId;
                 })
                 .map(s => {
                     const p = s._payload || s;
                     return {
                         id: s.id,
-                        driverId: p.user_id || p.driverId || s.id,
+                        driverId: p.user_id || p.driverId, // Jamais use s.id, ou ocorrerá filter match error no motorista
                         driverName: p.driverName || 'Motorista',
                         driverPlate: (p.driverPlate || '').toUpperCase(),
                         windowId: '',
@@ -168,12 +171,14 @@ export default function ImportRouteScreen() {
                     const p = s._payload || s;
                     const plate = (p.driverPlate || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
                     const status = p.status || 'active';
-                    return plate && status !== 'blocked' && status !== 'deleted' && !knownPlates.has(plate);
+                    const hasValidAuthId = Boolean(p.user_id || p.driverId);
+                    return plate && status !== 'blocked' && status !== 'deleted' && !knownPlates.has(plate) && hasValidAuthId;
                 })
                 .map(s => {
                     const p = s._payload || s;
                     return {
-                        id: s.id, driverId: p.user_id || p.driverId || s.id,
+                        id: s.id, 
+                        driverId: p.user_id || p.driverId, 
                         driverName: p.driverName || 'Motorista',
                         driverPlate: (p.driverPlate || '').toUpperCase(),
                         windowId: '', targetDate: targetDateStr, isAvailable: true,
