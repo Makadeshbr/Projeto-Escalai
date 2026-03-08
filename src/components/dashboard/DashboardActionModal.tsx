@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react-native';
 import { THEME } from '~/src/constants/theme';
 import type { ActionModalState } from '~/src/hooks/useActionModal';
@@ -20,6 +20,8 @@ interface DashboardActionModalProps {
  * com ícones, cores e botões contextuais.
  */
 export function DashboardActionModal({ modal, onDismiss }: DashboardActionModalProps) {
+    const [isConfirming, setIsConfirming] = useState(false);
+
     /** Retorna a cor de fundo do ícone baseada no tipo */
     const getIconBg = () => {
         switch (modal.type) {
@@ -88,14 +90,29 @@ export function DashboardActionModal({ modal, onDismiss }: DashboardActionModalP
                         )}
                         <TouchableOpacity
                             className={`flex-1 rounded-xl py-3.5 items-center ${getButtonClass()}`}
-                            onPress={() => {
-                                if (modal.type === 'confirm') modal.onConfirm();
-                                else onDismiss();
+                            disabled={isConfirming}
+                            onPress={async () => {
+                                if (modal.type === 'confirm') {
+                                    if (isConfirming) return;
+                                    setIsConfirming(true);
+                                    onDismiss();
+                                    try {
+                                        await modal.onConfirm();
+                                    } finally {
+                                        setIsConfirming(false);
+                                    }
+                                } else {
+                                    onDismiss();
+                                }
                             }}
                         >
-                            <Text className={`font-spaceGroteskBold uppercase text-[13px] ${getButtonTextColor()}`}>
-                                {modal.type === 'confirm' ? 'Confirmar' : 'Entendi'}
-                            </Text>
+                            {isConfirming ? (
+                                <ActivityIndicator size="small" color="#94a3b8" />
+                            ) : (
+                                <Text className={`font-spaceGroteskBold uppercase text-[13px] ${getButtonTextColor()}`}>
+                                    {modal.type === 'confirm' ? 'Confirmar' : 'Entendi'}
+                                </Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>

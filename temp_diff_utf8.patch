@@ -1,0 +1,202 @@
+﻿diff --git a/src/components/dashboard/DashboardActionModal.tsx b/src/components/dashboard/DashboardActionModal.tsx
+index 361b938..e6f5eb9 100644
+--- a/src/components/dashboard/DashboardActionModal.tsx
++++ b/src/components/dashboard/DashboardActionModal.tsx
+@@ -1,5 +1,5 @@
+-import React from 'react';
+-import { View, Text, TouchableOpacity, Modal } from 'react-native';
++import React, { useState } from 'react';
++import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+ import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react-native';
+ import { THEME } from '~/src/constants/theme';
+ import type { ActionModalState } from '~/src/hooks/useActionModal';
+@@ -20,6 +20,8 @@ interface DashboardActionModalProps {
+  * com ├¡cones, cores e bot├Áes contextuais.
+  */
+ export function DashboardActionModal({ modal, onDismiss }: DashboardActionModalProps) {
++    const [isConfirming, setIsConfirming] = useState(false);
++
+     /** Retorna a cor de fundo do ├¡cone baseada no tipo */
+     const getIconBg = () => {
+         switch (modal.type) {
+@@ -88,14 +90,29 @@ export function DashboardActionModal({ modal, onDismiss }: DashboardActionModalP
+                         )}
+                         <TouchableOpacity
+                             className={`flex-1 rounded-xl py-3.5 items-center ${getButtonClass()}`}
+-                            onPress={() => {
+-                                if (modal.type === 'confirm') modal.onConfirm();
+-                                else onDismiss();
++                            disabled={isConfirming}
++                            onPress={async () => {
++                                if (modal.type === 'confirm') {
++                                    if (isConfirming) return;
++                                    setIsConfirming(true);
++                                    onDismiss();
++                                    try {
++                                        await modal.onConfirm();
++                                    } finally {
++                                        setIsConfirming(false);
++                                    }
++                                } else {
++                                    onDismiss();
++                                }
+                             }}
+                         >
+-                            <Text className={`font-spaceGroteskBold uppercase text-[13px] ${getButtonTextColor()}`}>
+-                                {modal.type === 'confirm' ? 'Confirmar' : 'Entendi'}
+-                            </Text>
++                            {isConfirming ? (
++                                <ActivityIndicator size="small" color="#94a3b8" />
++                            ) : (
++                                <Text className={`font-spaceGroteskBold uppercase text-[13px] ${getButtonTextColor()}`}>
++                                    {modal.type === 'confirm' ? 'Confirmar' : 'Entendi'}
++                                </Text>
++                            )}
+                         </TouchableOpacity>
+                     </View>
+                 </View>
+diff --git a/src/hooks/useDashboardData.ts b/src/hooks/useDashboardData.ts
+index a65d46e..5506410 100644
+--- a/src/hooks/useDashboardData.ts
++++ b/src/hooks/useDashboardData.ts
+@@ -193,9 +193,9 @@ export function useDashboardData(
+     }, [recentAssignments, showModal, queryClient]);
+ 
+     /**
+-     * Apaga PERMANENTEMENTE TODAS as rotas de hoje do banco (incluindo arquivadas).
+-     * Use quando o admin despacheu por engano e quer redespachar hoje.
+-     * Busca tanto rotas visiveis quanto as ja arquivadas com o botao Arquivar.
++     * Apaga PERMANENTEMENTE TODAS as rotas de hoje do banco (incluindo arquivadas)
++     * E tambem rotas antigas que ficaram pendentes de dias anteriores.
++     * Use quando o admin despachou por engano e quer redespachar hoje.
+      * ATENCAO: Esta acao e IRREVERSIVEL.
+      */
+     const hardDeleteRecentAssignments = useCallback(async (
+@@ -203,30 +203,36 @@ export function useDashboardData(
+     ) => {
+         showModal(
+             'ÔÜá´©Å APAGAR PERMANENTEMENTE',
+-            'Isso vai apagar TODAS as rotas de hoje do banco (inclusive as ja arquivadas), de forma IRREVERSIVEL, para que voce possa redespachar. Confirma?',
++            'Isso vai apagar TODAS as rotas de hoje e rotas pendentes de dias anteriores, de forma IRREVERSIVEL, para que voce possa redespachar. Confirma?',
+             'confirm',
+             async () => {
+                 setIsLoading(true);
+                 try {
+-                    // Busca TODAS as rotas de hoje, inclusive as arquivadas
+                     const todayStr = getTodayDateStr();
+                     const allDocs = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
+-                    const todayAll = (allDocs as any[]).filter(doc => {
++                    // [FIX] Apaga rotas de hoje + rotas antigas que ficaram pendentes
++                    // (eram visiveis no monitor e nao sumiam ao clicar Apagar)
++                    const toDelete = (allDocs as any[]).filter(doc => {
+                         const payload = doc._payload || doc;
+                         const created = payload.createdAt || '';
+-                        return extractBrazilDateStr(created) === todayStr;
++                        const isToday = extractBrazilDateStr(created) === todayStr;
++                        const isStaleActive = (
++                            payload.status === 'pending' || payload.status === 'confirmed'
++                            || payload.dockStatus === 'waiting' || payload.dockStatus === 'liberated'
++                        ) && !isToday;
++                        return isToday || isStaleActive;
+                     });
+ 
+-                    if (todayAll.length === 0) {
+-                        showModal('Nada Encontrado', 'Nenhuma rota de hoje foi encontrada no banco de dados.', 'info');
++                    if (toDelete.length === 0) {
++                        showModal('Nada Encontrado', 'Nenhuma rota de hoje ou pendente foi encontrada no banco de dados.', 'info');
+                         return;
+                     }
+ 
+                     const BATCH_SIZE = 10;
+                     const DELAY_MS = 600;
+ 
+-                    for (let i = 0; i < todayAll.length; i += BATCH_SIZE) {
+-                        const chunk = todayAll.slice(i, i + BATCH_SIZE);
++                    for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
++                        const chunk = toDelete.slice(i, i + BATCH_SIZE);
+                         await Promise.allSettled(
+                             chunk.map((doc: any) => {
+                                 const id = doc._payload?.id || doc.id;
+@@ -234,14 +240,14 @@ export function useDashboardData(
+                             })
+                         );
+ 
+-                        if (i + BATCH_SIZE < todayAll.length) {
++                        if (i + BATCH_SIZE < toDelete.length) {
+                             await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+                         }
+                     }
+ 
+                     // Invalida cache completo ÔåÆ refetch
+                     await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
+-                    showModal('Apagado!', `${todayAll.length} rota(s) removidas permanentemente. Redespacha agora!`, 'success');
++                    showModal('Apagado!', `${toDelete.length} rota(s) removidas permanentemente. Redespacha agora!`, 'success');
+                 } catch (e: unknown) {
+                     const message = e instanceof Error ? e.message : 'Erro critico ao apagar rotas.';
+                     showModal('Falha na Exclusao', message, 'error');
+diff --git a/src/hooks/useMonitorData.ts b/src/hooks/useMonitorData.ts
+index d4a2359..92a6a82 100644
+--- a/src/hooks/useMonitorData.ts
++++ b/src/hooks/useMonitorData.ts
+@@ -99,21 +99,12 @@ export function useMonitorData() {
+         const todayStr = getTodayDateStr();
+ 
+         const todayActive = allAssignments.filter(a => {
+-            // [SENIOR FIX - HISTORY PERSISTENCE] Ocultar itens arquivados
+             if ((a as any).archived === true) return false;
+             if (!a.createdAt) return false;
+ 
+-            // Extrai a data BRT (ignorando Timezone UTC do SO)
+-            const localCreatedStr = extractBrazilDateStr(a.createdAt);
+-
+-            // Valido se criado hoje OU se ainda esta ativo (nao-completado)
+-            const isToday = localCreatedStr === todayStr;
+-            const isStillActive = (
+-                a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress'
+-                || a.dockStatus === 'waiting' || a.dockStatus === 'liberated'
+-            );
+-
+-            return isToday || isStillActive;
++            // [FIX] Apenas rotas de HOJE. Rotas de dias anteriores que ficaram
++            // pendentes s├úo lixo operacional ÔÇö n├úo devem poluir o monitor.
++            return extractBrazilDateStr(a.createdAt) === todayStr;
+         });
+ 
+         return sortByDockPriority(todayActive);
+diff --git a/src/lib/schemas.ts b/src/lib/schemas.ts
+index 4346659..59c3a42 100644
+--- a/src/lib/schemas.ts
++++ b/src/lib/schemas.ts
+@@ -10,6 +10,8 @@ import { z } from 'zod/v4';
+ 
+ // ---- Shared helpers ----
+ const safeString = z.string().catch('');
++/** Aceita string OU n├║mero e converte para string. Resolve dock num├®rico vindo do Aether. */
++const safeStringOrNumber = z.union([z.string(), z.number().transform(String)]).catch('');
+ const safeBoolean = z.boolean().catch(false);
+ 
+ // ---- Assignment ----
+@@ -21,7 +23,7 @@ export const AssignmentSchema = z.object({
+     waveLabel: safeString,
+     waveTime: safeString,
+     waveNumber: z.string().optional().catch(undefined),
+-    dock: safeString,
++    dock: safeStringOrNumber,
+     routeLabel: z.string().optional().catch(undefined),
+     sacas: z.number().optional().catch(undefined),
+     isSdd: safeBoolean,
+@@ -96,8 +98,13 @@ export function validateArray<T>(
+ ): T[] {
+     const results: T[] = [];
+     for (const item of data) {
++        const record = item as Record<string, unknown>;
+         // Normaliza: extrai _payload se existir (padr├úo Aether BaaS)
+-        const raw = (item as Record<string, unknown>)?._payload || item;
++        // Preserva `id` do n├¡vel superior ÔÇö _payload pode n├úo cont├¬-lo
++        const payload = record?._payload as Record<string, unknown> | undefined;
++        const raw = payload
++            ? { ...payload, id: payload.id || record.id }
++            : record;
+         const parsed = schema.safeParse(raw);
+         if (parsed.success) {
+             results.push(parsed.data);

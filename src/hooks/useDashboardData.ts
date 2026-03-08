@@ -193,9 +193,9 @@ export function useDashboardData(
     }, [recentAssignments, showModal, queryClient]);
 
     /**
-     * Apaga PERMANENTEMENTE TODAS as rotas de hoje do banco (incluindo arquivadas).
-     * Use quando o admin despacheu por engano e quer redespachar hoje.
-     * Busca tanto rotas visiveis quanto as ja arquivadas com o botao Arquivar.
+     * Apaga PERMANENTEMENTE TODAS as rotas de hoje do banco (incluindo arquivadas)
+     * E tambem rotas antigas que ficaram pendentes de dias anteriores.
+     * Use quando o admin despachou por engano e quer redespachar hoje.
      * ATENCAO: Esta acao e IRREVERSIVEL.
      */
     const hardDeleteRecentAssignments = useCallback(async (
@@ -203,30 +203,36 @@ export function useDashboardData(
     ) => {
         showModal(
             '⚠️ APAGAR PERMANENTEMENTE',
-            'Isso vai apagar TODAS as rotas de hoje do banco (inclusive as ja arquivadas), de forma IRREVERSIVEL, para que voce possa redespachar. Confirma?',
+            'Isso vai apagar TODAS as rotas de hoje e rotas pendentes de dias anteriores, de forma IRREVERSIVEL, para que voce possa redespachar. Confirma?',
             'confirm',
             async () => {
                 setIsLoading(true);
                 try {
-                    // Busca TODAS as rotas de hoje, inclusive as arquivadas
                     const todayStr = getTodayDateStr();
                     const allDocs = await aetherFetchAll(COLLECTIONS.ASSIGNMENTS);
-                    const todayAll = (allDocs as any[]).filter(doc => {
+                    // [FIX] Apaga rotas de hoje + rotas antigas que ficaram pendentes
+                    // (eram visiveis no monitor e nao sumiam ao clicar Apagar)
+                    const toDelete = (allDocs as any[]).filter(doc => {
                         const payload = doc._payload || doc;
                         const created = payload.createdAt || '';
-                        return extractBrazilDateStr(created) === todayStr;
+                        const isToday = extractBrazilDateStr(created) === todayStr;
+                        const isStaleActive = (
+                            payload.status === 'pending' || payload.status === 'confirmed'
+                            || payload.dockStatus === 'waiting' || payload.dockStatus === 'liberated'
+                        ) && !isToday;
+                        return isToday || isStaleActive;
                     });
 
-                    if (todayAll.length === 0) {
-                        showModal('Nada Encontrado', 'Nenhuma rota de hoje foi encontrada no banco de dados.', 'info');
+                    if (toDelete.length === 0) {
+                        showModal('Nada Encontrado', 'Nenhuma rota de hoje ou pendente foi encontrada no banco de dados.', 'info');
                         return;
                     }
 
                     const BATCH_SIZE = 10;
                     const DELAY_MS = 600;
 
-                    for (let i = 0; i < todayAll.length; i += BATCH_SIZE) {
-                        const chunk = todayAll.slice(i, i + BATCH_SIZE);
+                    for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
+                        const chunk = toDelete.slice(i, i + BATCH_SIZE);
                         await Promise.allSettled(
                             chunk.map((doc: any) => {
                                 const id = doc._payload?.id || doc.id;
@@ -234,14 +240,14 @@ export function useDashboardData(
                             })
                         );
 
-                        if (i + BATCH_SIZE < todayAll.length) {
+                        if (i + BATCH_SIZE < toDelete.length) {
                             await new Promise(resolve => setTimeout(resolve, DELAY_MS));
                         }
                     }
 
                     // Invalida cache completo → refetch
                     await queryClient.invalidateQueries({ queryKey: queryKeys.assignments });
-                    showModal('Apagado!', `${todayAll.length} rota(s) removidas permanentemente. Redespacha agora!`, 'success');
+                    showModal('Apagado!', `${toDelete.length} rota(s) removidas permanentemente. Redespacha agora!`, 'success');
                 } catch (e: unknown) {
                     const message = e instanceof Error ? e.message : 'Erro critico ao apagar rotas.';
                     showModal('Falha na Exclusao', message, 'error');

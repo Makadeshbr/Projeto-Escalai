@@ -10,6 +10,8 @@ import { z } from 'zod/v4';
 
 // ---- Shared helpers ----
 const safeString = z.string().catch('');
+/** Aceita string OU número e converte para string. Resolve dock numérico vindo do Aether. */
+const safeStringOrNumber = z.union([z.string(), z.number().transform(String)]).catch('');
 const safeBoolean = z.boolean().catch(false);
 
 // ---- Assignment ----
@@ -21,7 +23,7 @@ export const AssignmentSchema = z.object({
     waveLabel: safeString,
     waveTime: safeString,
     waveNumber: z.string().optional().catch(undefined),
-    dock: safeString,
+    dock: safeStringOrNumber,
     routeLabel: z.string().optional().catch(undefined),
     sacas: z.number().optional().catch(undefined),
     isSdd: safeBoolean,
@@ -96,8 +98,13 @@ export function validateArray<T>(
 ): T[] {
     const results: T[] = [];
     for (const item of data) {
+        const record = item as Record<string, unknown>;
         // Normaliza: extrai _payload se existir (padrão Aether BaaS)
-        const raw = (item as Record<string, unknown>)?._payload || item;
+        // Preserva `id` do nível superior — _payload pode não contê-lo
+        const payload = record?._payload as Record<string, unknown> | undefined;
+        const raw = payload
+            ? { ...payload, id: payload.id || record.id }
+            : record;
         const parsed = schema.safeParse(raw);
         if (parsed.success) {
             results.push(parsed.data);

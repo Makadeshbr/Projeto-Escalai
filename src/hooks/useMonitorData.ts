@@ -99,21 +99,12 @@ export function useMonitorData() {
         const todayStr = getTodayDateStr();
 
         const todayActive = allAssignments.filter(a => {
-            // [SENIOR FIX - HISTORY PERSISTENCE] Ocultar itens arquivados
             if ((a as any).archived === true) return false;
             if (!a.createdAt) return false;
 
-            // Extrai a data BRT (ignorando Timezone UTC do SO)
-            const localCreatedStr = extractBrazilDateStr(a.createdAt);
-
-            // Valido se criado hoje OU se ainda esta ativo (nao-completado)
-            const isToday = localCreatedStr === todayStr;
-            const isStillActive = (
-                a.status === 'pending' || a.status === 'confirmed' || a.status === 'in_progress'
-                || a.dockStatus === 'waiting' || a.dockStatus === 'liberated'
-            );
-
-            return isToday || isStillActive;
+            // [FIX] Apenas rotas de HOJE. Rotas de dias anteriores que ficaram
+            // pendentes são lixo operacional — não devem poluir o monitor.
+            return extractBrazilDateStr(a.createdAt) === todayStr;
         });
 
         return sortByDockPriority(todayActive);
