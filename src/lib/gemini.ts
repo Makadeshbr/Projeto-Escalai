@@ -115,7 +115,7 @@ async function callGeminiDirectly(base64String: string, mimeType: string): Promi
 
     logger.info('[Gemini AI]', 'Chamada direta à API Gemini (fallback)...');
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
 
     const payload = {
         system_instruction: { parts: { text: SYSTEM_INSTRUCTION } },
@@ -128,8 +128,9 @@ async function callGeminiDirectly(base64String: string, mimeType: string): Promi
             }]
         }],
         generationConfig: {
-            temperature: 0.1,
-            response_mime_type: 'application/json'
+            temperature: 1.0,
+            response_mime_type: 'application/json',
+            media_resolution: 'medium'
         }
     };
 
@@ -250,9 +251,18 @@ function sanitizeRoutes(routes: RouteDraft[]): RouteDraft[] {
         // Remove qualquer outro hífen ou espaço que a IA inventar
         cleanPlate = cleanPlate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
 
+        // Sanitiza dock: remove espaços, garante string limpa
+        let cleanDock = (route.dock || '').toString().trim();
+        // Se a IA mandou "0" (alucinação), troca por vazio para forçar edição manual
+        if (cleanDock === '0') {
+            logger.warn('[Gemini AI]', `Dock "0" detectado para placa ${cleanPlate} — substituído por vazio`);
+            cleanDock = '';
+        }
+
         return {
             ...route,
-            driverPlate: cleanPlate
+            driverPlate: cleanPlate,
+            dock: cleanDock,
         };
     });
 }

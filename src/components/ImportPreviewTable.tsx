@@ -54,9 +54,14 @@ const RouteRow = memo(({ route, idx, isMatched, onChangeRoute }: any) => {
 
             {/* Dock */}
             <TextInput
-                className="w-20 px-2 py-1 text-[14px] font-spaceGrotesk text-center bg-background rounded-lg border border-border"
-                style={{ color: '#ffffff' }}
+                className="w-20 px-2 py-1 text-[14px] font-spaceGroteskBold text-center bg-background rounded-lg border"
+                style={{
+                    color: route.dock ? '#ffffff' : '#f87171',
+                    borderColor: route.dock ? '#333' : '#ef4444',
+                }}
                 value={route.dock}
+                placeholder="???"
+                placeholderTextColor="#ef4444"
                 onChangeText={(val) => onChangeRoute(idx, 'dock', val)}
                 keyboardType="numbers-and-punctuation"
                 maxLength={4}
