@@ -62,7 +62,7 @@ const VALID_ROUTE: RouteDraft = {
     driverName: 'João Silva',
     driverPlate: 'ABC1D23',
     dock: '5',
-    sacas: 120,
+    sacas: 4,
     waveLabel: 'Manhã',
     waveNumber: 'Onda 1',
     city: 'Campinas',
@@ -102,7 +102,9 @@ describe('Gemini OCR Proxy — Estruturas e Contratos', () => {
         expect(functionId).toBe('gemini-ocr-proxy');
         expect(payload.base64).toBe(FAKE_BASE64);
         expect(payload.mimeType).toBe('application/pdf');
-        expect(payload.systemInstruction).toContain('Você é um extrator de dados logísticos');
+        expect(payload.systemInstruction).toContain('Você é um extrator OCR de romaneios logísticos');
+        expect(payload.responseSchema).toBeDefined();
+        expect(payload.responseSchema.type).toBe('array');
         expect(config.timeout).toBe(60000); // 60s
     });
 });
@@ -176,11 +178,13 @@ describe('Gemini OCR Proxy — Sanitização Extrema (Cleanups)', () => {
         expect(result[1].driverPlate).toBe('XYZ98'); 
     });
 
-    it('deve lidar com dock retornado como "0" em casos de erro/ilegibilidade (orientado por prompt)', async () => {
+    it('deve substituir dock "0" por vazio e marcar lowConfidence (dock inválido)', async () => {
         const routeZeroDock = { ...VALID_ROUTE, dock: '0' };
         mockAetherInvoke.mockResolvedValueOnce(createProxySuccessResponse([routeZeroDock]));
         const result = await parseLogisticsSheet(FAKE_BASE64, 'image/png');
-        expect(result[0].dock).toBe('0');
+        expect(result[0].dock).toBe('');
+        expect(result[0].lowConfidence).toBe(true);
+        expect(result[0].lowConfidenceFields).toContain('dock');
     });
 
     it('deve proteger o app e retornar Array Vazio caso a IA enlouqueça e não retorne string', async () => {

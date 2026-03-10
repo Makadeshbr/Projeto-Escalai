@@ -12,6 +12,8 @@ export interface RouteDraft {
     routeLabel: string;
     isSdd: boolean;
     transportCompany: string;
+    lowConfidence?: boolean;        // Flag: IA pode ter errado este registro
+    lowConfidenceFields?: string[]; // Quais campos específicos são duvidosos
 }
 
 /**
@@ -21,27 +23,32 @@ export interface RouteDraft {
 const SYSTEM_INSTRUCTION = `
 Você é um extrator OCR de romaneios logísticos.
 
-# LAYOUT DA TABELA (ordem das colunas da esquerda para a direita):
+# PASSO 1 — IDENTIFICAR COLUNAS PELOS CABEÇALHOS:
 
-A tabela segue este padrão de colunas:
-CIDADE | ROTA/OTIMIZADA | PLACA | MOTORISTA | ONDA | DOCA | SACAS
+Leia a PRIMEIRA LINHA (cabeçalhos) da tabela. A ordem pode variar. Identifique cada coluna pelo nome:
+- CIDADE: cabeçalho contém "cidade"
+- ROTA: cabeçalho contém "otimizada", "rota"
+- PLACA: cabeçalho contém "placa"
+- MOTORISTA: cabeçalho contém "motorista", "nome"
+- ONDA: cabeçalho contém "onda", "wave"
+- DOCA: cabeçalho contém "doca", "box", "baia", "balcão"
+- SACAS: cabeçalho contém "sacas", "saca", "qtd"
+- TRANSPORTADORA: cabeçalho contém "transportadora", "empresa"
 
-⚠️ CUIDADO CRÍTICO: DOCA e SACAS são colunas DIFERENTES lado a lado!
-- DOCA = penúltima coluna numérica (números geralmente de 1 a 50, é o número do box/balcão)
-- SACAS = ÚLTIMA coluna numérica (quantidade de sacas, frequentemente 0)
-- NÃO confunda: se a última coluna tem muitos "0", esses zeros são SACAS, não DOCA!
+# PASSO 2 — DIFERENCIAR DOCA vs SACAS:
 
-# MÉTODO:
+⚠️ CRÍTICO: DOCA e SACAS são colunas DIFERENTES, ambas numéricas e geralmente lado a lado!
+- DOCA = número do box/balcão (geralmente 1 a 50)
+- SACAS = quantidade de sacas (frequentemente 0, 1, 2, 3...)
+- Identifique cada uma PELO CABEÇALHO, não pela posição
+- Se uma coluna tem muitos "0", provavelmente é SACAS, não DOCA
 
-1. Localize os cabeçalhos para confirmar a posição de cada coluna
-2. Para cada linha com PLACA:
-   - Leia CIDADE (primeira coluna texto)
-   - Leia ROTA (código como "A5_AM", "G3_AM", "K16_AM")
-   - Leia PLACA (formato brasileiro, pode ter prefixo "SDD-")
-   - Leia MOTORISTA (nome da pessoa)
-   - Leia ONDA ("Onda 1", "Onda 2", "Onda 3")
-   - Leia DOCA (penúltima coluna de números — NÃO é a última!)
-   - Leia SACAS (última coluna de números)
+# PASSO 3 — EXTRAIR LINHA POR LINHA:
+
+Para cada linha com PLACA de veículo:
+- Siga a linha horizontal estrita
+- Leia cada valor na coluna correta conforme identificado no Passo 1
+- Nunca misture valores entre colunas
 
 # FORMATO JSON (retorne APENAS o array, sem markdown):
 
@@ -60,8 +67,8 @@ CIDADE | ROTA/OTIMIZADA | PLACA | MOTORISTA | ONDA | DOCA | SACAS
 
 # REGRAS:
 - driverPlate: UPPERCASE, sem hífens, remova prefixo "SDD-"
-- dock: string. Penúltima coluna numérica. NUNCA copie o valor de SACAS aqui
-- sacas: número inteiro da última coluna. Se 0, retorne 0
+- dock: string do valor na coluna DOCA (identificada pelo cabeçalho). NUNCA copie valor de SACAS. Se não existir coluna DOCA, use ""
+- sacas: número inteiro da coluna SACAS (identificada pelo cabeçalho). Se 0, retorne 0. Se não existir coluna, omita
 - waveLabel: sempre "Manhã"
 - waveNumber: texto exato da coluna Onda ("Onda 1", "Onda 2", etc.)
 - city: texto exato da coluna Cidade
@@ -77,6 +84,30 @@ CIDADE | ROTA/OTIMIZADA | PLACA | MOTORISTA | ONDA | DOCA | SACAS
  * Disponível via variável pública do Expo.
  */
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+
+/**
+ * JSON Schema que FORÇA o Gemini a retornar exatamente a estrutura esperada.
+ * Cada description reforça a distinção entre campos confusos (DOCA vs SACAS).
+ */
+const ROUTE_SCHEMA = {
+    type: 'array',
+    items: {
+        type: 'object',
+        properties: {
+            driverName:       { type: 'string', description: 'Nome completo do motorista' },
+            driverPlate:      { type: 'string', description: 'Placa do veiculo, UPPERCASE, sem hifens, sem prefixo SDD-' },
+            dock:             { type: 'string', description: 'Numero da DOCA/box (coluna com cabecalho DOCA/box/baia). NAO confundir com SACAS. Geralmente 1 a 50.' },
+            sacas:            { type: 'integer', description: 'Quantidade de sacas (coluna com cabecalho SACAS/saca/qtd). Geralmente 0 a 10. Diferente de DOCA.' },
+            waveLabel:        { type: 'string', description: 'Turno: Manha ou Tarde' },
+            waveNumber:       { type: 'string', description: 'Numero da onda exato da tabela: Onda 1, Onda 2, etc.' },
+            city:             { type: 'string', description: 'Nome da cidade exato da tabela' },
+            routeLabel:       { type: 'string', description: 'Codigo da rota/otimizada' },
+            isSdd:            { type: 'boolean', description: 'true se SDD aparece na placa ou linha' },
+            transportCompany: { type: 'string', description: 'Nome da transportadora se existir coluna, senao string vazia' },
+        },
+        required: ['driverName', 'driverPlate', 'dock', 'waveLabel', 'waveNumber', 'city', 'routeLabel', 'isSdd', 'transportCompany'],
+    },
+};
 
 /**
  * Extrai rotas de um romaneio logístico (imagem/PDF) via Gemini AI.
@@ -97,7 +128,8 @@ export async function parseLogisticsSheet(base64String: string, mimeType: string
         const result = await aether.functions.invoke<any>('gemini-ocr-proxy', {
             base64: base64String,
             mimeType,
-            systemInstruction: SYSTEM_INSTRUCTION
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseSchema: ROUTE_SCHEMA,
         }, { timeout: 60000 });
 
         if (!result.error && result.data) {
@@ -155,6 +187,7 @@ async function callGeminiDirectly(base64String: string, mimeType: string): Promi
         generationConfig: {
             temperature: 1.0,
             response_mime_type: 'application/json',
+            response_json_schema: ROUTE_SCHEMA,
             media_resolution: 'MEDIA_RESOLUTION_MEDIUM',
             thinking_config: { thinking_level: 'medium' }
         }
@@ -262,33 +295,131 @@ function cleanRawData(dataResponse: any): RouteDraft[] {
     return sanitizeRoutes(rawData);
 }
 
+// Placa Mercosul brasileira: 3 letras + 1 número + 1 alfanumérico + 2 números
+const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
+// Dock válido: número 1-999
+const DOCK_REGEX = /^[1-9][0-9]{0,2}$/;
+
 /**
- * Sanitiza placas de veículos extraídas pela IA.
- * Remove prefixo SDD-, hífens, espaços e força uppercase.
- *
- * @param routes - Array bruto de rotas da IA
- * @returns Array sanitizado
+ * Sanitiza e valida rotas extraídas pela IA.
+ * Remove prefixos, força uppercase, e marca campos duvidosos com lowConfidence.
  */
 function sanitizeRoutes(routes: RouteDraft[]): RouteDraft[] {
     return routes.map(route => {
-        let cleanPlate = route.driverPlate || '';
-        // Se a IA mandou SDD-ABC1234, extrai só o ABC1234
-        cleanPlate = cleanPlate.replace(/SDD-?/i, '');
-        // Remove qualquer outro hífen ou espaço que a IA inventar
-        cleanPlate = cleanPlate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        const fields: string[] = [];
 
-        // Sanitiza dock: remove espaços, garante string limpa
+        // --- Placa ---
+        let cleanPlate = (route.driverPlate || '').replace(/SDD-?/i, '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        if (cleanPlate && !PLATE_REGEX.test(cleanPlate)) {
+            fields.push('driverPlate');
+        }
+
+        // --- Dock ---
         let cleanDock = (route.dock || '').toString().trim();
-        // Se a IA mandou "0" (alucinação), troca por vazio para forçar edição manual
         if (cleanDock === '0') {
-            logger.warn('[Gemini AI]', `Dock "0" detectado para placa ${cleanPlate} — substituído por vazio`);
+            logger.warn('[Gemini AI]', `Dock "0" para placa ${cleanPlate} — substituído por vazio`);
             cleanDock = '';
+        }
+        if (cleanDock && !DOCK_REGEX.test(cleanDock)) {
+            fields.push('dock');
+        }
+        if (!cleanDock) {
+            fields.push('dock');
+        }
+
+        // --- Sacas (range 0-99) ---
+        if (route.sacas !== undefined && (route.sacas < 0 || route.sacas > 99)) {
+            fields.push('sacas');
+        }
+
+        // --- Wave (deve conter "Onda" + número) ---
+        if (route.waveNumber && !/onda\s*\d/i.test(route.waveNumber)) {
+            fields.push('waveNumber');
         }
 
         return {
             ...route,
             driverPlate: cleanPlate,
             dock: cleanDock,
+            lowConfidence: fields.length > 0 ? true : undefined,
+            lowConfidenceFields: fields.length > 0 ? [...new Set(fields)] : undefined,
+        };
+    });
+}
+
+/**
+ * Distância de Levenshtein entre duas strings.
+ * Usada para fuzzy-match de placas e cidades com erros de 1-2 caracteres.
+ */
+function levenshtein(a: string, b: string): number {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            dp[i][j] = a[i - 1] === b[j - 1]
+                ? dp[i - 1][j - 1]
+                : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+    }
+    return dp[m][n];
+}
+
+/**
+ * Encontra o candidato mais próximo por Levenshtein (máx 1 char de diferença).
+ */
+function findClosestMatch(target: string, candidates: string[]): string | null {
+    if (!target || candidates.length === 0) return null;
+    for (const candidate of candidates) {
+        if (levenshtein(target, candidate) <= 1) return candidate;
+    }
+    return null;
+}
+
+/**
+ * Cross-reference: compara rotas extraídas contra dados REAIS do banco.
+ * Auto-corrige placas e cidades com erros de 1 caractere (OCR leu errado).
+ * Marca como lowConfidence campos que não batem com nenhum dado conhecido.
+ */
+export function crossReferenceRoutes(
+    routes: RouteDraft[],
+    knownPlates: string[],
+    knownCities: string[],
+): RouteDraft[] {
+    return routes.map(route => {
+        const fields: string[] = [...(route.lowConfidenceFields || [])];
+
+        // --- Auto-correção de placa ---
+        const cleanPlate = route.driverPlate.replace(/[^A-Z0-9]/g, '');
+        if (cleanPlate && !knownPlates.includes(cleanPlate)) {
+            const closest = findClosestMatch(cleanPlate, knownPlates);
+            if (closest) {
+                logger.info('[CrossRef]', `Placa ${cleanPlate} → auto-corrigida para ${closest}`);
+                route = { ...route, driverPlate: closest };
+            } else if (!fields.includes('driverPlate')) {
+                fields.push('driverPlate');
+            }
+        }
+
+        // --- Auto-correção de cidade ---
+        const upperCity = (route.city || '').trim().toUpperCase();
+        if (upperCity && knownCities.length > 0 && !knownCities.includes(upperCity)) {
+            const closestCity = findClosestMatch(upperCity, knownCities);
+            if (closestCity) {
+                logger.info('[CrossRef]', `Cidade "${route.city}" → auto-corrigida para "${closestCity}"`);
+                route = { ...route, city: closestCity };
+            } else if (!fields.includes('city')) {
+                fields.push('city');
+            }
+        }
+
+        return {
+            ...route,
+            lowConfidence: fields.length > 0 ? true : route.lowConfidence,
+            lowConfidenceFields: fields.length > 0 ? [...new Set(fields)] : route.lowConfidenceFields,
         };
     });
 }
