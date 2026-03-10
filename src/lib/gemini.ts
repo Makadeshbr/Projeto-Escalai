@@ -19,32 +19,57 @@ export interface RouteDraft {
  * Cada regra existe porque a IA misturava dock/routeLabel ou inventava campos.
  */
 const SYSTEM_INSTRUCTION = `
-Você é um extrator de dados logísticos de precisão absoluta (OCR Espacial Avançado). 
-Eu fornecerei a imagem ou PDF em base64 de um romaneio de rotas.
-Sua ÚNICA missão é me devolver um array JSON contendo todas as rotas.
+Você é um extrator OCR de romaneios logísticos.
 
-⚠️ REGRAS ESTRITAS DE FORMATAÇÃO E TIPAGEM:
-O array deve seguir exatamente este formato TypeScript:
+# LAYOUT DA TABELA (ordem das colunas da esquerda para a direita):
 
-interface RouteDraft {
-  driverName: string;       // Nome completo do motorista (Capitalize). Ex: "João Silva"
-  driverPlate: string;      // Placa (UPPERCASE sem hífens). Importante: Remova o prefixo "SDD-" se existir. Ex: "ABC1D23".
-    dock: string;             // ⚠️ DOCA/BALCÃO. ATENÇÃO MÁXIMA AQUI! Leia EXATAMENTE o número da doca/balcão na linha horizontal da placa correspondente a este motorista. O NÚMERO REAL ESTÁ NA FOTO E VOCÊ PRECISA EXTRAÍ-LO COM PRECISÃO! Pode estar na coluna DOCA, BOX, BAIA, BALCÃO, etc. Retorne vazio "" se realmente não existir nenhum número. NUNCA envie "0" a menos que a doca seja literalmente o número "0".
-  sacas?: number;           // QUANTIDADE DE SACAS. Valor inteiro correspondente à linha.
-  routeLabel: string;       // CÓDIGO DA ROTA (Letras + Números). Ex: "B5_AM", "SP_01".
-  waveLabel: string;        // Turno: Sempre retorne "Manhã".
-  waveNumber: string;       // Número/Sigla da Onda. Ex: "Onda 1", "01". Se não houver, use "".
-  city: string;             // CIDADE REAL. Não confunda com as siglas da Rota.
-  isSdd: boolean;           // true se houver texto "SDD" na placa ou linha.
-  transportCompany: string; // Nome da transportadora/empresa. Se não houver, use "".
-}
+A tabela segue este padrão de colunas:
+CIDADE | ROTA/OTIMIZADA | PLACA | MOTORISTA | ONDA | DOCA | SACAS
 
-⚠️⚠️ ALINHAMENTO ESPACIAL (MUITO IMPORTANTE):
-1. Preste MUITA atenção ao alinhamento vertical e horizontal das linhas da planilha!
-2. Siga uma linha horizontal estrita com os olhos (da Placa até a Doca). Um motorista = uma linha. A Doca lida TEM QUE SER o valor exato contido no campo de doca daquela exata linha.
-3. Se a linha não tiver um MOTORISTA ou PLACA óbvia, pule-a, pois não é uma atribuição válida.
-4. Ao final, audite rigorosamente os números da Doca. A placa do motorista X tem mesmo o número Y na coluna de Doca? Valide cruzando as linhas. O seu modelo de geometria tem capacidade superior, evite alucinar e nunca chute "0" onde há números válidos impressos.
-5. Devolva APENAS O ARRAY JSON []. Sem markdown.
+⚠️ CUIDADO CRÍTICO: DOCA e SACAS são colunas DIFERENTES lado a lado!
+- DOCA = penúltima coluna numérica (números geralmente de 1 a 50, é o número do box/balcão)
+- SACAS = ÚLTIMA coluna numérica (quantidade de sacas, frequentemente 0)
+- NÃO confunda: se a última coluna tem muitos "0", esses zeros são SACAS, não DOCA!
+
+# MÉTODO:
+
+1. Localize os cabeçalhos para confirmar a posição de cada coluna
+2. Para cada linha com PLACA:
+   - Leia CIDADE (primeira coluna texto)
+   - Leia ROTA (código como "A5_AM", "G3_AM", "K16_AM")
+   - Leia PLACA (formato brasileiro, pode ter prefixo "SDD-")
+   - Leia MOTORISTA (nome da pessoa)
+   - Leia ONDA ("Onda 1", "Onda 2", "Onda 3")
+   - Leia DOCA (penúltima coluna de números — NÃO é a última!)
+   - Leia SACAS (última coluna de números)
+
+# FORMATO JSON (retorne APENAS o array, sem markdown):
+
+[{
+  "driverName": "Nome Completo",
+  "driverPlate": "ABC1D23",
+  "dock": "33",
+  "sacas": 4,
+  "routeLabel": "A5_AM",
+  "waveLabel": "Manhã",
+  "waveNumber": "Onda 2",
+  "city": "Barao de antonina",
+  "isSdd": false,
+  "transportCompany": ""
+}]
+
+# REGRAS:
+- driverPlate: UPPERCASE, sem hífens, remova prefixo "SDD-"
+- dock: string. Penúltima coluna numérica. NUNCA copie o valor de SACAS aqui
+- sacas: número inteiro da última coluna. Se 0, retorne 0
+- waveLabel: sempre "Manhã"
+- waveNumber: texto exato da coluna Onda ("Onda 1", "Onda 2", etc.)
+- city: texto exato da coluna Cidade
+- routeLabel: código da coluna Rota/Otimizada
+- isSdd: true se "SDD" aparecer na placa ou linha
+- transportCompany: nome da empresa se existir coluna, senão ""
+- Pule linhas sem PLACA
+- Retorne APENAS o array JSON []
 `;
 
 /**
@@ -130,7 +155,8 @@ async function callGeminiDirectly(base64String: string, mimeType: string): Promi
         generationConfig: {
             temperature: 1.0,
             response_mime_type: 'application/json',
-            media_resolution: 'medium'
+            media_resolution: 'MEDIA_RESOLUTION_MEDIUM',
+            thinking_config: { thinking_level: 'medium' }
         }
     };
 
