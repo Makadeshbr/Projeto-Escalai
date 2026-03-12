@@ -100,6 +100,7 @@ interface EditorFormProps {
     city: string; setCity: (t: string) => void;
     dock: string; setDock: (t: string) => void;
     route: string; setRoute: (t: string) => void;
+    wave: string; setWave: (t: string) => void;
     onSave: () => void;
     onCancel: () => void;
 }
@@ -157,8 +158,8 @@ export function EditorFormModal(props: EditorFormProps) {
                             />
                         </View>
 
-                        {/* Destino Box (Rota/Doca) */}
-                        <View className="flex-row gap-3 mb-8">
+                        {/* Destino Box (Rota/Doca/Onda) */}
+                        <View className="flex-row gap-3 mb-4">
                             <View className="flex-[1.5]">
                                 <Text className="text-[11px] text-[#94a3b8] font-spaceGroteskBold uppercase tracking-wider ml-1 mb-1.5">Cód. Rota</Text>
                                 <TextInput
@@ -181,6 +182,18 @@ export function EditorFormModal(props: EditorFormProps) {
                                     className="w-full h-12 bg-surface/50 border border-[#3b82f6]/30 rounded-lg px-4 text-[#3b82f6] font-spaceGroteskBold text-lg text-center"
                                 />
                             </View>
+                        </View>
+
+                        {/* Onda */}
+                        <View className="mb-8">
+                            <Text className="text-[11px] text-[#94a3b8] font-spaceGroteskBold uppercase tracking-wider ml-1 mb-1.5">Onda</Text>
+                            <TextInput
+                                value={props.wave}
+                                onChangeText={props.setWave}
+                                placeholder="Ex: Onda 1"
+                                placeholderTextColor="#475569"
+                                className="w-full h-12 bg-surface/50 border border-[#f2db0d]/30 rounded-lg px-4 text-[#f2db0d] font-spaceGroteskBold text-[15px]"
+                            />
                         </View>
 
                         {/* Save Actions */}

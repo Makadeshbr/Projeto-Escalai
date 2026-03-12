@@ -84,6 +84,40 @@ export const SackQRCodeSchema = z.object({
     archived: z.boolean().optional().catch(undefined),
 });
 
+// ---- Chat Conversations ----
+export const ChatConversationSchema = z.object({
+    id: safeString,
+    driverId: safeString,
+    driverName: safeString,
+    driverPlate: safeString,
+    driverAvatarUrl: z.string().optional().catch(undefined),
+    lastMessageText: safeString,
+    lastMessageSender: z.enum(['driver', 'admin']).catch('driver'),
+    lastMessageAt: safeString,
+    unreadCountAdmin: z.number().catch(0),
+    unreadCountDriver: z.number().catch(0),
+    createdAt: safeString,
+});
+
+// ---- Chat Messages ----
+export const ChatMessageSchema = z.object({
+    id: safeString,
+    conversationId: safeString,
+    senderId: safeString,
+    senderName: safeString,
+    senderRole: z.enum(['driver', 'admin']).catch('driver'),
+    text: safeString,
+    type: z.enum(['text', 'quick_reply', 'broadcast', 'assignment_link']).catch('text'),
+    metadata: z.object({
+        assignmentId: z.string().optional().catch(undefined),
+        assignmentLabel: z.string().optional().catch(undefined),
+        broadcastId: z.string().optional().catch(undefined),
+        quickReplyKey: z.string().optional().catch(undefined),
+    }).optional().catch(undefined),
+    readBy: z.array(z.string()).catch([]),
+    createdAt: safeString,
+});
+
 // ---- Batch validation utilities ----
 
 /**

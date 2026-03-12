@@ -13,6 +13,8 @@ export const COLLECTIONS = {
     AUDIT_LOG: 'audit_log',
     ADMIN_NOTIFICATIONS: 'admin_notifications',
     SACK_QR_CODES: 'sack_qr_codes',
+    CHAT_CONVERSATIONS: 'chat_conversations',
+    CHAT_MESSAGES: 'chat_messages',
 } as const;
 
 // ---- Cities ----
@@ -147,6 +149,42 @@ export interface SackQRCode {
     uploadedByAdminId: string;  // ID do admin que fez o upload
     createdAt: string;
     archived?: boolean;         // Soft-delete (nunca remove fisicamente para auditabilidade)
+}
+
+// ---- Chat Conversations (1 per driver, shared by all admins) ----
+export interface ChatConversation {
+    id: string;
+    driverId: string;
+    driverName: string;
+    driverPlate: string;
+    driverAvatarUrl?: string;
+    lastMessageText: string;
+    lastMessageSender: 'driver' | 'admin';
+    lastMessageAt: string;
+    unreadCountAdmin: number;
+    unreadCountDriver: number;
+    createdAt: string;
+}
+
+// ---- Chat Messages ----
+export type ChatMessageType = 'text' | 'quick_reply' | 'broadcast' | 'assignment_link';
+
+export interface ChatMessage {
+    id: string;
+    conversationId: string;
+    senderId: string;
+    senderName: string;
+    senderRole: 'driver' | 'admin';
+    text: string;
+    type: ChatMessageType;
+    metadata?: {
+        assignmentId?: string;
+        assignmentLabel?: string;
+        broadcastId?: string;
+        quickReplyKey?: string;
+    };
+    readBy: string[];
+    createdAt: string;
 }
 
 // ---- Helper: wave metadata ----

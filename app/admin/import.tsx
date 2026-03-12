@@ -9,7 +9,7 @@ import { THEME } from '~/src/constants/theme';
 import { aether, aetherFetchAll } from '~/src/lib/aether';
 import { useAuthStore } from '~/src/store/auth';
 import { COLLECTIONS, DriverAvailability, Assignment, getTodayDateStr, getTomorrowDateStr, City, formatBrazilTimestamp } from '~/src/lib/collections';
-import { parseLogisticsSheet, RouteDraft } from '~/src/lib/gemini';
+import { parseLogisticsSheet, crossReferenceRoutes, RouteDraft } from '~/src/lib/gemini';
 import ImportPreviewTable from '~/src/components/ImportPreviewTable';
 import { notifyDriver, isExpoGo } from '~/src/lib/push';
 
@@ -244,6 +244,10 @@ export default function ImportRouteScreen() {
             // Processa todas as imagens da fila sequencialmente ou em paralelo seguro
             let allFormattedRoutes: any[] = [];
 
+            // Dados conhecidos para cross-reference auto-correção
+            const knownPlates = availableDrivers.map(d => d.driverPlate.replace(/[^A-Z0-9]/g, ''));
+            const knownCityNames = knownDatabaseCities.map((c: any) => (c.name || '').trim().toUpperCase());
+
             for (const img of selectedImages) {
                 const base64 = await FileSystem.readAsStringAsync(img.uri, { encoding: 'base64' });
                 const extractedRoutes = await parseLogisticsSheet(base64, img.mimeType);
@@ -253,7 +257,10 @@ export default function ImportRouteScreen() {
                     ...r,
                     driverPlate: r.driverPlate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
                 }));
-                allFormattedRoutes = [...allFormattedRoutes, ...formatted];
+
+                // Cross-reference: auto-corrige placas/cidades contra dados do banco
+                const corrected = crossReferenceRoutes(formatted, knownPlates, knownCityNames);
+                allFormattedRoutes = [...allFormattedRoutes, ...corrected];
             }
 
             // [FIX F1] Deduplicação: remove rotas com mesma placa+doca que já existam na tabela
@@ -272,10 +279,9 @@ export default function ImportRouteScreen() {
                 return accumulated;
             });
 
-            // Cross-check cities
+            // Cross-check cities (usa knownCityNames já calculado acima para o crossReference)
             if (knownDatabaseCities.length > 0) {
                 const uniqueExtractedCities = Array.from(new Set(allFormattedRoutes.map(r => r.city.trim().toUpperCase())));
-                const knownCityNames = knownDatabaseCities.map((c: any) => c.name.trim().toUpperCase());
 
                 const unlistedCities = uniqueExtractedCities.filter(extCity => !knownCityNames.includes(extCity));
 
@@ -286,6 +292,17 @@ export default function ImportRouteScreen() {
             }
 
             setSelectedImages([]); // Limpa a galeria após o sucesso
+
+            // Resumo com contagem de alertas de baixa confiança
+            const lowConfCount = allFormattedRoutes.filter(r => r.lowConfidence).length;
+            if (lowConfCount > 0) {
+                setResultData({
+                    title: 'Rotas Extraídas',
+                    message: `${allFormattedRoutes.length} rotas extraídas (${lowConfCount} com baixa confiança — revise os campos em amarelo)`,
+                    type: 'partial',
+                });
+                setResultModalVisible(true);
+            }
 
         } catch (e: any) {
             setResultData({ title: 'Falha na IA', message: e.message || 'Ocorreu um erro no servidor de Visão Computacional.', type: 'error' });

@@ -14,6 +14,8 @@ export const queryKeys = {
     driverStatus: ['driver_status'] as const,
     cities: ['cities'] as const,
     adminStatus: ['admin_status'] as const,
+    chatConversations: ['chat_conversations'] as const,
+    chatMessages: (conversationId: string) => ['chat_messages', conversationId] as const,
 };
 
 /**

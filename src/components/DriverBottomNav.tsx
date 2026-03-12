@@ -1,25 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import { Home, Calendar, User, Navigation, History } from 'lucide-react-native';
+import { Home, Calendar, User, Navigation, MessageCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
 import { usePendingAvailability } from '~/src/hooks/usePendingAvailability';
+import { useUnreadChatCount } from '~/src/hooks/useUnreadChatCount';
 
 interface DriverBottomNavProps {
-    activeTab: 'dashboard' | 'availability' | 'profile' | 'status' | 'history';
+    activeTab: 'dashboard' | 'availability' | 'profile' | 'status' | 'chat';
 }
 
 const TABS = [
     { key: 'dashboard' as const, label: 'Painel', href: '/driver/dashboard', Icon: Home },
     { key: 'status' as const, label: 'Doca', href: '/driver/route-status', Icon: Navigation },
     { key: 'availability' as const, label: 'Escala', href: '/driver/availability', Icon: Calendar },
-    { key: 'history' as const, label: 'Histórico', href: '/driver/history', Icon: History },
+    { key: 'chat' as const, label: 'Chat', href: '/driver/chat', Icon: MessageCircle },
     { key: 'profile' as const, label: 'Perfil', href: '/driver/profile', Icon: User },
 ];
 
 export default function DriverBottomNav({ activeTab }: DriverBottomNavProps) {
     const hasPendingAvailability = usePendingAvailability();
+    const unreadChatCount = useUnreadChatCount();
     const pulseAnim = useRef(new Animated.Value(1)).current;
+    const chatPulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         if (hasPendingAvailability && activeTab !== 'availability') {
@@ -35,11 +38,26 @@ export default function DriverBottomNav({ activeTab }: DriverBottomNavProps) {
         }
     }, [hasPendingAvailability, activeTab]);
 
+    useEffect(() => {
+        if (unreadChatCount > 0 && activeTab !== 'chat') {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(chatPulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+                    Animated.timing(chatPulseAnim, { toValue: 1, duration: 600, useNativeDriver: true })
+                ])
+            ).start();
+        } else {
+            chatPulseAnim.stopAnimation();
+            chatPulseAnim.setValue(1);
+        }
+    }, [unreadChatCount, activeTab]);
+
     return (
         <View className="absolute bottom-0 w-full bg-header-bg/95 border-t border-border px-6 pb-6 pt-4 z-30 flex-row justify-between items-end">
             {TABS.map(({ key, label, href, Icon }) => {
                 const isActive = activeTab === key;
                 const isPulsing = key === 'availability' && hasPendingAvailability && !isActive;
+                const isChatPulsing = key === 'chat' && unreadChatCount > 0 && !isActive;
 
                 return (
                     <TouchableOpacity
@@ -54,6 +72,16 @@ export default function DriverBottomNav({ activeTab }: DriverBottomNavProps) {
                                     <View className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-background" />
                                 </View>
                                 <Text className="text-[11px] font-spaceGroteskBold text-[#f97316] uppercase tracking-wider mt-1">
+                                    {label}
+                                </Text>
+                            </Animated.View>
+                        ) : isChatPulsing ? (
+                            <Animated.View style={{ transform: [{ scale: chatPulseAnim }], alignItems: 'center' }}>
+                                <View className="relative">
+                                    <Icon color={THEME.colors.info} size={24} />
+                                    <View className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#3b82f6] rounded-full border border-background" />
+                                </View>
+                                <Text className="text-[11px] font-spaceGroteskBold text-[#3b82f6] uppercase tracking-wider mt-1">
                                     {label}
                                 </Text>
                             </Animated.View>

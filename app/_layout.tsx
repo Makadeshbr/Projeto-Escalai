@@ -124,7 +124,18 @@ export default function RootLayout() {
                 logger.debug('[Push] Usuário tocou na notificação, redirecionando...', data);
 
                 setTimeout(() => {
-                    router.push('/driver/dashboard');
+                    // Deep link: chat_message → abre conversa direta
+                    if (data.type === 'chat_message' || data.type === 'chat_broadcast') {
+                        const { useAuthStore } = require('../src/store/auth');
+                        const role = useAuthStore.getState().role;
+                        if (role === 'admin' && data.conversationId) {
+                            router.push(`/admin/chat/${data.conversationId}` as any);
+                        } else {
+                            router.push('/driver/chat' as any);
+                        }
+                    } else {
+                        router.push('/driver/dashboard');
+                    }
                 }, 500);
             });
         }

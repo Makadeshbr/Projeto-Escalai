@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Switch, Image, StyleSheet, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Settings, Camera, Star, Mail, CarFront, Bell, LogOut, Pencil, Check, Lock } from 'lucide-react-native';
+import { ArrowLeft, Settings, Camera, Star, Mail, CarFront, Bell, LogOut, Pencil, Check, Lock, History } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '~/src/store/auth';
 import * as ImagePicker from 'expo-image-picker';
@@ -488,6 +488,25 @@ export default function DriverProfileScreen() {
                             <View>
                                 <Text className="text-white font-spaceGroteskBold text-[15px]">Alterar Senha</Text>
                                 <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px]">Atualize sua senha de acesso</Text>
+                            </View>
+                        </View>
+                        <ArrowLeft color="#94a3b8" size={16} style={{ transform: [{ rotate: '180deg' }] }} />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Meu Histórico (movido do tab bar) */}
+                <View className="mb-8">
+                    <TouchableOpacity
+                        onPress={() => router.push('/driver/history')}
+                        className="bg-surface rounded-2xl p-4 flex-row items-center justify-between h-[68px] border border-border"
+                    >
+                        <View className="flex-row items-center">
+                            <View className="w-10 h-10 rounded-full bg-background items-center justify-center mr-3 border border-border">
+                                <History color="#3b82f6" size={18} />
+                            </View>
+                            <View>
+                                <Text className="text-white font-spaceGroteskBold text-[15px]">Meu Histórico</Text>
+                                <Text className="text-[#94a3b8] font-spaceGrotesk text-[11px]">Rotas anteriores e entregas</Text>
                             </View>
                         </View>
                         <ArrowLeft color="#94a3b8" size={16} style={{ transform: [{ rotate: '180deg' }] }} />

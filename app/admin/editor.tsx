@@ -120,6 +120,7 @@ export default function AdminEditorScreen() {
                 city={data.editor.city} setCity={data.editor.setCity}
                 dock={data.editor.dock} setDock={data.editor.setDock}
                 route={data.editor.route} setRoute={data.editor.setRoute}
+                wave={data.editor.wave} setWave={data.editor.setWave}
                 onSave={data.editor.save}
                 onCancel={data.editor.cancel}
             />

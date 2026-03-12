@@ -416,7 +416,7 @@ export default function DriverHistoryScreen() {
                 assignment={selectedAssignment}
             />
 
-            <DriverBottomNav activeTab="history" />
+            <DriverBottomNav activeTab="profile" />
         </SafeAreaView>
     );
 }

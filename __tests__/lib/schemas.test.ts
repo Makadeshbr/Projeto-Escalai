@@ -22,6 +22,8 @@ import {
     DriverAvailabilitySchema,
     DriverStatusSchema,
     SackQRCodeSchema,
+    ChatConversationSchema,
+    ChatMessageSchema,
     validateArray,
 } from '../../src/lib/schemas';
 
@@ -200,6 +202,154 @@ describe('SackQRCodeSchema', () => {
     it('archived undefined → permanece undefined', () => {
         const result = SackQRCodeSchema.parse(validQR);
         expect(result.archived).toBeUndefined();
+    });
+});
+
+// ---- ChatConversationSchema ----
+describe('ChatConversationSchema', () => {
+    const validConversation = {
+        id: 'conv-001',
+        driverId: 'd-001',
+        driverName: 'João Silva',
+        driverPlate: 'ABC-1D23',
+        lastMessageText: 'Estou a caminho',
+        lastMessageSender: 'driver',
+        lastMessageAt: '2026-03-12T10:00:00-03:00',
+        unreadCountAdmin: 3,
+        unreadCountDriver: 0,
+        createdAt: '2026-03-12T08:00:00-03:00',
+    };
+
+    it('aceita conversa válida completa', () => {
+        const result = ChatConversationSchema.safeParse(validConversation);
+        expect(result.success).toBe(true);
+    });
+
+    it('aplica fallback para lastMessageSender inválido → "driver"', () => {
+        const data = { ...validConversation, lastMessageSender: 'ROBOT' };
+        const result = ChatConversationSchema.parse(data);
+        expect(result.lastMessageSender).toBe('driver');
+    });
+
+    it('aplica fallback para unreadCountAdmin null → 0', () => {
+        const data = { ...validConversation, unreadCountAdmin: null };
+        const result = ChatConversationSchema.parse(data);
+        expect(result.unreadCountAdmin).toBe(0);
+    });
+
+    it('aplica fallback para unreadCountDriver undefined → 0', () => {
+        const data = { ...validConversation, unreadCountDriver: undefined };
+        const result = ChatConversationSchema.parse(data);
+        expect(result.unreadCountDriver).toBe(0);
+    });
+
+    it('aceita driverAvatarUrl opcional', () => {
+        const data = { ...validConversation, driverAvatarUrl: 'https://avatar.com/joao.jpg' };
+        const result = ChatConversationSchema.parse(data);
+        expect(result.driverAvatarUrl).toBe('https://avatar.com/joao.jpg');
+    });
+
+    it('driverAvatarUrl ausente → undefined (não crasha)', () => {
+        const result = ChatConversationSchema.parse(validConversation);
+        expect(result.driverAvatarUrl).toBeUndefined();
+    });
+
+    it('lastMessageSender aceita ambos valores válidos', () => {
+        for (const sender of ['driver', 'admin']) {
+            const data = { ...validConversation, lastMessageSender: sender };
+            const result = ChatConversationSchema.parse(data);
+            expect(result.lastMessageSender).toBe(sender);
+        }
+    });
+
+    it('campos string null viram string vazia (safeString)', () => {
+        const data = { ...validConversation, driverName: null };
+        const result = ChatConversationSchema.parse(data);
+        expect(result.driverName).toBe('');
+    });
+});
+
+// ---- ChatMessageSchema ----
+describe('ChatMessageSchema', () => {
+    const validMessage = {
+        id: 'msg-001',
+        conversationId: 'conv-001',
+        senderId: 'd-001',
+        senderName: 'João Silva',
+        senderRole: 'driver',
+        text: 'Estou na doca',
+        type: 'text',
+        readBy: ['d-001'],
+        createdAt: '2026-03-12T10:00:00-03:00',
+    };
+
+    it('aceita mensagem válida completa', () => {
+        const result = ChatMessageSchema.safeParse(validMessage);
+        expect(result.success).toBe(true);
+    });
+
+    it('aplica fallback para senderRole inválido → "driver"', () => {
+        const data = { ...validMessage, senderRole: 'UNKNOWN' };
+        const result = ChatMessageSchema.parse(data);
+        expect(result.senderRole).toBe('driver');
+    });
+
+    it('aplica fallback para type inválido → "text"', () => {
+        const data = { ...validMessage, type: 'INVALID_TYPE' };
+        const result = ChatMessageSchema.parse(data);
+        expect(result.type).toBe('text');
+    });
+
+    it('type aceita todos os valores válidos do enum', () => {
+        for (const type of ['text', 'quick_reply', 'broadcast', 'assignment_link']) {
+            const data = { ...validMessage, type };
+            const result = ChatMessageSchema.parse(data);
+            expect(result.type).toBe(type);
+        }
+    });
+
+    it('readBy null → fallback array vazio', () => {
+        const data = { ...validMessage, readBy: null };
+        const result = ChatMessageSchema.parse(data);
+        expect(result.readBy).toEqual([]);
+    });
+
+    it('readBy undefined → fallback array vazio', () => {
+        const data = { ...validMessage, readBy: undefined };
+        const result = ChatMessageSchema.parse(data);
+        expect(result.readBy).toEqual([]);
+    });
+
+    it('aceita metadata com assignmentId e assignmentLabel', () => {
+        const data = {
+            ...validMessage,
+            type: 'assignment_link',
+            metadata: { assignmentId: 'a-001', assignmentLabel: 'Doca 5 — Avaré' },
+        };
+        const result = ChatMessageSchema.parse(data);
+        expect(result.metadata?.assignmentId).toBe('a-001');
+        expect(result.metadata?.assignmentLabel).toBe('Doca 5 — Avaré');
+    });
+
+    it('aceita metadata com broadcastId', () => {
+        const data = {
+            ...validMessage,
+            type: 'broadcast',
+            metadata: { broadcastId: 'broadcast_123456' },
+        };
+        const result = ChatMessageSchema.parse(data);
+        expect(result.metadata?.broadcastId).toBe('broadcast_123456');
+    });
+
+    it('metadata ausente → undefined (não crasha)', () => {
+        const result = ChatMessageSchema.parse(validMessage);
+        expect(result.metadata).toBeUndefined();
+    });
+
+    it('metadata malformada → fallback undefined', () => {
+        const data = { ...validMessage, metadata: 'NOT_AN_OBJECT' };
+        const result = ChatMessageSchema.parse(data);
+        expect(result.metadata).toBeUndefined();
     });
 });
 

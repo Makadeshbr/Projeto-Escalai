@@ -19,6 +19,7 @@ export function useEditorData() {
     const [editCity, setEditCity] = useState('');
     const [editDock, setEditDock] = useState('');
     const [editRoute, setEditRoute] = useState('');
+    const [editWave, setEditWave] = useState('');
 
     /** Busca as rotas elegíveis para edição (Ativas de Hoje) */
     const fetchEditableAssignments = useCallback(async () => {
@@ -65,6 +66,7 @@ export function useEditorData() {
         setEditCity(assignment.cityName || '');
         setEditDock(assignment.dock || '');
         setEditRoute(assignment.routeLabel || '');
+        setEditWave(assignment.waveNumber || '');
         setIsEditing(true);
     };
 
@@ -86,6 +88,7 @@ export function useEditorData() {
         const cleanCity = editCity.trim();
         const cleanDock = editDock.trim();
         const cleanRoute = editRoute.trim();
+        const cleanWave = editWave.trim();
 
         if (!cleanPlate || !cleanCity || !cleanDock) {
             showModal('Campos Inválidos', 'A Placa, Cidade e Doca são obrigatórias.', 'error');
@@ -101,6 +104,7 @@ export function useEditorData() {
                 cityName: cleanCity,
                 dock: cleanDock,
                 routeLabel: cleanRoute,
+                waveNumber: cleanWave,
             };
 
             const plateChanged = cleanPlate !== selectedAssignment.driverPlate;
@@ -143,11 +147,12 @@ export function useEditorData() {
                     // Notifica o Novo verdadeiro dono
                     await notifyDriver(newDriverId, 'CORREÇÃO DE ROTA 📦', `Você foi alocado em: ${cleanCity}, Doca ${cleanDock}.`);
                 } else {
-                    // Apenas alterou Cidade/Doca/Rota = Notifica o motorista atual
+                    // Apenas alterou Cidade/Doca/Rota/Onda = Notifica o motorista atual
                     let msg = `Sua Rota foi corrigida: `;
                     if (cleanCity !== selectedAssignment.cityName) msg += `Destino ${cleanCity}. `;
                     if (cleanDock !== selectedAssignment.dock) msg += `Doca ${cleanDock}. `;
-                    if (cleanRoute !== selectedAssignment.routeLabel) msg += `Rota ${cleanRoute}.`;
+                    if (cleanRoute !== selectedAssignment.routeLabel) msg += `Rota ${cleanRoute}. `;
+                    if (cleanWave !== (selectedAssignment.waveNumber || '')) msg += `Onda ${cleanWave}.`;
 
                     await notifyDriver(selectedAssignment.driverId, 'ATUALIZAÇÃO DE DESPACHO 🔄', msg);
                 }
@@ -167,7 +172,7 @@ export function useEditorData() {
             showModal('Erro ao Salvar', errorMsg, 'error');
             setIsEditing(true); // Devolve o form
         }
-    }, [selectedAssignment, editPlate, editCity, editDock, editRoute, showModal, dismissModal, fetchEditableAssignments]);
+    }, [selectedAssignment, editPlate, editCity, editDock, editRoute, editWave, showModal, dismissModal, fetchEditableAssignments]);
 
     return {
         assignments,
@@ -182,6 +187,7 @@ export function useEditorData() {
             city: editCity, setCity: setEditCity,
             dock: editDock, setDock: setEditDock,
             route: editRoute, setRoute: setEditRoute,
+            wave: editWave, setWave: setEditWave,
             start: startEditing,
             cancel: cancelEditing,
             save: saveChanges

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
-import { Grid, Navigation, Users, Zap, MoreHorizontal, ScanLine, Settings, X, Edit3, CalendarDays, QrCode } from 'lucide-react-native';
+import { Grid, Navigation, Users, Zap, MoreHorizontal, ScanLine, Settings, X, Edit3, CalendarDays, QrCode, MessageCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { THEME } from '~/src/constants/theme';
+import { useUnreadChatCount } from '~/src/hooks/useUnreadChatCount';
 
 /**
  * Tipo das tabs disponíveis no painel administrativo.
  * Inclui tabs primárias (visíveis) e secundárias (dentro do menu "Mais").
  */
-type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings' | 'reports' | 'editor' | 'windows' | 'sack-qrcodes';
+type AdminTab = 'overview' | 'dashboard' | 'monitor' | 'import' | 'drivers' | 'settings' | 'reports' | 'editor' | 'windows' | 'sack-qrcodes' | 'chat';
 
 interface AdminBottomNavProps {
     activeTab: AdminTab;
@@ -24,6 +25,7 @@ const PRIMARY_TABS = [
 
 /** Tabs exibidas no menu "Mais" (bottom sheet) */
 const SECONDARY_TABS = [
+    { key: 'chat' as const, label: 'Chat Motoristas', href: '/admin/chat', Icon: MessageCircle, description: 'Conversas em tempo real com a frota' },
     { key: 'sack-qrcodes' as const, label: 'QR Sacas', href: '/admin/sack-qrcodes', Icon: QrCode, description: 'Gerenciar QR Codes das sacas' },
     { key: 'reports' as const, label: 'Histórico RH', href: '/admin/reports', Icon: Users, description: 'Estatísticas de motoristas e produção' },
     { key: 'editor' as const, label: 'Editor de Escalas', href: '/admin/editor', Icon: Edit3, description: 'Editar placas, rotas e destinos' },
@@ -36,9 +38,11 @@ const SECONDARY_TABS = [
  */
 export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
     const [showMore, setShowMore] = useState(false);
+    const unreadChatCount = useUnreadChatCount();
 
     /** Verifica se a tab ativa pertence ao menu secundário */
     const isSecondaryActive = SECONDARY_TABS.some(t => t.key === activeTab);
+    const hasUnreadChat = unreadChatCount > 0 && activeTab !== 'chat';
 
     return (
         <>
@@ -67,7 +71,12 @@ export default function AdminBottomNav({ activeTab }: AdminBottomNavProps) {
                     onPress={() => setShowMore(true)}
                     className={`flex-1 items-center justify-center gap-1 ${isSecondaryActive ? 'opacity-100' : 'opacity-60'}`}
                 >
-                    <MoreHorizontal color={isSecondaryActive ? THEME.colors.primary : '#94a3b8'} size={22} />
+                    <View className="relative">
+                        <MoreHorizontal color={isSecondaryActive ? THEME.colors.primary : '#94a3b8'} size={22} />
+                        {hasUnreadChat && (
+                            <View className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#3b82f6] rounded-full border border-[#0f1118]" />
+                        )}
+                    </View>
                     <Text
                         className={`text-[10px] uppercase tracking-wider ${isSecondaryActive ? 'font-spaceGroteskBold text-primary' : 'font-spaceGrotesk text-[#94a3b8]'}`}
                     >
