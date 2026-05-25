@@ -23,7 +23,6 @@
     },
     "android": {
       "package": "com.aether.escalai",
-      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#13151f"
